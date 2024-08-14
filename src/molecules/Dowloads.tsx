@@ -69,6 +69,12 @@ const Downloads = ({setPreview}: Props) => {
                     // @ts-ignore
                     content: outline.dxf,
                     preview: `outlines.${name}.svg`
+                },
+                {
+                    fileName: name,
+                    extension: 'yaml',
+                    // @ts-ignore
+                    content: yaml.dump(outline.yaml)
                 }
             )
         }
