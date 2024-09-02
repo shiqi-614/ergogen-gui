@@ -78,7 +78,8 @@ const ConfigContextProvider = ({initialInput, children}: Props) => {
                     points: {...parsedConfig?.points},
                     units: {...parsedConfig?.units},
                     variables: {...parsedConfig?.variables},
-                    outlines: {...parsedConfig?.outlines}
+                    outlines: {...parsedConfig?.outlines},
+                    pcbs: {...parsedConfig?.pcbs}
                 };
             }
 

@@ -81,6 +81,27 @@ const Downloads = ({setPreview}: Props) => {
 
     }
 
+    if (results?.pcbs_preview) {
+        for (const [name, preview] of Object.entries(results.pcbs_preview)) {
+            downloads.push(
+                {
+                    fileName: name,
+                    extension: 'dxf',
+                    // @ts-ignore
+                    content: preview.dxf,
+                    preview: `pcbs_preview.${name}.svg`
+                },
+                {
+                    fileName: name,
+                    extension: 'yaml',
+                    // @ts-ignore
+                    content: yaml.dump(preview.yaml)
+                }
+            )
+        }
+
+    }
+
     if (results?.cases) {
         for (const [name, caseObj] of Object.entries(results.cases)) {
             downloads.push(
