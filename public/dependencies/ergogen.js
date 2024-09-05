@@ -3791,6 +3791,7 @@
 	async function fetchAndCache$1(footprintName) {
 	    // 尝试从缓存中获取数据
 	    if (cache.has(footprintName)) {
+	        console.log("get data from cache: " + footprintName);
 	        return cache.get(footprintName);
 	    }
 	    
@@ -3798,7 +3799,7 @@
 	        // 如果缓存中没有数据，进行HTTP请求
 	        const url = `https://raw.githubusercontent.com/shiqi-614/ErgoCai.pretty/main/${footprintName}.kicad_mod`;
 	        const response = await axios.get(url);
-	        console.log("get from github:" + response.data);
+	        // console.log("get from github:" + response.data);
 	        const data = parseContent(response.data);
 
 	        // 将数据保存到缓存中
@@ -3825,12 +3826,23 @@
 	    return prefix + '-' + (item.uuid || item.tstamp || ++idx);
 	}
 
+	class FpCircleStrategy {
+	    convert(item) {
+	        const key = getId('fpCircle', item);
+	        const radius = Math.sqrt(Math.pow(item.center.x - item.end.x, 2) + Math.pow(item.center.y - item.end.y, 2));
+	        var circle = new m$1.paths.Circle([item.center.x, item.center.y*-1], radius);
+	        console.log("kicad fp circle: " + JSON.stringify(item));
+	        console.log("convert to makerjs circle: "+ JSON.stringify(circle));
+	        return {[key]: circle};
+	    }
+	}
+
 	class CircleStrategy {
 	    convert(item) {
 	        const key = getId('circle', item);
 	        var circle = new m$1.paths.Circle([item.at.x, item.at.y*-1], item.size[0]/2);
-	        console.log("kicad circle: " + JSON.stringify(item));
-	        console.log("convert to makerjs circle: "+ JSON.stringify(circle));
+	        // console.log("kicad circle: " + JSON.stringify(item));
+	        // console.log("convert to makerjs circle: "+ JSON.stringify(circle));
 	        return {[key]: circle};
 	    }
 	}
@@ -3840,8 +3852,8 @@
 	        const key = getId('oval', item);
 	        var oval = new m$1.models.Oval(item.size[0], item.size[1]);
 	        oval.origin = [item.at.x - item.size[0]/2, item.at.y * -1 - item.size[0]/2];
-	        console.log("kicad oval: " + JSON.stringify(item));
-	        console.log("convert to makerjs oval: "+ JSON.stringify(oval));
+	        // console.log("kicad oval: " + JSON.stringify(item));
+	        // console.log("convert to makerjs oval: "+ JSON.stringify(oval));
 	        return {[key]: oval};
 	    }
 	}
@@ -3861,11 +3873,8 @@
 	            item.roundrect_rratio * Math.min(item.size[0], item.size[1])
 	        );
 	        roundrect.origin = [item.at.x - item.size[0]/2, item.at.y * -1 - item.size[1]/2];
-	        // m.model.move(roundrect, [item.at.x - item.size[0]/2, item.at.y * -1 - item.size[1]/2]); 
-	        // m.model.move(roundrect, [item.at.x, item.at.y * -1]); 
-
-	        console.log("kicad roundrect: " + JSON.stringify(item));
-	        console.log("convert to makerjs roundrect: "+ JSON.stringify(roundrect));
+	        // console.log("kicad roundrect: " + JSON.stringify(item));
+	        // console.log("convert to makerjs roundrect: "+ JSON.stringify(roundrect));
 	        return {[key]: roundrect};
 	    }
 	}
@@ -3922,8 +3931,8 @@
 	            endAngle: endAngle
 	        };
 	        var key = getId('arc', item);
-	        console.log("kicad arc: " + JSON.stringify(item));
-	        console.log("convert to makerjs arc: "+ JSON.stringify(arc));
+	        // console.log("kicad arc: " + JSON.stringify(item));
+	        // console.log("convert to makerjs arc: "+ JSON.stringify(arc));
 	        return {[key]: arc};
 	    }
 	}
@@ -3936,8 +3945,8 @@
 	            origin: [item.start.x, item.start.y * -1],
 	            end: [item.end.x, item.end.y * -1]
 	        };
-	        console.log("kicad line: " + JSON.stringify(item));
-	        console.log("convert to makerjs line: "+ JSON.stringify(line));
+	        // console.log("kicad line: " + JSON.stringify(item));
+	        // console.log("convert to makerjs line: "+ JSON.stringify(line));
 	        return {[key]: line};
 	    }
 	}
@@ -3950,8 +3959,8 @@
 	            item.size[1]
 	        );
 	        rect.origin = [item.at.x - item.size[0]/2, item.at.y * -1 - item.size[1]/2];
-	        console.log("kicad rect: " + JSON.stringify(item));
-	        console.log("convert to makerjs rect: "+ JSON.stringify(rect));
+	        // console.log("kicad rect: " + JSON.stringify(item));
+	        // console.log("convert to makerjs rect: "+ JSON.stringify(rect));
 	        return {[key]: rect};
 	    }
 	}
@@ -3965,6 +3974,7 @@
 	            'line': new LineStrategy(),
 	            'arc': new ArcStrategy(),
 	            'rect': new RectStrategy(),
+	            'fp_circle': new FpCircleStrategy(),
 	            'oval': new OvalStrategy()
 	        };
 	    }
@@ -4001,6 +4011,12 @@
 	            .filter((item) => layerCheck(item))
 	            .flatMap((item) => shape_converter.convert(item, 'line'));
 	        allItems = Object.assign(allItems, ...line_list);
+	    }
+	    if (footprint.fp_circle) {
+	        const fp_circle_list = footprint.fp_circle
+	            .filter((item) => layerCheck(item))
+	            .flatMap((item) => shape_converter.convert(item, 'fp_circle'));
+	        allItems = Object.assign(allItems, ...fp_circle_list);
 	    }
 	    if (footprint.pad) {
 	        const pad_list = footprint.pad
@@ -4058,7 +4074,7 @@
 	    console.log("draw footprint: " + name);
 	    const jsonObj = await fetchAndCache(name);
 
-	    console.log(JSON.stringify(jsonObj, null, 2));
+	    // console.log(JSON.stringify(jsonObj, null, 2));
 	    let [pathItems, modelItems] = kicad_shape_converter.convert(jsonObj.footprint);
 	    return () => {
 	        const res = {
