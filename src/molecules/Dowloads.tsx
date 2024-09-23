@@ -128,7 +128,16 @@ const Downloads = ({setPreview}: Props) => {
                 }
             )
         }
-
+    }
+    if (results?.zipBuffer) {
+        downloads.push(
+            {
+                fileName: 'kicad',
+                extension: 'zip',
+                // @ts-ignore
+                content: results.zipBuffer
+            }
+        )
     }
 
 

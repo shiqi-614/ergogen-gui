@@ -325,7 +325,7 @@
 
 	const u$8 = utils;
 	const kle$1 = require$$1;
-	const yaml$2 = require$$1$1;
+	const yaml$3 = require$$1$1;
 
 	kle$2.convert = (config, logger) => {
 	    const keyboard = kle$1.Serial.deserialize(config);
@@ -334,7 +334,7 @@
 	    // if the keyboard notes are valid YAML/JSON, they get added to each key as metadata
 	    let meta;
 	    try {
-	        meta = yaml$2.load(keyboard.meta.notes);
+	        meta = yaml$3.load(keyboard.meta.notes);
 	    } catch (ex) {
 	        // notes were not valid YAML/JSON, oh well...
 	    }
@@ -420,6 +420,7 @@
 		"kle-serial": "github:ergogen/kle-serial#ergogen",
 		makerjs: "^0.18.1",
 		mathjs: "^11.5.0",
+		"node-fetch": "^3.3.2",
 		pouchdb: "^9.0.0",
 		yargs: "^17.6.2"
 	};
@@ -444,7 +445,7 @@
 			"src/templates/kicad8.js"
 		]
 	};
-	var require$$9 = {
+	var require$$11 = {
 		name: name,
 		version: version$2,
 		description: description,
@@ -461,14 +462,14 @@
 		nyc: nyc
 	};
 
-	const yaml$1 = require$$1$1;
+	const yaml$2 = require$$1$1;
 	const makerjs = require$$0;
 
 	const u$7 = utils;
 	const a$9 = assert$1;
 	const kle = kle$2;
 
-	const package_json = require$$9;
+	const package_json = require$$11;
 
 	const fake_require = io$1.fake_require = injection => name => {
 	    const dependencies = {
@@ -521,7 +522,7 @@
 	    let format = 'OBJ';
 	    if (a$9.type(raw)() == 'string') {
 	        try {
-	            config = yaml$1.safeLoad(raw);
+	            config = yaml$2.safeLoad(raw);
 	            format = 'YAML';
 	        } catch (yamlex) {
 	            try {
@@ -3187,7 +3188,7 @@
 	};
 
 	const m$2 = require$$0;
-	const version$1 = require$$9.version;
+	const version$1 = require$$11.version;
 
 	var kicad8 = {
 
@@ -3329,7 +3330,7 @@
 	    kicad8: kicad8
 	};
 
-	const yaml = require$$1$1;
+	const yaml$1 = require$$1$1;
 
 	const u$2 = utils;
 	const a$1 = assert$1;
@@ -3337,11 +3338,11 @@
 	const anchor$1 = anchor$5.parse;
 	const filter$1 = filter$3.parse;
 
-	const footprint_types$1 = footprints;
+	const footprint_types$2 = footprints;
 	const template_types$1 = templates;
 
 	pcbs.inject_footprint = (name, fp) => {
-	    footprint_types$1[name] = fp;
+	    footprint_types$2[name] = fp;
 	};
 
 	pcbs.inject_template = (name, t) => {
@@ -3371,7 +3372,7 @@
 	    // config sanitization
 	    // a.unexpected(config, name, ['what', 'params'])
 	    // const what = a.in(config.what, `${name}.what`, Object.keys(footprint_types))
-	    const fp = footprint_types$1[what];
+	    const fp = footprint_types$2[what];
 	    const original_params = config.params || {};
 
 	    // param sanitization
@@ -3423,10 +3424,10 @@
 	            string: v => v,
 	            number: v => a$1.sane(v, `${name}.params.${param_name}`, 'number')(units),
 	            boolean: v => v === 'true' || a$1.mathnum(v)(units) === 1,
-	            array: v => yaml.load(v),
-	            object: v => yaml.load(v),
+	            array: v => yaml$1.load(v),
+	            object: v => yaml$1.load(v),
 	            net: v => v,
-	            anchor: v => yaml.load(v)
+	            anchor: v => yaml$1.load(v)
 	        };
 	        a$1.in(type, `${name}.params.${param_name}.type`, Object.keys(converters));
 	        if (a$1.type(value)() == 'string') {
@@ -3783,7 +3784,7 @@
 	    // 用空格分隔并返回结果
 	}
 
-	const axios = require$$0$1;
+	const axios$1 = require$$0$1;
 	const { parseContent } = mod_parser;
 
 	const cache = new Map();
@@ -3798,7 +3799,7 @@
 	    try {
 	        // 如果缓存中没有数据，进行HTTP请求
 	        const url = `https://raw.githubusercontent.com/shiqi-614/ErgoCai.pretty/main/${footprintName}.kicad_mod`;
-	        const response = await axios.get(url);
+	        const response = await axios$1.get(url);
 	        // console.log("get from github:" + response.data);
 	        const data = parseContent(response.data);
 
@@ -3816,6 +3817,34 @@
 
 	var mod_github_fetcher = { fetchAndCache: fetchAndCache$1 };
 
+	const axios = require$$0$1;
+
+	const fetchFootprintTypes$1 = async () => {
+	  try {
+	    const response = await axios.get('https://raw.githubusercontent.com/shiqi-614/ErgoCai.pretty/main/footprintTypes.json');
+	    const data = response.data;
+
+	    const transformedDict = {};
+
+	    for (const key in data) {
+	      const values = data[key];
+	      values.forEach(value => {
+	        transformedDict[value] = key;
+	      });
+	    }
+	    console.log("data: " + JSON.stringify(data));
+	    console.log("transformedDict: " + JSON.stringify(transformedDict));
+
+	    return transformedDict;
+	  } catch (error) {
+	    console.error('Error fetching the JSON file:', error);
+	    return {};
+	  }
+	};
+
+
+	var footprint_types$1 = { fetchFootprintTypes: fetchFootprintTypes$1 };
+
 	var shape_converter$1 = {};
 
 	const m$1 = require$$0;
@@ -3831,8 +3860,8 @@
 	        const key = getId('fpCircle', item);
 	        const radius = Math.sqrt(Math.pow(item.center.x - item.end.x, 2) + Math.pow(item.center.y - item.end.y, 2));
 	        var circle = new m$1.paths.Circle([item.center.x, item.center.y*-1], radius);
-	        console.log("kicad fp circle: " + JSON.stringify(item));
-	        console.log("convert to makerjs circle: "+ JSON.stringify(circle));
+	        // console.log("kicad fp circle: " + JSON.stringify(item));
+	        // console.log("convert to makerjs circle: "+ JSON.stringify(circle));
 	        return {[key]: circle};
 	    }
 	}
@@ -4060,6 +4089,7 @@
 	const template_types = templates;
 
 	const { fetchAndCache } = mod_github_fetcher;
+	const { fetchFootprintTypes } = footprint_types$1;
 	const kicad_shape_converter = shape_converter$1;
 
 	pcbs_preview.inject_footprint = (name, fp) => {
@@ -4091,6 +4121,7 @@
 	pcbs_preview.parse = async (config, points, outlines, units) => {
 	            
 
+	    const footprintTypes = await fetchFootprintTypes();
 	    const pcbs = a.sane(config.pcbs || {}, 'pcbs', 'object')();
 	    const results = {};
 
@@ -4118,6 +4149,9 @@
 	        if (a.type(pcb_config.footprints)() == 'array') {
 	            pcb_config.footprints = {...pcb_config.footprints};
 	        }
+	        console.log("types");
+	        console.log(JSON.stringify(footprintTypes));
+
 	        const footprints_config = a.sane(pcb_config.footprints || {}, `pcbs.${pcb_name}.footprints`, 'object')();
 	        for (const [f_name, f] of Object.entries(footprints_config)) {
 	            const name = `pcbs.${pcb_name}.footprints.${f_name}`;
@@ -4133,6 +4167,13 @@
 	            // delete f.asym
 	            // delete f.where
 	            for (const w of where) {
+	                if (!w.meta.footprints) {
+	                    w.meta.footprints = {};
+	                }
+	                if (f.what in footprintTypes) {
+	                    const type = footprintTypes[f.what];
+	                    w.meta.footprints[type] = f.what;
+	                }
 	                const point = adjust(w.clone());
 	                // console.log("preview point: " + JSON.stringify(point));
 	                let [shape, bbox] = shape_maker(point); // point is passed for mirroring metadata only...
@@ -4154,6 +4195,7 @@
 	const u = utils;
 	const io = io$1;
 	const prepare = prepare$1;
+	const yaml = require$$1$1;
 	const units_lib = units;
 	const points_lib = points;
 	const outlines_lib = outlines;
@@ -4161,7 +4203,11 @@
 	const pcbs_lib = pcbs;
 	const pcbs_preview_lib = pcbs_preview;
 
-	const version = require$$9.version;
+	const version = require$$11.version;
+
+	function isNode() {
+	    return typeof process !== 'undefined' && process.versions != null && process.versions.node != null;
+	}
 
 	const process = async (raw, debug=false, logger=()=>{}) => {
 
@@ -4249,6 +4295,38 @@
 	        // if (!debug && pcb_name.startsWith('_')) continue
 	        results.pcbs_preview[pcb_name] = io.twodee(pcb_text, debug);
 	        empty = false;
+	    }
+	    results.points = points;
+	    results.demo = io.twodee(points_lib.visualize(points, units), debug);
+
+	    logger("Create KiCad Project...");
+
+	    try {
+	        const response = await fetch('http://127.0.0.1:5000/generate', {
+	            method: 'POST',
+	            headers: {
+	                'Content-Type': 'application/x-yaml',
+	            },
+	            body: yaml.dump(points),
+	        });
+
+	        if (!response.ok) {
+	            throw new Error('Network response was not ok');
+	        }
+
+
+	        const blob = await response.blob();
+	        // const buffer = await blob.text();
+	        const arrayBuffer = await blob.arrayBuffer();
+	        if (isNode()) {
+	            const buffer = Buffer.from(arrayBuffer); // Convert ArrayBuffer to Node.js Buffer
+	            results.zipBuffer = buffer;
+	        } else {
+	            const buffer = new Uint8Array(arrayBuffer);
+	            results.zipBuffer = buffer;
+	        }
+	    } catch (error) {
+	        console.error('There was a problem with the fetch operation:', error);
 	    }
 
 	    if (!debug && empty) {

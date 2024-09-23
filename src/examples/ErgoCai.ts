@@ -81,17 +81,15 @@ points:
       columns:
         left:
           key.column_net: C1
-          rows:
-            down:
-              row_net: R5
-              width: 2kx
-              rotate: -90
-              shift: [0kx, 0.5kx]
-            middle:
+        middle:
+          key.column_net: C2
         
       rows:
         down:
-        middle:
+          row_net: R5
+          width: 2kx
+          rotate: -90
+          shift: [0kx, 0.5kx]
         
 units:
   kx: cx
@@ -212,7 +210,6 @@ pcbs:
         where:
           ref.aggregate.parts: [matrix_inner_home]
           shift: [30, -5]
-    
     `
 };
 
