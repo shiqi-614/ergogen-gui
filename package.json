@@ -13,7 +13,6 @@
         "@types/node": "^16.9.4",
         "@types/react": "^17.0.21",
         "@types/react-dom": "^17.0.9",
-        "ergogen": "github:shiqi-614/ergogen#develop",
         "js-yaml": "^4.1.0",
         "lodash.debounce": "^4.0.8",
         "openjscad-react": "^0.0.1-canary-07",
@@ -31,11 +30,8 @@
         "yaml-js": "^0.2.3"
     },
     "scripts": {
-        "build-ergogen": "cd node_modules/ergogen && npm install && npm run build && cp dist/ergogen.js ../../public/dependencies/ergogen.js",
-        "postinstall": "yarn run build-ergogen",
         "start": "react-scripts --openssl-legacy-provider start",
         "build": "react-scripts --openssl-legacy-provider build",
-        "postbuild": "yarn run build-ergogen",
         "test": "react-scripts --openssl-legacy-provider test",
         "eject": "react-scripts eject",
         "predeploy": "yarn run build",

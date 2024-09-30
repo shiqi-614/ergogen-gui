@@ -1,10 +1,5 @@
 import styled from "styled-components";
 
-declare global {
-    interface Window {
-        ergogen: any;
-    }
-}
 
 const FooterContainer = styled.div`
       display: flex;
@@ -29,17 +24,6 @@ const FooterContainer = styled.div`
 const Footer = (): JSX.Element => {
     return (
         <FooterContainer>
-            <div>
-                <a href="https://www.github.com/ergogen/ergogen" target="_blank" rel="noreferrer">
-                    Ergogen by MrZealot
-                </a>
-            </div>
-            <div>
-                v{window.ergogen.version}
-            </div>
-            <div>
-                Powering the <a href="https://zealot.hu/absolem" target="_blank" rel="noreferrer">Absolem</a>
-            </div>
         </FooterContainer>
     );
 }

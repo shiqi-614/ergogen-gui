@@ -73,22 +73,25 @@ const ConfigContextProvider = ({initialInput, children}: Props) => {
 
             // When running this as part of onChange we only send 'points', 'units' and 'variables' to generate a preview
             // If there is no 'points' key we send the input to Ergogen as-is, it could be KLE or invalid.
-            if (parsedConfig?.points && options?.pointsonly) {
-                inputConfig = {
-                    points: {...parsedConfig?.points},
-                    units: {...parsedConfig?.units},
-                    variables: {...parsedConfig?.variables},
-                    outlines: {...parsedConfig?.outlines},
-                    pcbs: {...parsedConfig?.pcbs}
-                };
-            }
+            inputConfig = {
+                points: {...parsedConfig?.points},
+                units: {...parsedConfig?.units},
+                variables: {...parsedConfig?.variables},
+                outlines: {...parsedConfig?.outlines},
+                pcbs: {...parsedConfig?.pcbs}
+            };
 
             try {
-                results = await window.ergogen.process(
-                    inputConfig,
-                    debug, // debug
-                    (m: string) => console.log(m) // logger
-                );
+                const postResponse = await fetch('http://127.0.0.1:3001/api/ergogen', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(inputConfig)
+                });
+
+                const resposne = await postResponse.json();
+                results = resposne.results;
             } catch (e: unknown) {
                 if(!e) return;
 
@@ -105,7 +108,7 @@ const ConfigContextProvider = ({initialInput, children}: Props) => {
             setResults(results);
 
         }, 300),
-        [window.ergogen]
+        []
     );
 
     useEffect(() => {

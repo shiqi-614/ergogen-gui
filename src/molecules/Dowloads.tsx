@@ -122,9 +122,9 @@ const Downloads = ({setPreview}: Props) => {
             downloads.push(
                 {
                     fileName: name,
-                    extension: 'kicad_pcb',
+                    extension: 'json',
                     // @ts-ignore
-                    content: pcb
+                    content: JSON.stringify(pcb)
                 }
             )
         }
