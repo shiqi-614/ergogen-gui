@@ -160,6 +160,7 @@ pcbs:
         where: true
         adjust:
           shift: [0, -8.4]
+        side: Back
       battery:
         what: Battery_Holder_18650_Nickel
         where:
@@ -170,18 +171,18 @@ pcbs:
         where:
           ref.aggregate.parts: [matrix_middle_num]
           shift: [0,16.2]
-      RGB_led:
+      LED_RGB:
         what: LED_RGB_5050-6
         where:
           ref.aggregate.parts: [matrix_inner_num]
           shift: [0,15]
-      blue_led:
+      blue:
         what: LED_0603_1608Metric
         where:
           ref.aggregate.parts: [matrix_inner_num]
           shift: [12.5,15]
           rotate: 90
-      red_led:
+      red:
         what: LED_0603_1608Metric
         where:
           ref.aggregate.parts: [matrix_inner_num]
@@ -199,17 +200,20 @@ pcbs:
           ref.aggregate.parts: [matrix_inner_home]
           shift: [20.5,12]
           rotate: -90
+        side: Back
       reset:
         what: K2-1187SQ
         where:
           ref.aggregate.parts: [matrix_inner_home]
           shift: [20.5, -5]
           rotate: 0
+        side: Back
       connector:
         what: Connector_THT_1x4_2.54
         where:
           ref.aggregate.parts: [matrix_inner_home]
           shift: [30, -5]
+    
     `
 };
 

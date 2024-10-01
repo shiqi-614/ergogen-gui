@@ -129,15 +129,28 @@ const Downloads = ({setPreview}: Props) => {
             )
         }
     }
-    if (results?.zipBuffer) {
-        downloads.push(
-            {
-                fileName: 'kicad',
-                extension: 'zip',
-                // @ts-ignore
-                content: results.zipBuffer
+    if (results?.kicad) {
+        for (const [name, content] of Object.entries(results.kicad)) {
+            if (typeof content === "string") {
+                const binaryString = atob(content);
+
+                // Create a Uint8Array from the binary string
+                const binaryArray = new Uint8Array(binaryString.length);
+
+                for (let i = 0; i < binaryString.length; i++) {
+                    binaryArray[i] = binaryString.charCodeAt(i);
+                }
+
+                downloads.push(
+                    {
+                        fileName: name,
+                        extension: 'zip',
+                        // @ts-ignore
+                        content: binaryArray
+                    }
+                )
             }
-        )
+        }
     }
 
 

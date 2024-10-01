@@ -94,17 +94,6 @@ const ConfigContextProvider = ({initialInput, children}: Props) => {
                 const resposne = await postResponse.json();
                 results = resposne.results;
 
-                const binaryString = atob(results.zipBuffer);
-
-                // Create a Uint8Array from the binary string
-                const binaryArray = new Uint8Array(binaryString.length);
-
-                for (let i = 0; i < binaryString.length; i++) {
-                    binaryArray[i] = binaryString.charCodeAt(i);
-                }
-
-                results.zipBuffer = binaryArray
-
             } catch (e: unknown) {
                 if(!e) return;
 
