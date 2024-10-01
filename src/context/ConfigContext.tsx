@@ -83,7 +83,7 @@ const ConfigContextProvider = ({initialInput, children}: Props) => {
             };
 
             try {
-                const postResponse = await fetch('http://127.0.0.1:3001/api/ergogen', {
+                const postResponse = await fetch('http://ergo.shiqi614.win/api/ergogen', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
