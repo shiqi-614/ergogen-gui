@@ -10,7 +10,6 @@ import {useConfigContext} from "./context/ConfigContext";
 import Button from "./atoms/Button";
 import Select from "react-select";
 import GenOption from "./atoms/GenOption";
-import Tabs from "./organisms/Tabs";
 import {ConfigOption, exampleOptions} from "./examples";
 
 const EditorContainer = styled.div`
