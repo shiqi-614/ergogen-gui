@@ -1,4 +1,5 @@
-FROM node:14
+# FROM shiqi614/ergogen-gui
+FROM node:18
 
 WORKDIR /usr/src
 
@@ -8,11 +9,13 @@ WORKDIR /usr/src/app
 
 RUN git clone https://github.com/shiqi-614/ergogen-gui .
 
-RUN npm install -g yarn & yarn install
+RUN npm install -g serve 
+RUN yarn install 
+RUN yarn run build
 
 EXPOSE 3000
 
-CMD ["yarn", "start"]
+CMD ["serve", "-s", "build"]
 
 # docker build -t ergogen .
 # docker run -p 3001:3001 ergogen
