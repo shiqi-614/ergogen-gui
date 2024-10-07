@@ -3574,10 +3574,10 @@
 	var mod_github_fetcher = { fetchAndCache: fetchAndCache$1 };
 
 	const fs$1 = require$$0$2;
-	const path$1 = require$$1$2;
+	const path = require$$1$2;
 	const axios$1 = require$$0$1;
 
-	const modFolderPath$1 = path$1.join(__dirname, './ErgoCai.pretty');
+	const modFolderPath = path.join(__dirname, './ErgoCai.pretty');
 
 	function transfer(data) {
 	    const transformedDict = {};
@@ -3595,7 +3595,7 @@
 
 	const fetchFootprintTypes$2 = async () => {
 	    try {
-	        const filePath = path$1.join(modFolderPath$1, 'footprintTypes.json');
+	        const filePath = path.join(modFolderPath, 'footprintTypes.json');
 	        const content = fs$1.readFileSync(filePath, 'utf-8');
 
 	        console.log("read types from local file " + content);
@@ -3604,7 +3604,7 @@
 	        console.error('Error fetching the JSON from local file:', error);
 	    }
 	    try {
-	        const filePath = path$1.join(modFolderPath$1, 'footprintTypes.json');
+	        const filePath = path.join(modFolderPath, 'footprintTypes.json');
 	        const content = fs$1.readFileSync(filePath, 'utf-8');
 
 	        const response = await axios$1.get('https://raw.githubusercontent.com/shiqi-614/ErgoCai.pretty/main/footprintTypes.json');
@@ -3933,15 +3933,17 @@
 	var pcbs_preview = {};
 
 	const fs = require$$0$2;
-	const path = require$$1$2;
 	const { parseContent } = mod_parser;
 	const { fetchAndCache } = mod_github_fetcher;
 
-	const modFolderPath = path.join(__dirname, './ErgoCai.pretty');
 	const kicadMods = new Map();
+
+	const isNode = typeof process !== "undefined" && process.versions != null && process.versions.node != null;
 
 	// 递归遍历目录
 	function findKicadModFilesAndParse() {
+	    const path = require$$1$2;
+	    const modFolderPath = path.join(__dirname, './ErgoCai.pretty');
 	    const files = fs.readdirSync(modFolderPath);
 
 	    files.forEach(file => {
@@ -3961,14 +3963,15 @@
 	}
 
 	async function fetchKicadMod$1(footprint_name) {
-	    if (kicadMods.size == 0) {
-	        findKicadModFilesAndParse();
+	    if (isNode) {
+	        if (kicadMods.size == 0) {
+	            findKicadModFilesAndParse();
+	        }
 	    }
 	    
 	    console.log("try to get footprint: " + footprint_name);
 	    if (kicadMods.has(footprint_name)) {
 	        console.log("get data from file: " + footprint_name);
-	        
 	        return kicadMods.get(footprint_name);
 	    } else {
 	        return fetchAndCache(footprint_name);
@@ -4149,7 +4152,7 @@
 
 	const version = require$$12.version;
 
-	const process = async (raw, debug=false, logger=()=>{}) => {
+	const process$1 = async (raw, debug=false, logger=()=>{}) => {
 
 	    const prefix = 'Interpreting format: ';
 	    let empty = true;
@@ -4245,7 +4248,7 @@
 	        try {
 	            results.kicad = {};
 	            for (const [pcb_name, pcb_config] of Object.entries(config.pcbs)) {
-	                const response = await axios.post('https://ergo.shiqi614.win/kicad/generate', 
+	                const response = await axios.post('http://127.0.0.1:5001/generate', 
 	                    {
 	                        "points": points,
 	                        "name": pcb_name,
@@ -4268,7 +4271,7 @@
 
 	    if (!debug && empty) {
 	        logger('Output would be empty, rerunning in debug mode...');
-	        return process(raw, true, () => {})
+	        return process$1(raw, true, () => {})
 	    }
 	    return results
 	};
@@ -4291,7 +4294,7 @@
 
 	var ergogen = {
 	    version,
-	    process,
+	    process: process$1,
 	    inject
 	};
 
