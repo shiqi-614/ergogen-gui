@@ -31,7 +31,7 @@
         "yaml-js": "^0.2.3"
     },
     "scripts": {
-        "build-ergogen": "cd node_modules/ergogen && yarn install && yarn run build && sed -i 's|http://127.0.0.1:5001|https://ergo.shiqi614.win/kicad|g' dist/ergogen.js && cp dist/ergogen.js ../../public/dependencies/ergogen.js",
+        "build-ergogen": "cd node_modules/ergogen && yarn install && yarn run build && cp dist/ergogen.js ../../public/dependencies/ergogen.js",
         "postinstall": "yarn run build-ergogen",
         "start": "react-scripts --openssl-legacy-provider start",
         "build": "react-scripts --openssl-legacy-provider build",
