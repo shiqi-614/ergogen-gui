@@ -76,7 +76,7 @@ points:
     thumbs2:
       anchor:
         ref: matrix_inner_mod
-        shift: [0 + 8, -1kx - 3.4]
+        shift: [0 + 8, -1kx - 3.6]
         rotate: -25
       columns:
         left:

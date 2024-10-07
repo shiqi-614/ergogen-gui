@@ -26,7 +26,7 @@ type ContextProps = {
 };
 
 type ProcessOptions = {
-    pointsonly: boolean
+    is_preview: boolean
 };
 
 export const ConfigContext = createContext<ContextProps | null>(null);
@@ -65,7 +65,7 @@ const ConfigContextProvider = ({initialInput, children}: Props) => {
 
     // eslint-disable-next-line react-hooks/exhaustive-deps
     const processInput = useCallback(
-        debounce(async (textInput: string | undefined, options: ProcessOptions = { pointsonly: true }) => {
+        debounce(async (textInput: string | undefined, options: ProcessOptions = { is_preview: true }) => {
             let results = null;
             let inputConfig: string | {} = textInput ?? '';
             const [,parsedConfig] = parseConfig(textInput ?? '');
@@ -79,10 +79,13 @@ const ConfigContextProvider = ({initialInput, children}: Props) => {
                 units: {...parsedConfig?.units},
                 variables: {...parsedConfig?.variables},
                 outlines: {...parsedConfig?.outlines},
-                pcbs: {...parsedConfig?.pcbs}
+                pcbs: {...parsedConfig?.pcbs},
+                is_preview: options.is_preview 
             };
 
             try {
+                // https://ergo.shiqi614.win/api/ergogen
+                // http://localhost:3001/api/ergogen
                 const postResponse = await fetch('https://ergo.shiqi614.win/api/ergogen', {
                     method: 'POST',
                     headers: {
@@ -115,7 +118,7 @@ const ConfigContextProvider = ({initialInput, children}: Props) => {
 
     useEffect(() => {
         if(autoGen) {
-            processInput(configInput, { pointsonly: !autoGen3D });
+            processInput(configInput, { is_preview: true});
         }
     }, [configInput, processInput]);
 
