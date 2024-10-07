@@ -1,5 +1,11 @@
 import styled from "styled-components";
 
+declare global {
+    interface Window {
+        ergogen: any;
+    }
+}
+
 
 const FooterContainer = styled.div`
       display: flex;

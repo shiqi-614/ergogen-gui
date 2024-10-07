@@ -83,19 +83,29 @@ const ConfigContextProvider = ({initialInput, children}: Props) => {
                 is_preview: options.is_preview 
             };
 
-            try {
-                // https://ergo.shiqi614.win/api/ergogen
-                // http://localhost:3001/api/ergogen
-                const postResponse = await fetch('https://ergo.shiqi614.win/api/ergogen', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify(inputConfig)
-                });
 
-                const resposne = await postResponse.json();
-                results = resposne.results;
+            try {
+                if (options.is_preview) {
+                    console.log("is preview");
+                    results = await window.ergogen.process(
+                        inputConfig,
+                        debug, // debug
+                        (m: string) => console.log(m) // logger
+                    );
+                } else {
+                    console.log("is not preview");
+                    // https://ergo.shiqi614.win/api/ergogen
+                    // http://localhost:3001/api/ergogen
+                    const postResponse = await fetch('https://ergo.shiqi614.win/api/ergogen', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify(inputConfig)
+                    });
+                    const resposne = await postResponse.json();
+                    results = resposne.results;
+                }
 
             } catch (e: unknown) {
                 if(!e) return;
@@ -113,7 +123,7 @@ const ConfigContextProvider = ({initialInput, children}: Props) => {
             setResults(results);
 
         }, 300),
-        []
+        [window.ergogen]
     );
 
     useEffect(() => {

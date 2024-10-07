@@ -8,7 +8,7 @@ ADD https://api.github.com/repos/shiqi-614/ergogen-gui/git/refs/heads/main versi
 WORKDIR /usr/src/app
 
 RUN git clone https://github.com/shiqi-614/ergogen-gui .
-# COPY kicadgen /usr/src/app/
+# COPY . .
 
 RUN npm install -g serve 
 RUN yarn install 
