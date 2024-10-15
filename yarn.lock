@@ -5006,9 +5006,9 @@ entities@^2.0.0:
   resolved "https://registry.yarnpkg.com/entities/-/entities-2.2.0.tgz#098dc90ebb83d8dffa089d55256b351d34c4da55"
   integrity sha512-p92if5Nz619I0w+akJrLZH0MX0Pb5DX39XOwQTtXSdQQOaYH03S1uIQp4mhOZtAXrxq4ViO67YTiLBo2638o9A==
 
-"ergogen@github:shiqi-614/ergogen#5c596f0f31b15b85e16170133188a49884bc3f40":
+"ergogen@github:shiqi-614/ergogen#639547f8d1e91e75bff848de113ae8a6853596bb":
   version "4.1.0"
-  resolved "https://codeload.github.com/shiqi-614/ergogen/tar.gz/5c596f0f31b15b85e16170133188a49884bc3f40"
+  resolved "https://codeload.github.com/shiqi-614/ergogen/tar.gz/639547f8d1e91e75bff848de113ae8a6853596bb"
   dependencies:
     axios "^1.7.7"
     body-parser "^1.20.3"

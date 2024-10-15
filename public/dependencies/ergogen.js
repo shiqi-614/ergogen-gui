@@ -6,8 +6,8 @@
 (function (global, factory) {
 	typeof exports === 'object' && typeof module !== 'undefined' ? module.exports = factory(require('makerjs'), require('js-yaml'), require('jszip'), require('mathjs'), require('kle-serial'), require('axios'), require('fs'), require('path')) :
 	typeof define === 'function' && define.amd ? define(['makerjs', 'js-yaml', 'jszip', 'mathjs', 'kle-serial', 'axios', 'fs', 'path'], factory) :
-	(global = typeof globalThis !== 'undefined' ? globalThis : global || self, global.ergogen = factory(global.makerjs, global.jsyaml, global.jszip, global.math, global.kle, global.axios, global.require$$0$2, global.require$$1$2));
-})(this, (function (require$$0, require$$1$1, require$$1$3, require$$3, require$$1, require$$0$1, require$$0$2, require$$1$2) { 'use strict';
+	(global = typeof globalThis !== 'undefined' ? globalThis : global || self, global.ergogen = factory(global.makerjs, global.jsyaml, global.jszip, global.math, global.kle, global.axios, global.require$$0$2, global.require$$2));
+})(this, (function (require$$0, require$$1$1, require$$1$2, require$$3, require$$1, require$$0$1, require$$0$2, require$$2) { 'use strict';
 
 	function getDefaultExportFromCjs (x) {
 		return x && x.__esModule && Object.prototype.hasOwnProperty.call(x, 'default') ? x['default'] : x;
@@ -3574,10 +3574,7 @@
 	var mod_github_fetcher = { fetchAndCache: fetchAndCache$1 };
 
 	const fs$1 = require$$0$2;
-	const path = require$$1$2;
 	const axios$1 = require$$0$1;
-
-	const modFolderPath = path.join(__dirname, './ErgoCai.pretty');
 
 	function transfer(data) {
 	    const transformedDict = {};
@@ -3595,6 +3592,8 @@
 
 	const fetchFootprintTypes$2 = async () => {
 	    try {
+	        const path = require('path');
+	        const modFolderPath = path.join(__dirname, './ErgoCai.pretty');
 	        const filePath = path.join(modFolderPath, 'footprintTypes.json');
 	        const content = fs$1.readFileSync(filePath, 'utf-8');
 
@@ -3604,8 +3603,6 @@
 	        console.error('Error fetching the JSON from local file:', error);
 	    }
 	    try {
-	        const filePath = path.join(modFolderPath, 'footprintTypes.json');
-	        const content = fs$1.readFileSync(filePath, 'utf-8');
 
 	        const response = await axios$1.get('https://raw.githubusercontent.com/shiqi-614/ErgoCai.pretty/main/footprintTypes.json');
 	        const data = response.data;
@@ -3942,7 +3939,7 @@
 
 	// 递归遍历目录
 	function findKicadModFilesAndParse() {
-	    const path = require$$1$2;
+	    const path = require$$2;
 	    const modFolderPath = path.join(__dirname, './ErgoCai.pretty');
 	    const files = fs.readdirSync(modFolderPath);
 
