@@ -165,7 +165,7 @@ pcbs:
         what: Battery_Holder_18650_Nickel
         where:
           ref.aggregate.parts: [matrix_inner_home]
-          shift: [20.5,10]
+          shift: [22.5,10]
       switch:
         what: MSK-12C02
         where:
