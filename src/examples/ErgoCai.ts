@@ -165,7 +165,7 @@ pcbs:
         what: Battery_Holder_18650_Nickel
         where:
           ref.aggregate.parts: [matrix_inner_home]
-          shift: [22.5,10]
+          shift: [20.5,10]
       switch:
         what: MSK-12C02
         where:
@@ -198,7 +198,7 @@ pcbs:
         what: Holyiot-18010-nRF52840
         where:
           ref.aggregate.parts: [matrix_inner_home]
-          shift: [20.5,12]
+          shift: [22.5,12]
           rotate: -90
         side: Back
       reset:

@@ -85,7 +85,8 @@ const ConfigContextProvider = ({initialInput, children}: Props) => {
 
 
             try {
-                if (options.is_preview) {
+                console.log("Current Environment:", process.env.NODE_ENV);
+                if (options.is_preview && process.env.NODE_ENV !== 'development') {
                     console.log("is preview");
                     results = await window.ergogen.process(
                         inputConfig,
@@ -93,18 +94,22 @@ const ConfigContextProvider = ({initialInput, children}: Props) => {
                         (m: string) => console.log(m) // logger
                     );
                 } else {
-                    console.log("is not preview");
+                    console.log("get result from ergogen api");
                     // https://ergo.shiqi614.win/api/ergogen
                     // http://localhost:3001/api/ergogen
-                    const postResponse = await fetch('https://ergo.shiqi614.win/api/ergogen', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify(inputConfig)
-                    });
-                    const resposne = await postResponse.json();
-                    results = resposne.results;
+                    let apiUrl = process.env.REACT_APP_ERGOGEN_API_URL;
+                    console.log("Current api URL:" + apiUrl);
+                    if (apiUrl) {
+                        const postResponse = await fetch(apiUrl, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify(inputConfig)
+                        });
+                        const resposne = await postResponse.json();
+                        results = resposne.results;
+                    }
                 }
 
             } catch (e: unknown) {
