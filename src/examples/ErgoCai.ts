@@ -50,10 +50,21 @@ points:
         shift: [0 + 7.2 +1kx, -1.6kx-1.2]
         rotate: -25
       columns:
+        left:
+          rows:
+            up.skip: true
+            middle.skip: true
+            down:
+              width: 2kx
+              rotate: -90
+              shift: [0, 9.5]
         middle:
           key.column_net: C2
           rows:
-            down.skip: true
+            down:
+              width: 2kx
+              rotate: -90
+              shift: [0, 9.5]
             middle.skip: true
             up: 
               column_net: C5 
@@ -73,23 +84,7 @@ points:
         down:
         middle:
         up:
-    thumbs2:
-      anchor:
-        ref: matrix_inner_mod
-        shift: [0 + 8, -1kx - 3.6]
-        rotate: -25
-      columns:
-        left:
-          key.column_net: C1
-        middle:
-          key.column_net: C2
-        
-      rows:
-        down:
-          row_net: R5
-          width: 2kx
-          rotate: -90
-          shift: [0kx, 0.5kx]
+    
         
 units:
   kx: cx
@@ -154,7 +149,7 @@ pcbs:
         where: /thumbs_.*/
       keys3:
         what: SW_Hotswap_Kailh_MX_2.00u
-        where: /thumbs2_.*/
+        where: [thumbs_left_down, thumbs_middle_down]
       diodes:
         what: Diode-Dual
         where: true
@@ -213,7 +208,6 @@ pcbs:
         where:
           ref.aggregate.parts: [matrix_inner_home]
           shift: [30, -5]
-    
     `
 };
 
