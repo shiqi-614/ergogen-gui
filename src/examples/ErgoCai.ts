@@ -4,6 +4,13 @@ const ErgoCai : ConfigExample = {
     label: "ErgoCai",
     author: "jinsongc",
     value: `
+
+units:
+  kx: cx
+  ky: cy
+  px: kx + 3
+  py: ky + 3
+
 points:
   zones:
     matrix:
@@ -12,6 +19,11 @@ points:
           key:
             width: 1.5kx
             column_net: C0
+            shift: [-0.02kx, 0]
+          rows:
+            mod:
+              width: 1kx
+              shift: [0.24kx, 0]
         pinky:
           key:
             spread: 1.3kx 
@@ -83,20 +95,13 @@ points:
       rows:
         down:
         middle:
-        up:
-    
-        
-units:
-  kx: cx
-  ky: cy
-  px: kx + 3
-  py: ky + 3
+        up:        
+
 outlines:
   raw:
     - what: rectangle
       where: true
       size: [kx, ky]
-
   keys:
     - what: rectangle
       where: true
@@ -128,7 +133,7 @@ outlines:
         - ref: matrix_pinky_mod
           shift: [0.5px,-0.7py]
         - ref: matrix_outer_mod
-          shift: [-0.8px,-0.7py]
+          shift: [-0.8px - 0.25kx,-0.7py]
       fillet: 3
   combo:
     - name: board
@@ -150,6 +155,9 @@ pcbs:
       keys3:
         what: SW_Hotswap_Kailh_MX_2.00u
         where: [thumbs_left_down, thumbs_middle_down]
+      keys4:
+        what: SW_Hotswap_Kailh_MX_1.50u
+        where: [matrix_outer_num, matrix_outer_top, matrix_outer_home, matrix_outer_bottom]
       diodes:
         what: Diode-Dual
         where: true
@@ -208,6 +216,7 @@ pcbs:
         where:
           ref.aggregate.parts: [matrix_inner_home]
           shift: [30, -5]
+
     `
 };
 

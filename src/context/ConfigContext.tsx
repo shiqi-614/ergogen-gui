@@ -86,6 +86,8 @@ const ConfigContextProvider = ({initialInput, children}: Props) => {
 
             try {
                 console.log("Current Environment:", process.env.NODE_ENV);
+                // @ts-ignore
+                window.stage = process.env.NODE_ENV || 'production';  
                 if (options.is_preview && process.env.NODE_ENV !== 'development') {
                     console.log("is preview");
                     results = await window.ergogen.process(

@@ -27,7 +27,7 @@
         "three-dxf": "^1.0.1",
         "typescript": "^4.4.3",
         "web-vitals": "^1.0.1",
-        "ergogen": "github:shiqi-614/ergogen#639547f8d1e91e75bff848de113ae8a6853596bb",
+        "ergogen": "github:shiqi-614/ergogen#39875ba36c11f73e6543c99c7d7b8e814cded3eb",
         "yaml-js": "^0.2.3"
     },
     "scripts": {
