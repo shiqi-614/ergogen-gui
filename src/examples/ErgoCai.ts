@@ -4,7 +4,6 @@ const ErgoCai : ConfigExample = {
     label: "ErgoCai",
     author: "jinsongc",
     value: `
-
 units:
   kx: cx
   ky: cy
@@ -59,7 +58,7 @@ points:
     thumbs:
       anchor:
         ref: matrix_inner_mod
-        shift: [0 + 7.2 +1kx, -1.6kx-1.2]
+        shift: [0.43kx, -1.25kx]
         rotate: -25
       columns:
         left:
@@ -121,9 +120,17 @@ outlines:
         - ref: matrix_middle_num
           shift: [0.3px, 1py - 5]
         - ref: matrix_inner_num
-          shift: [1.5px, 1py]
+          shift: [0.7px, 1py ]
+        - ref: matrix_inner_num
+          shift: [0.7px, 1py + 3 ]
+        - ref: matrix_inner_num
+          shift: [1.26px, 1py + 3 ]
+        - ref: matrix_inner_num
+          shift: [1.26px, 1py ]
+        - ref: matrix_inner_num
+          shift: [1.55px, 1py]
         - ref: matrix_inner_bottom
-          shift: [1.5px,0.2py]
+          shift: [1.55px,0.2py]
         - ref: thumbs_right_up
           shift: [0.6px,0.6py + 1]
         - ref: thumbs_right_down
@@ -141,7 +148,7 @@ outlines:
       name: keys
 
 pcbs:
-  ergo_cai:
+  ergo_cai: 
     outlines:
       main:
         outline: board
@@ -195,13 +202,13 @@ pcbs:
         what: USB_C_Receptacle_HRO_TYPE-C-31-M-12
         where:
           ref.aggregate.parts: [matrix_inner_num]
-          shift: [20.5,18]
+          shift: [20.5,20.5]
           rotate: 180
       nrf52840:
-        what: Holyiot-18010-nRF52840
+        what: nRF52840_holyiot_18010
         where:
           ref.aggregate.parts: [matrix_inner_home]
-          shift: [22.5,12]
+          shift: [23.5,12]
           rotate: -90
         side: Back
       reset:
@@ -214,9 +221,9 @@ pcbs:
       connector:
         what: Connector_THT_1x4_2.54
         where:
-          ref.aggregate.parts: [matrix_inner_home]
-          shift: [30, -5]
-
+          ref.aggregate.parts: [matrix_inner_num]
+          shift: [31, -8]
+    
     `
 };
 

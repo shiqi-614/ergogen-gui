@@ -109,14 +109,18 @@ const ConfigContextProvider = ({initialInput, children}: Props) => {
                             },
                             body: JSON.stringify(inputConfig)
                         });
-                        const resposne = await postResponse.json();
-                        results = resposne.results;
+                        if (!postResponse.ok) {
+                            // Handle 400 and 500-level errors
+                            const errorData = await postResponse.json();
+                            throw new Error(errorData.error?.message || 'An error occurred');
+                        }
+                        const data = await postResponse.json();
+                        results = data.results;
                     }
                 }
 
             } catch (e: unknown) {
                 if(!e) return;
-
                 if (typeof e === "string"){
                     setError(e);
                 }
@@ -126,7 +130,6 @@ const ConfigContextProvider = ({initialInput, children}: Props) => {
                 }
                 return;
             }
-
             setResults(results);
 
         }, 300),
