@@ -8,7 +8,7 @@ on:
     inputs:
       tags:
         description: 'Purpose of Run This Workflow?'
-        required: true
+        required: false 
         type: string
 
 jobs:
