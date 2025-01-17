@@ -31,15 +31,12 @@
         "yaml-js": "^0.2.3"
     },
     "scripts": {
-        "build-ergogen": "cd node_modules/ergogen && yarn install && yarn run build && cp dist/ergogen.js ../../public/dependencies/ergogen.js",
-        "postinstall": "yarn upgrade ergogen && yarn run build-ergogen",
-        "start": "react-scripts --openssl-legacy-provider start",
-        "build": "react-scripts --openssl-legacy-provider build",
-        "postbuild": "yarn run build-ergogen",
+        "devo-html": "node update-index-html.js devo",
+        "prod-html": "node update-index-html.js prod",
+        "start": "yarn devo-html && react-scripts --openssl-legacy-provider start",
+        "build": "yarn prod-html && react-scripts --openssl-legacy-provider build",
         "test": "react-scripts --openssl-legacy-provider test",
-        "eject": "react-scripts eject",
-        "predeploy": "yarn run build",
-        "deploy": "gh-pages -d build"
+        "eject": "react-scripts eject"
     },
     "eslintConfig": {
         "extends": [
