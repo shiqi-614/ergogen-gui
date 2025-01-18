@@ -10,6 +10,9 @@ on:
         description: 'Purpose of Run This Workflow?'
         required: false 
         type: string
+  repository_dispatch:
+    types:
+      - trigger-event
 
 jobs:
   build:
