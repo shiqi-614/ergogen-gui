@@ -17,7 +17,6 @@ points:
         outer:
           key:
             width: 1.5kx
-            column_net: C0
             shift: [-0.02kx, 0]
           rows:
             mod:
@@ -26,35 +25,25 @@ points:
         pinky:
           key:
             spread: 1.3kx 
-            column_net: C1
         ring:
           key:
             stagger: 5
-            column_net: C2
         middle:
           key:
             stagger: 2.5
-            column_net: C3
         index:
           key:
             stagger: -2.5
-            column_net: C4
         inner:
           key:
             stagger: -2.5
-            column_net: C5
           rows.mod.skip: true
       rows:
         mod:
-          row_net: R4
         bottom:
-          row_net: R3
         home:
-          row_net: R2
         top:
-          row_net: R1
         num:
-          row_net: R0
     thumbs:
       anchor:
         ref: matrix_inner_mod
@@ -70,7 +59,6 @@ points:
               rotate: -90
               shift: [0, 9.5]
         middle:
-          key.column_net: C2
           rows:
             down:
               width: 2kx
@@ -78,19 +66,12 @@ points:
               shift: [0, 9.5]
             middle.skip: true
             up: 
-              column_net: C5 
-              row_net: R4 
         right:
           rows:
             up:
-              column_net: C5
-              row_net: R5
             middle:
-              column_net: C4
-              row_net: R5
             down:
-              column_net: C3
-              row_net: R5
+
       rows:
         down:
         middle:
@@ -153,77 +134,87 @@ pcbs:
       main:
         outline: board
     footprints:
-      keys1:
-        what: SW_Hotswap_Kailh_MX_1.00u
-        where: /matrix_.*/
-      keys2:
-        what: SW_Hotswap_Kailh_MX_1.00u
-        where: /thumbs_.*/
-      keys3:
-        what: SW_Hotswap_Kailh_MX_2.00u
-        where: [thumbs_left_down, thumbs_middle_down]
-      keys4:
-        what: SW_Hotswap_Kailh_MX_1.50u
+      keys1U:
+        what: 
+          github:
+            repo: "shiqi-614/ErgoCai.pretty"
+            file: "SW_Hotswap_Kailh_MX_1.00u.kicad_mod"
+        where: true
+        meta:
+          type: "key"
+      keys1_5U:
+        what: "SW_Hotswap_Kailh_MX_1.50u.kicad_mod"
         where: [matrix_outer_num, matrix_outer_top, matrix_outer_home, matrix_outer_bottom]
+        meta:
+          type: "key"
+      keys2U:
+        what: "SW_Hotswap_Kailh_MX_2.00u.kicad_mod"
+        where: [thumbs_left_down, thumbs_middle_down]
+        meta:
+          type: "key"
       diodes:
-        what: Diode-Dual
+        what: "Diode-Dual.kicad_mod"
         where: true
         adjust:
           shift: [0, -8.4]
         side: Back
-      battery:
-        what: Battery_Holder_18650_Nickel
-        where:
-          ref.aggregate.parts: [matrix_inner_home]
-          shift: [20.5,10]
-      switch:
-        what: MSK-12C02
-        where:
-          ref.aggregate.parts: [matrix_middle_num]
-          shift: [0,16.2]
+        meta:
+          type: "diode"
       LED_RGB:
-        what: LED_RGB_5050-6
+        what: "LED_RGB_5050-6.kicad_mod"
         where:
-          ref.aggregate.parts: [matrix_inner_num]
-          shift: [0,15]
-      blue:
-        what: LED_0603_1608Metric
+          ref: [matrix_inner_num]
+          shift: [6,15]
+      USB:
+        what: "USB_C_Receptacle_HRO_TYPE-C-31-M-12.kicad_mod"
         where:
-          ref.aggregate.parts: [matrix_inner_num]
-          shift: [12.5,15]
-          rotate: 90
-      red:
-        what: LED_0603_1608Metric
-        where:
-          ref.aggregate.parts: [matrix_inner_num]
-          shift: [28.5,15]
-          rotate: 90
-      usb_c:
-        what: USB_C_Receptacle_HRO_TYPE-C-31-M-12
-        where:
-          ref.aggregate.parts: [matrix_inner_num]
+          ref: [matrix_inner_num]
           shift: [20.5,20.5]
           rotate: 180
-      nrf52840:
-        what: nRF52840_holyiot_18010
+      NRF52840:
+        what: "nRF52840_holyiot_18010.kicad_mod"
         where:
-          ref.aggregate.parts: [matrix_inner_home]
+          ref: [matrix_inner_home]
           shift: [23.5,12]
           rotate: -90
         side: Back
-      reset:
-        what: K2-1187SQ
+        meta:
+          type: "mcu"
+      RESET:
+        what: "K2-1187SQ.kicad_mod"
         where:
-          ref.aggregate.parts: [matrix_inner_home]
+          ref: [matrix_inner_home]
           shift: [20.5, -5]
           rotate: 0
         side: Back
-      connector:
-        what: Connector_THT_1x4_2.54
+      CONNECTOR:
+        what: "Connector_THT_1x4_2.54.kicad_mod"
         where:
-          ref.aggregate.parts: [matrix_inner_num]
+          ref: [matrix_inner_num]
           shift: [31, -8]
-    
+    modules:
+      battery:
+        what:
+          github:
+            repo: "shiqi-614/ErgoCai.modules"
+            file: "default_18650_AP2112K.yaml"
+        where:
+          ref: [matrix_inner_home]
+          shift: [20.5, 10]
+        footprints:
+          BAT_SWITCH:
+            where:
+              ref: [matrix_middle_num]
+              shift: [0, 16.2]
+      charging:
+        what: 
+          github:
+            repo: "shiqi-614/ErgoCai.modules"
+            file: "default_TP4056.yaml"
+        where:
+          ref: matrix_index_num
+          shift: [6, 13.5]
+        side: Back
     `
 };
 
