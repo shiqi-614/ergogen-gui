@@ -157,7 +157,8 @@ pcbs:
         where: true
         adjust:
           shift: [0, -8.4]
-        side: Back
+          rotate: 180
+        side: back
         meta:
           type: "diode"
       LED_RGB:
@@ -176,8 +177,8 @@ pcbs:
         where:
           ref: [matrix_inner_home]
           shift: [23.5,12]
-          rotate: -90
-        side: Back
+          rotate: 90
+        side: back
         meta:
           type: "mcu"
       RESET:
@@ -186,7 +187,7 @@ pcbs:
           ref: [matrix_inner_home]
           shift: [20.5, -5]
           rotate: 0
-        side: Back
+        side: back
       CONNECTOR:
         what: "Connector_THT_1x4_2.54.kicad_mod"
         where:
@@ -214,7 +215,15 @@ pcbs:
         where:
           ref: matrix_index_num
           shift: [6, 13.5]
-        side: Back
+        side: back
+      usb:
+        what: 
+          github:
+            repo: "shiqi-614/ErgoCai.modules"
+            file: "default_usb.yaml"
+        where:
+          ref: matrix_inner_num
+          shift: [20.5, 20.5]
     `
 };
 
