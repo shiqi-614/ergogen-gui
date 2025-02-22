@@ -166,33 +166,7 @@ pcbs:
         where:
           ref: [matrix_inner_num]
           shift: [6,15]
-      USB:
-        what: "USB_C_Receptacle_HRO_TYPE-C-31-M-12.kicad_mod"
-        where:
-          ref: [matrix_inner_num]
-          shift: [20.5,20.5]
-          rotate: 180
-      NRF52840:
-        what: "nRF52840_holyiot_18010.kicad_mod"
-        where:
-          ref: [matrix_inner_home]
-          shift: [23.5,12]
-          rotate: 90
-        side: back
-        meta:
-          type: "mcu"
-      RESET:
-        what: "K2-1187SQ.kicad_mod"
-        where:
-          ref: [matrix_inner_home]
-          shift: [20.5, -5]
-          rotate: 0
-        side: back
-      CONNECTOR:
-        what: "Connector_THT_1x4_2.54.kicad_mod"
-        where:
-          ref: [matrix_inner_num]
-          shift: [31, -8]
+
     modules:
       battery:
         what:
@@ -224,6 +198,16 @@ pcbs:
         where:
           ref: matrix_inner_num
           shift: [20.5, 20.5]
+      mcu:
+        what: 
+          github:
+            repo: "shiqi-614/ErgoCai.modules"
+            file: "nRF52840_holyiot_18010.yaml"
+        where:
+          ref: matrix_inner_home
+          shift: [23.5,12]
+          rotate: 90
+        side: back  
     `
 };
 
