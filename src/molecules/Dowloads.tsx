@@ -81,26 +81,20 @@ const Downloads = ({setPreview}: Props) => {
 
     }
 
-    if (results?.pcbs_preview) {
-        for (const [name, preview] of Object.entries(results.pcbs_preview)) {
-            downloads.push(
-                {
-                    fileName: name,
-                    extension: 'dxf',
-                    // @ts-ignore
-                    content: preview.dxf,
-                    preview: `pcbs_preview.${name}.svg`
-                },
-                {
-                    fileName: name,
-                    extension: 'yaml',
-                    // @ts-ignore
-                    content: yaml.dump(preview.yaml)
-                }
-            )
+    if (results?.pcbs) {
+        for (const [pcb_name, pcb_data] of Object.entries(results.pcbs as Record<string, { preview?: { dxf: any; svg: any} }>)) {
+            if (pcb_data?.preview) {
+                downloads.push({
+                        fileName: pcb_name,
+                        extension: 'dxf',
+                        content: pcb_data.preview.dxf,
+                        preview: `pcbs.${pcb_name}.preview.svg`, 
+                    }
+                )
+            }
         }
-
     }
+
 
     if (results?.cases) {
         for (const [name, caseObj] of Object.entries(results.cases)) {
@@ -117,18 +111,6 @@ const Downloads = ({setPreview}: Props) => {
 
     }
 
-    if (results?.pcbs) {
-        for (const [name, pcb] of Object.entries(results.pcbs)) {
-            downloads.push(
-                {
-                    fileName: name,
-                    extension: 'json',
-                    // @ts-ignore
-                    content: JSON.stringify(pcb)
-                }
-            )
-        }
-    }
     if (results?.kicad) {
         for (const [name, content] of Object.entries(results.kicad)) {
             if (typeof content === "string") {
