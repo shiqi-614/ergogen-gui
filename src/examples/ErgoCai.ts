@@ -172,7 +172,7 @@ pcbs:
           ref: [matrix_inner_home]
           shift: [20.5, 10]
         footprints:
-          BAT_SWITCH:
+          BAT_SW1:
             where:
               ref: [matrix_middle_num]
               shift: [0, 16.2]
