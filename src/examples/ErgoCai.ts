@@ -161,11 +161,6 @@ pcbs:
         side: back
         meta:
           type: "diode"
-      LED_RGB:
-        what: "LED_RGB_5050-6.kicad_mod"
-        where:
-          ref: [matrix_inner_num]
-          shift: [6,15]
 
     modules:
       battery:
