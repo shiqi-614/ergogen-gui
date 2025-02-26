@@ -134,7 +134,7 @@ pcbs:
       main:
         outline: board
     footprints:
-      keys1U:
+      SWA:
         what: 
           github:
             repo: "shiqi-614/ErgoCai.pretty"
@@ -142,12 +142,12 @@ pcbs:
         where: true
         meta:
           type: "key"
-      keys1_5U:
+      SWB:
         what: "SW_Hotswap_Kailh_MX_1.50u.kicad_mod"
         where: [matrix_outer_num, matrix_outer_top, matrix_outer_home, matrix_outer_bottom]
         meta:
           type: "key"
-      keys2U:
+      SWC:
         what: "SW_Hotswap_Kailh_MX_2.00u.kicad_mod"
         where: [thumbs_left_down, thumbs_middle_down]
         meta:
