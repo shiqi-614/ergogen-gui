@@ -167,24 +167,15 @@ pcbs:
         what:
           github:
             repo: "shiqi-614/ErgoCai.modules"
-            file: "default_18650_AP2112K.yaml"
+            file: "default_18650_AP2112K_TP4056.yaml"
         where:
           ref: [matrix_inner_home]
-          shift: [20.5, 10]
+          shift: [20.5, 5]
         footprints:
           BAT_SW1:
             where:
               ref: [matrix_middle_num]
-              shift: [0, 16.2]
-      charging:
-        what: 
-          github:
-            repo: "shiqi-614/ErgoCai.modules"
-            file: "default_TP4056.yaml"
-        where:
-          ref: matrix_index_num
-          shift: [6, 13.5]
-        side: back
+              shift: [0, 16]
       usb:
         what: 
           github:
