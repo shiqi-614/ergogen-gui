@@ -47,24 +47,21 @@ points:
     thumbs:
       anchor:
         ref: matrix_inner_mod
-        shift: [0.43kx, -1.25kx]
+        shift: [1.37kx, -1.70kx]
         rotate: -25
       columns:
         left:
           rows:
             up.skip: true
-            middle.skip: true
+            middle: 
+              width: 2kx
+              rotate: -90
+              shift: [-0kx, -0.54kx]
             down:
               width: 2kx
               rotate: -90
-              shift: [0, 9.5]
-        middle:
-          rows:
-            down:
-              width: 2kx
-              rotate: -90
-              shift: [0, 9.5]
-            middle.skip: true
+              shift: [-1.05kx, 0.52kx]
+        
             up: 
         right:
           rows:
@@ -149,7 +146,7 @@ pcbs:
           type: "key"
       SWC:
         what: "SW_Hotswap_Kailh_MX_2.00u.kicad_mod"
-        where: [thumbs_left_down, thumbs_middle_down]
+        where: [thumbs_left_middle, thumbs_left_down]
         meta:
           type: "key"
       diodes:
@@ -194,6 +191,7 @@ pcbs:
           shift: [23.5,12]
           rotate: 90
         side: back  
+    
     `
 };
 
