@@ -164,7 +164,7 @@ pcbs:
         what:
           github:
             repo: "shiqi-614/ErgoCai.modules"
-            file: "default_18650_AP2112K_TP4056.yaml"
+            file: "battery/default_battery/default_battery.kicad_pcb"
         where:
           ref: [matrix_inner_home]
           shift: [20.5, 5]
@@ -177,7 +177,7 @@ pcbs:
         what: 
           github:
             repo: "shiqi-614/ErgoCai.modules"
-            file: "default_usb.yaml"
+            file: "usb/default_usb/default_usb.kicad_pcb"
         where:
           ref: matrix_inner_num
           shift: [20.5, 20.5]
@@ -185,11 +185,11 @@ pcbs:
         what: 
           github:
             repo: "shiqi-614/ErgoCai.modules"
-            file: "nRF52840_holyiot_18010.yaml"
+            file: "mcu/nRF52840_holyiot_18010/nRF52840_holyiot_18010.kicad_pcb"
         where:
           ref: matrix_inner_home
-          shift: [23.5,12]
-          rotate: 90
+          shift: [24,12]
+          rotate: -90
         side: back  
     
     `
