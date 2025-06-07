@@ -61,14 +61,12 @@ points:
               width: 2kx
               rotate: -90
               shift: [-1.05kx, 0.52kx]
-        
             up: 
         right:
           rows:
             up:
             middle:
             down:
-
       rows:
         down:
         middle:
@@ -158,7 +156,6 @@ pcbs:
         side: back
         meta:
           type: "diode"
-
     modules:
       battery:
         what:
@@ -180,7 +177,7 @@ pcbs:
             file: "usb/default_usb/default_usb.kicad_pcb"
         where:
           ref: matrix_inner_num
-          shift: [20.5, 20.5]
+          shift: [20.5, 20]
       mcu:
         what: 
           github:
