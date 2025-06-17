@@ -1,7 +1,7 @@
 import {ConfigExample} from "./index";
 
 const ErgoCaiRight : ConfigExample = {
-    label: "ErgoCaiRight",
+    label: "ErgoCai_Right",
     author: "jinsongc",
     value: `
 units:
@@ -25,7 +25,7 @@ points:
           key:
             stagger: 2.5
         ring:
-          key:
+          key:  
             stagger: -2.5
         pinky:
           key:
@@ -60,11 +60,11 @@ points:
             middle: 
               width: 2kx
               rotate: 90
-              shift: [-0kx, -0.54kx]
+              shift: [1.05kx, -0.54kx]
             down:
               width: 2kx
               rotate: 90
-              shift: [1.05kx, 0.52kx]
+              shift: [0kx, 0.52kx]
             up: 
       rows:
         down:
@@ -196,9 +196,6 @@ pcbs:
               ref: [matrix_inner_home]
               shift: [-21, -5]
               rotate: 90
-
-    
-    
     `
 };
 

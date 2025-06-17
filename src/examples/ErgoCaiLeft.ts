@@ -1,7 +1,7 @@
 import {ConfigExample} from "./index";
 
 const ErgoCaiLeft : ConfigExample = {
-    label: "ErgoCaiLeft",
+    label: "ErgoCai_Left",
     author: "jinsongc",
     value: `
 units:
