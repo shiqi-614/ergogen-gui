@@ -93,6 +93,7 @@ const Ergogen = () => {
     const [previewKey, setPreviewKey] = useState("demo.svg");
     const [selectedOption, setSelectedOption] = useState<ConfigOption|null>(ErgoCaiLeft);
     const configContext = useConfigContext();
+    const [isProcessing, setIsProcessing] = useState(false);
 
     useEffect(()=>{
         if(selectedOption?.value) {
@@ -128,7 +129,19 @@ const Ergogen = () => {
                             placeholder={"Paste your config below, or select an example here!"}
                         />
                         <StyledConfigEditor/>
-                        <Button onClick={() => configContext?.processInput(configContext?.configInput, {is_preview: false})}>Generate</Button>
+
+                        <Button 
+                          onClick={() => configContext?.processInput(
+                            configContext?.configInput, 
+                            {
+                                is_preview: false,
+                                setProcessing: setIsProcessing
+                            }
+                          )}
+                        >
+                          {isProcessing ? 'Processing...' : 'Generate'}
+                        </Button>
+
                         <OptionContainer>
                             <GenOption optionId={'autogen'} label={'Auto-generate'} setSelected={configContext?.setAutoGen} checked={configContext?.autoGen}/>
                             <GenOption optionId={'debug'} label={'Debug'} setSelected={configContext?.setDebug} checked={configContext?.debug}/>

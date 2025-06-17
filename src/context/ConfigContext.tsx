@@ -26,7 +26,8 @@ type ContextProps = {
 };
 
 type ProcessOptions = {
-    is_preview: boolean
+    is_preview: boolean,
+    setProcessing?: (state: boolean) => void
 };
 
 export const ConfigContext = createContext<ContextProps | null>(null);
@@ -65,7 +66,11 @@ const ConfigContextProvider = ({initialInput, children}: Props) => {
 
     // eslint-disable-next-line react-hooks/exhaustive-deps
     const processInput = useCallback(
-        debounce(async (textInput: string | undefined, options: ProcessOptions = { is_preview: true }) => {
+        debounce(async (textInput: string | undefined, 
+            options: ProcessOptions = { 
+                is_preview: true, 
+            }
+        ) => {
             let results = null;
             let inputConfig: string | {} = textInput ?? '';
             const [,parsedConfig] = parseConfig(textInput ?? '');
@@ -85,6 +90,7 @@ const ConfigContextProvider = ({initialInput, children}: Props) => {
 
 
             try {
+                options.setProcessing?.(true);
                 console.log("Current Environment:", process.env.NODE_ENV);
                 // @ts-ignore
                 window.stage = process.env.NODE_ENV || 'production';  
@@ -128,8 +134,10 @@ const ConfigContextProvider = ({initialInput, children}: Props) => {
                     // @ts-ignore
                     setError(e.toString());
                 }
+                options.setProcessing?.(false);
                 return;
             }
+            options.setProcessing?.(false);
             setResults(results);
 
         }, 300),
