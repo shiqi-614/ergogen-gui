@@ -11,7 +11,7 @@ import Button from "./atoms/Button";
 import Select from "react-select";
 import GenOption from "./atoms/GenOption";
 import {ConfigOption, exampleOptions } from "./examples";
-import ErgoCai from "./examples/ErgoCai";
+import ErgoCaiLeft from "./examples/ErgoCaiLeft";
 
 const EditorContainer = styled.div`
   position: relative;
@@ -91,7 +91,7 @@ const RightSplitPane = styled.div`
 
 const Ergogen = () => {
     const [previewKey, setPreviewKey] = useState("demo.svg");
-    const [selectedOption, setSelectedOption] = useState<ConfigOption|null>(ErgoCai);
+    const [selectedOption, setSelectedOption] = useState<ConfigOption|null>(ErgoCaiLeft);
     const configContext = useConfigContext();
 
     useEffect(()=>{

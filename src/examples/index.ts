@@ -7,7 +7,8 @@ import Reviung41 from "./reviung41";
 import Tiny20 from "./tiny20";
 import Alpha from "./alpha";
 import Plank from "./plank";
-import ErgoCai from "./ErgoCai";
+import ErgoCaiLeft from "./ErgoCaiLeft";
+import ErgoCaiRight from "./ErgoCaiRight";
 import Flatfootfox from "./Flatfootfox";
 
 export interface GroupedOption {
@@ -38,7 +39,8 @@ const completeExamples = [
     Reviung41,
     Tiny20,
     Flatfootfox,
-    ErgoCai
+    ErgoCaiLeft,
+    ErgoCaiRight
 ];
 
 const miscExamples = [
