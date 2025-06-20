@@ -60,11 +60,11 @@ points:
             middle: 
               width: 2kx
               rotate: 90
-              shift: [1.05kx, -0.54kx]
+              shift: [0kx, -0.54kx]
             down:
               width: 2kx
               rotate: 90
-              shift: [0kx, 0.52kx]
+              shift: [1.07kx, 0.52kx]
             up: 
       rows:
         down:
@@ -97,21 +97,21 @@ outlines:
         - ref: matrix_inner_num
           shift: [-0.7px, 1py ]
         - ref: matrix_inner_num
-          shift: [-0.7px, 1py + 3 ]
+          shift: [-0.7px, 1py + 3]
         - ref: matrix_inner_num
-          shift: [-1.26px, 1py + 3 ]
+          shift: [-1.26px, 1py + 3]
         - ref: matrix_inner_num
           shift: [-1.26px, 1py ]
         - ref: matrix_inner_num
           shift: [-1.55px, 1py]
         - ref: matrix_inner_bottom
-          shift: [-1.55px,0.2py]
+          shift: [-1.55px,0.1py]
         - ref: thumbs_left_up
           shift: [-0.6px,0.6py + 1]
         - ref: thumbs_left_down
           shift: [-0.6px, -0.6py]
         - ref: matrix_middle_mod
-          shift: [-4,-0.7py - 5]
+          shift: [2,-0.7py - 5]
         - ref: matrix_pinky_mod
           shift: [-0.5px,-0.7py]
         - ref: matrix_outer_mod
