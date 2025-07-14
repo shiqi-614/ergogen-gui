@@ -178,7 +178,7 @@ pcbs:
           BAT_SW1:
             where:
               ref: [matrix_middle_num]
-              shift: [0, 16]
+              shift: [0, 15.5]
       usb:
         what: 
           github:
