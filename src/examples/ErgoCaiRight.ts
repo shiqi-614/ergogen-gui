@@ -131,23 +131,32 @@ pcbs:
       SWA:
         what: 
           github:
-            repo: "shiqi-614/ErgoCai.pretty"
-            file: "SW_Hotswap_Kailh_MX_1.00u.kicad_mod"
+            repo: "shiqi-614/ErgoCaiLib"
+            file: "footprints/ErgoCai.pretty/SW_Hotswap_Kailh_MX_1.00u.kicad_mod"
         where: true
         meta:
           type: "key"
       SWB:
-        what: "SW_Hotswap_Kailh_MX_1.50u.kicad_mod"
+        what: 
+          github:
+            repo: "shiqi-614/ErgoCaiLib"
+            file: "footprints/ErgoCai.pretty/SW_Hotswap_Kailh_MX_1.50u.kicad_mod"
         where: [matrix_outer_num, matrix_outer_top, matrix_outer_home, matrix_outer_bottom]
         meta:
           type: "key"
       SWC:
-        what: "SW_Hotswap_Kailh_MX_2.00u.kicad_mod"
-        where: [thumbs_right_middle, thumbs_right_down]
+        what: 
+          github:
+            repo: "shiqi-614/ErgoCaiLib"
+            file: "footprints/ErgoCai.pretty/SW_Hotswap_Kailh_MX_2.00u.kicad_mod"
+        where: [thumbs_left_middle, thumbs_left_down]
         meta:
           type: "key"
       diodes:
-        what: "Diode-Dual.kicad_mod"
+        what: 
+          github:
+            repo: "shiqi-614/ErgoCaiLib"
+            file: "footprints/ErgoCai.pretty/Diode-Dual.kicad_mod"
         where: true
         adjust:
           shift: [0, -8.4]
@@ -155,6 +164,7 @@ pcbs:
         side: back
         meta:
           type: "diode"
+
     modules:
       battery:
         what:

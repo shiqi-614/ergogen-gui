@@ -4,6 +4,7 @@ const ErgoCaiLeft : ConfigExample = {
     label: "ErgoCai_Left",
     author: "jinsongc",
     value: `
+
 units:
   kx: cx
   ky: cy
@@ -131,23 +132,32 @@ pcbs:
       SWA:
         what: 
           github:
-            repo: "shiqi-614/ErgoCai.pretty"
-            file: "SW_Hotswap_Kailh_MX_1.00u.kicad_mod"
+            repo: "shiqi-614/ErgoCaiLib"
+            file: "footprints/ErgoCai.pretty/SW_Hotswap_Kailh_MX_1.00u.kicad_mod"
         where: true
         meta:
           type: "key"
       SWB:
-        what: "SW_Hotswap_Kailh_MX_1.50u.kicad_mod"
+        what: 
+          github:
+            repo: "shiqi-614/ErgoCaiLib"
+            file: "footprints/ErgoCai.pretty/SW_Hotswap_Kailh_MX_1.50u.kicad_mod"
         where: [matrix_outer_num, matrix_outer_top, matrix_outer_home, matrix_outer_bottom]
         meta:
           type: "key"
       SWC:
-        what: "SW_Hotswap_Kailh_MX_2.00u.kicad_mod"
+        what: 
+          github:
+            repo: "shiqi-614/ErgoCaiLib"
+            file: "footprints/ErgoCai.pretty/SW_Hotswap_Kailh_MX_2.00u.kicad_mod"
         where: [thumbs_left_middle, thumbs_left_down]
         meta:
           type: "key"
       diodes:
-        what: "Diode-Dual.kicad_mod"
+        what: 
+          github:
+            repo: "shiqi-614/ErgoCaiLib"
+            file: "footprints/ErgoCai.pretty/Diode-Dual.kicad_mod"
         where: true
         adjust:
           shift: [0, -8.4]
@@ -168,7 +178,7 @@ pcbs:
           BAT_SW1:
             where:
               ref: [matrix_middle_num]
-              shift: [0, 16]
+              shift: [0, 15.5]
       usb:
         what: 
           github:
@@ -187,7 +197,6 @@ pcbs:
           shift: [24,12]
           rotate: -90
         side: back  
-    
     `
 };
 
