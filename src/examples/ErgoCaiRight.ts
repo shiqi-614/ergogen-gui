@@ -14,62 +14,77 @@ points:
   zones:
     matrix:
       columns:
-        inner:
+        col0:
           key:
             stagger: -2.5
-          rows.mod.skip: true
-        index:
+          rows.row5.skip: true
+          rows.row3.skip: true
+          rows.row2:
+            width: 1.5kx
+            rotate: 90
+            shift: [0, -0.25kx]
+          rows.row4:
+            width: 1.5kx
+            rotate: 90
+            shift: [0, 0.25kx]
+        col1:
+          key:
+            stagger: 0
+          rows.row5.skip: true
+        col2:
           key:
             stagger: 2.5
-        middle:
+          rows.row5.skip: true
+        col3:
           key:
             stagger: 2.5
-        ring:
+        col4:
           key:  
             stagger: -2.5
-        pinky:
+        col5:
           key:
             stagger: -2.5
-        outer:
+
+        col6:
           key:
             width: 1.5kx
             shift: [0.27kx, 0]
           rows:
-            mod:
+            row5:
               width: 1kx
               shift: [0, 0]
       rows:
-        mod:
-        bottom:
-        home:
-        top:
-        num:
+        row5:
+        row4:
+        row3:
+        row2:
+        row1:
     thumbs:
       anchor:
-        ref: matrix_inner_mod
+        ref: matrix_col1_row5
         shift: [-2.37kx, -2.2kx]
         rotate: 25
       columns:
         left:
           rows:
-            up:
-            middle:
-            down:
+            row3:
+            row2:
+            row1:
         right:
           rows:
-            middle: 
+            row3:
+            row2: 
               width: 2kx
               rotate: 90
               shift: [0kx, -0.54kx]
-            down:
+            row1:
               width: 2kx
               rotate: 90
               shift: [1.07kx, 0.52kx]
-            up: 
       rows:
-        down:
-        middle:
-        up:        
+        row1:
+        row2:
+        row3:        
 
 outlines:
   raw:
@@ -84,39 +99,39 @@ outlines:
     - what: polygon
       operation: stack
       points:
-        - ref: matrix_outer_num
-          shift: [0.8px,1py]
-        - ref: matrix_middle_num
-          shift: [0.3px, 1py - 5]
-        - ref: matrix_middle_num
-          shift: [0.3px, 0.9 py]
-        - ref: matrix_middle_num
-          shift: [-0.3px, 0.9py]
-        - ref: matrix_middle_num
-          shift: [-0.3px, 1py - 5]
-        - ref: matrix_inner_num
-          shift: [-0.7px, 1py ]
-        - ref: matrix_inner_num
-          shift: [-0.7px, 1py + 3]
-        - ref: matrix_inner_num
-          shift: [-1.26px, 1py + 3]
-        - ref: matrix_inner_num
-          shift: [-1.26px, 1py ]
-        - ref: matrix_inner_num
-          shift: [-1.55px, 1py]
-        - ref: matrix_inner_bottom
+        - ref: matrix_col6_row1
+          shift: [0.8px,2py - 8]
+        - ref: matrix_col3_row1
+          shift: [0.3px, 2py - 12.5]
+        - ref: matrix_col3_row1
+          shift: [0.3px, 2py - 7.5]
+        - ref: matrix_col3_row1
+          shift: [-0.3px, 2py - 7.5]
+        - ref: matrix_col3_row1
+          shift: [-0.3px, 2py - 12.5]
+        - ref: matrix_col1_row1
+          shift: [-0.7px, 2py - 7.5]
+        - ref: matrix_col1_row1
+          shift: [-0.7px, 2py - 2.5]
+        - ref: matrix_col1_row1
+          shift: [-1.26px, 2py - 2.5]
+        - ref: matrix_col1_row1
+          shift: [-1.26px, 2py - 7.5]
+        - ref: matrix_col1_row1
+          shift: [-1.55px, 2py - 7.5]
+        - ref: matrix_col1_row4
           shift: [-1.55px,0.1py]
-        - ref: thumbs_left_up
+        - ref: thumbs_left_row3
           shift: [-0.6px,0.6py + 1]
-        - ref: thumbs_left_down
+        - ref: thumbs_left_row1
           shift: [-0.6px, -0.6py]
-        - ref: matrix_middle_mod
+        - ref: matrix_col3_row5
           shift: [2,-0.7py - 5]
-        - ref: matrix_pinky_mod
+        - ref: matrix_col5_row5
           shift: [-0.5px,-0.7py]
-        - ref: matrix_outer_mod
+        - ref: matrix_col6_row5
           shift: [0.8px + 0.25kx,-0.7py]
-      fillet: 3
+      fillet: 1
   combo:
     - name: board
     - operation: subtract
@@ -128,7 +143,7 @@ pcbs:
       main:
         outline: board
     footprints:
-      SWA:
+      keys_1:
         what: 
           github:
             repo: "shiqi-614/ErgoCaiLib"
@@ -136,20 +151,20 @@ pcbs:
         where: true
         meta:
           type: "key"
-      SWB:
+      keys_2:
         what: 
           github:
             repo: "shiqi-614/ErgoCaiLib"
             file: "footprints/ErgoCai.pretty/SW_Hotswap_Kailh_MX_1.50u.kicad_mod"
-        where: [matrix_outer_num, matrix_outer_top, matrix_outer_home, matrix_outer_bottom]
+        where: [matrix_col0_row2, matrix_col0_row4, matrix_col6_row1, matrix_col6_row2, matrix_col6_row3, matrix_col6_row4]
         meta:
           type: "key"
-      SWC:
+      keys_3:
         what: 
           github:
             repo: "shiqi-614/ErgoCaiLib"
             file: "footprints/ErgoCai.pretty/SW_Hotswap_Kailh_MX_2.00u.kicad_mod"
-        where: [thumbs_left_middle, thumbs_left_down]
+        where: [thumbs_right_row2, thumbs_right_row1]
         meta:
           type: "key"
       diodes:
@@ -164,7 +179,14 @@ pcbs:
         side: back
         meta:
           type: "diode"
-
+      joystick:
+        what: 
+          github:
+            repo: "shiqi-614/ErgoCaiLib"
+            file: "footprints/ErgoCai.pretty/Alpsalpine_RKJXV122400R.kicad_mod"
+        where: [thumbs_right_row1]
+        adjust:
+          shift: [-1, -25]
     modules:
       battery:
         what:
@@ -172,40 +194,36 @@ pcbs:
             repo: "shiqi-614/ErgoCai.modules"
             file: "battery/default_battery/default_battery.kicad_pcb"
         where:
-          ref: [matrix_inner_home]
-          shift: [-20.5, 5]
+          ref: [matrix_col5_row1]
+          shift: [4.5, 22]
+          rotate: 90
         footprints:
           BAT_SW1:
             where:
-              ref: [matrix_middle_num]
-              shift: [0, 15.5]
+              ref: [matrix_col3_row1]
+              shift: [0, 30]
       usb:
         what: 
           github:
             repo: "shiqi-614/ErgoCai.modules"
             file: "usb/default_usb/default_usb.kicad_pcb"
         where:
-          ref: matrix_inner_num
-          shift: [-20.5, 20]
+          ref: matrix_col1_row1
+          shift: [-20.5, 34]
       mcu:
         what: 
           github:
             repo: "shiqi-614/ErgoCai.modules"
             file: "mcu/nRF52840_holyiot_18010/nRF52840_holyiot_18010.kicad_pcb"
         where:
-          ref: matrix_inner_home
-          shift: [-24,12]
-          rotate: 90
+          ref: matrix_col1_row1
+          shift: [12, 24]
+          rotate: 0
         footprints:
-          MCU_J1:
-            where:
-              ref: [matrix_inner_home]
-              shift: [-31, 30]
           MCU_SW1:
             where:
-              ref: [matrix_inner_home]
-              shift: [-21, -5]
-              rotate: 90
+              ref: [matrix_col1_row1]
+              shift: [28, 24]
     `
 };
 
