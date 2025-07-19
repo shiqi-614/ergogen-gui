@@ -80,7 +80,7 @@ points:
             row1:
               width: 2kx
               rotate: 90
-              shift: [1.07kx, 0.52kx]
+              shift: [1.15kx, 0.52kx]
       rows:
         row1:
         row2:
@@ -143,7 +143,7 @@ pcbs:
       main:
         outline: board
     footprints:
-      keys_1:
+      keys1:
         what: 
           github:
             repo: "shiqi-614/ErgoCaiLib"
@@ -151,7 +151,7 @@ pcbs:
         where: true
         meta:
           type: "key"
-      keys_2:
+      keys2:
         what: 
           github:
             repo: "shiqi-614/ErgoCaiLib"
@@ -159,7 +159,7 @@ pcbs:
         where: [matrix_col0_row2, matrix_col0_row4, matrix_col6_row1, matrix_col6_row2, matrix_col6_row3, matrix_col6_row4]
         meta:
           type: "key"
-      keys_3:
+      keys3:
         what: 
           github:
             repo: "shiqi-614/ErgoCaiLib"
@@ -179,6 +179,12 @@ pcbs:
         side: back
         meta:
           type: "diode"
+      stab:
+        what: 
+          github:
+            repo: "shiqi-614/ErgoCaiLib"
+            file: "footprints/ErgoCai.pretty/STAB_MX_2u.kicad_mod"
+        where: [thumbs_right_row1, thumbs_right_row2]
       joystick:
         what: 
           github:
@@ -186,7 +192,7 @@ pcbs:
             file: "footprints/ErgoCai.pretty/Alpsalpine_RKJXV122400R.kicad_mod"
         where: [thumbs_right_row1]
         adjust:
-          shift: [-1, -25]
+          shift: [0, -24]
     modules:
       battery:
         what:
