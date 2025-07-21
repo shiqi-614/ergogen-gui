@@ -100,25 +100,25 @@ outlines:
       operation: stack
       points:
         - ref: matrix_col6_row1
-          shift: [0.8px,2py - 8]
+          shift: [0.8px,2py - 5]
         - ref: matrix_col3_row1
-          shift: [0.3px, 2py - 12.5]
+          shift: [0.3px, 2py - 9.5]
         - ref: matrix_col3_row1
-          shift: [0.3px, 2py - 7.5]
+          shift: [0.3px, 2py - 5]
         - ref: matrix_col3_row1
-          shift: [-0.3px, 2py - 7.5]
+          shift: [-0.3px, 2py - 5]
         - ref: matrix_col3_row1
-          shift: [-0.3px, 2py - 12.5]
+          shift: [-0.3px, 2py - 9.5]
         - ref: matrix_col1_row1
-          shift: [-0.7px, 2py - 7.5]
+          shift: [-0.7px, 2py - 4.5]
         - ref: matrix_col1_row1
-          shift: [-0.7px, 2py - 2.5]
+          shift: [-0.7px, 2py - 0.5]
         - ref: matrix_col1_row1
-          shift: [-1.26px, 2py - 2.5]
+          shift: [-1.26px, 2py - 0.5]
         - ref: matrix_col1_row1
-          shift: [-1.26px, 2py - 7.5]
+          shift: [-1.26px, 2py - 4.5]
         - ref: matrix_col1_row1
-          shift: [-1.55px, 2py - 7.5]
+          shift: [-1.55px, 2py - 4.5]
         - ref: matrix_col1_row4
           shift: [-1.55px,0.1py]
         - ref: thumbs_left_row3
@@ -206,16 +206,16 @@ pcbs:
         footprints:
           BAT_SW1:
             where:
-              ref: [matrix_col3_row1]
-              shift: [0, 30]
+              ref: matrix_col1_row1
+              shift: [-20.5, 37]
       usb:
         what: 
           github:
             repo: "shiqi-614/ErgoCai.modules"
             file: "usb/default_usb/default_usb.kicad_pcb"
         where:
-          ref: matrix_col1_row1
-          shift: [-20.5, 34]
+          ref: [matrix_col3_row1]
+          shift: [0, 32]
       mcu:
         what: 
           github:
@@ -223,13 +223,17 @@ pcbs:
             file: "mcu/nRF52840_holyiot_18010/nRF52840_holyiot_18010.kicad_pcb"
         where:
           ref: matrix_col1_row1
-          shift: [12, 24]
+          shift: [9, 26]
           rotate: 0
         footprints:
           MCU_SW1:
             where:
               ref: [matrix_col1_row1]
               shift: [28, 24]
+          MCU_J1:
+            where:
+              ref: [matrix_col1_row1]
+              shift: [-30, 24]
     `
 };
 
