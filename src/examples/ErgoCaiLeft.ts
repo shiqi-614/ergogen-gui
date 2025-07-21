@@ -4,7 +4,6 @@ const ErgoCaiLeft : ConfigExample = {
     label: "ErgoCai_Left",
     author: "jinsongc",
     value: `
-
 units:
   kx: cx
   ky: cy
@@ -177,16 +176,17 @@ pcbs:
         footprints:
           BAT_SW1:
             where:
-              ref: [matrix_middle_num]
-              shift: [0, 15.5]
+              
+              ref: matrix_inner_num
+              shift: [20.5, 20]
       usb:
         what: 
           github:
             repo: "shiqi-614/ErgoCai.modules"
             file: "usb/default_usb/default_usb.kicad_pcb"
         where:
-          ref: matrix_inner_num
-          shift: [20.5, 20]
+          ref: [matrix_middle_num]
+          shift: [0, 15.5]
       mcu:
         what: 
           github:
