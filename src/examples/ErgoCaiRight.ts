@@ -9,7 +9,7 @@ units:
   ky: cy
   px: kx + 3
   py: ky + 3
-
+ 
 points:
   zones:
     matrix:
@@ -65,14 +65,9 @@ points:
         shift: [-2.37kx, -2.2kx]
         rotate: 25
       columns:
-        left:
-          rows:
-            row3:
-            row2:
-            row1:
+        left:    
         right:
           rows:
-            row3:
             row2: 
               width: 2kx
               rotate: 90
@@ -84,7 +79,7 @@ points:
       rows:
         row1:
         row2:
-        row3:        
+
 
 outlines:
   raw:
@@ -100,37 +95,37 @@ outlines:
       operation: stack
       points:
         - ref: matrix_col6_row1
-          shift: [0.8px,2py - 5]
+          shift: [0.8px, 1py]
         - ref: matrix_col3_row1
-          shift: [0.3px, 2py - 9.5]
+          shift: [0.3px, 1py - 5]
         - ref: matrix_col3_row1
-          shift: [0.3px, 2py - 5]
+          shift: [0.3px, 1py]
         - ref: matrix_col3_row1
-          shift: [-0.3px, 2py - 5]
+          shift: [-0.3px, 1py]
         - ref: matrix_col3_row1
-          shift: [-0.3px, 2py - 9.5]
+          shift: [-0.3px, 1py - 5]
         - ref: matrix_col1_row1
-          shift: [-0.7px, 2py - 4.5]
+          shift: [-0.7px, 1py ]
         - ref: matrix_col1_row1
-          shift: [-0.7px, 2py - 0.5]
+          shift: [-0.7px, 1py + 5]
         - ref: matrix_col1_row1
-          shift: [-1.26px, 2py - 0.5]
+          shift: [-1.26px, 1py + 5]
         - ref: matrix_col1_row1
-          shift: [-1.26px, 2py - 4.5]
+          shift: [-1.26px, 1py ]
         - ref: matrix_col1_row1
-          shift: [-1.55px, 2py - 4.5]
+          shift: [-2.6px, 1py ]
         - ref: matrix_col1_row4
-          shift: [-1.55px,0.1py]
-        - ref: thumbs_left_row3
+          shift: [-2.6px, -0.7py]
+        - ref: matrix_col1_row4
+          shift: [-2.3px, -1.3py]
+        - ref: thumbs_left_row2
           shift: [-0.6px,0.6py + 1]
         - ref: thumbs_left_row1
           shift: [-0.6px, -0.6py]
         - ref: matrix_col3_row5
           shift: [2,-0.7py - 5]
-        - ref: matrix_col5_row5
-          shift: [-0.5px,-0.7py]
-        - ref: matrix_col6_row5
-          shift: [0.8px + 0.25kx,-0.7py]
+        - ref: matrix_col6_row1
+          shift: [0.8px , -5.0py + 0.46px]
       fillet: 1
   combo:
     - name: board
@@ -200,14 +195,15 @@ pcbs:
             repo: "shiqi-614/ErgoCai.modules"
             file: "battery/default_battery/default_battery.kicad_pcb"
         where:
-          ref: [matrix_col5_row1]
-          shift: [4.5, 22]
-          rotate: 90
+          ref: [matrix_col1_row4]
+          shift: [-42, 18]
+          rotate: 0
         footprints:
           BAT_SW1:
             where:
               ref: matrix_col1_row1
-              shift: [-20.5, 37]
+              shift: [-20.5, 23]
+              
       usb:
         what: 
           github:
@@ -215,25 +211,27 @@ pcbs:
             file: "usb/default_usb/default_usb.kicad_pcb"
         where:
           ref: [matrix_col3_row1]
-          shift: [0, 32]
+          shift: [0, 17]
       mcu:
         what: 
           github:
             repo: "shiqi-614/ErgoCai.modules"
             file: "mcu/nRF52840_holyiot_18010/nRF52840_holyiot_18010.kicad_pcb"
         where:
-          ref: matrix_col1_row1
-          shift: [9, 26]
-          rotate: 0
+          ref: matrix_col1_row4
+          shift: [-45, 26]
+          rotate: 90
         footprints:
           MCU_SW1:
             where:
-              ref: [matrix_col1_row1]
-              shift: [28, 24]
+              ref: [matrix_col1_row4]
+              shift: [-42, 4]
+              rotate: 90
           MCU_J1:
             where:
-              ref: [matrix_col1_row1]
-              shift: [-30, 24]
+              ref: [matrix_col1_row4]
+              shift: [-53, 45]
+    
     `
 };
 
