@@ -14,7 +14,7 @@ points:
   zones:
     matrix:
       columns:
-        col0:
+        col0: 
           key:
             stagger: -2.5
           rows.row5.skip: true
@@ -22,7 +22,7 @@ points:
           rows.row2:
             width: 1.5kx
             rotate: 90
-            shift: [0, -0.25kx]
+            shift: [0, -0.27kx]
           rows.row4:
             width: 1.5kx
             rotate: 90
@@ -34,7 +34,7 @@ points:
         col2:
           key:
             stagger: 2.5
-          rows.row5.skip: true
+          rows.row5.skip: true 
         col3:
           key:
             stagger: 2.5
@@ -107,9 +107,9 @@ outlines:
         - ref: matrix_col1_row1
           shift: [-0.7px, 1py ]
         - ref: matrix_col1_row1
-          shift: [-0.7px, 1py + 5]
+          shift: [-0.7px, 1py + 3]
         - ref: matrix_col1_row1
-          shift: [-1.26px, 1py + 5]
+          shift: [-1.26px, 1py + 3]
         - ref: matrix_col1_row1
           shift: [-1.26px, 1py ]
         - ref: matrix_col1_row1
@@ -142,26 +142,20 @@ pcbs:
         what: 
           github:
             repo: "shiqi-614/ErgoCaiLib"
-            file: "footprints/ErgoCai.pretty/SW_Hotswap_Kailh_MX_1.00u.kicad_mod"
+            file: "footprints/ErgoCai.pretty/SW_MX_HS_CPG151101S11_1u.kicad_mod"
         where: true
-        meta:
-          type: "key"
       keys2:
         what: 
           github:
             repo: "shiqi-614/ErgoCaiLib"
-            file: "footprints/ErgoCai.pretty/SW_Hotswap_Kailh_MX_1.50u.kicad_mod"
+            file: "footprints/ErgoCai.pretty/SW_MX_HS_CPG151101S11_1.5u.kicad_mod"
         where: [matrix_col0_row2, matrix_col0_row4, matrix_col6_row1, matrix_col6_row2, matrix_col6_row3, matrix_col6_row4]
-        meta:
-          type: "key"
       keys3:
         what: 
           github:
             repo: "shiqi-614/ErgoCaiLib"
-            file: "footprints/ErgoCai.pretty/SW_Hotswap_Kailh_MX_2.00u.kicad_mod"
+            file: "footprints/ErgoCai.pretty/SW_MX_HS_CPG151101S11_2u.kicad_mod"
         where: [thumbs_right_row2, thumbs_right_row1]
-        meta:
-          type: "key"
       diodes:
         what: 
           github:
@@ -172,22 +166,12 @@ pcbs:
           shift: [0, -8.4]
           rotate: 180
         side: back
-        meta:
-          type: "diode"
       stab:
         what: 
           github:
             repo: "shiqi-614/ErgoCaiLib"
             file: "footprints/ErgoCai.pretty/STAB_MX_2u.kicad_mod"
         where: [thumbs_right_row1, thumbs_right_row2]
-      joystick:
-        what: 
-          github:
-            repo: "shiqi-614/ErgoCaiLib"
-            file: "footprints/ErgoCai.pretty/Alpsalpine_RKJXV122400R.kicad_mod"
-        where: [thumbs_right_row1]
-        adjust:
-          shift: [0, -24]
     modules:
       battery:
         what:
@@ -202,8 +186,16 @@ pcbs:
           BAT_SW1:
             where:
               ref: matrix_col1_row1
-              shift: [-20.5, 23]
-              
+              shift: [-20.5, 20]
+      joystick: 
+        what: 
+          github:
+            repo: "shiqi-614/ErgoCai.modules"
+            file: "joystick/Alpsalpine/Alpsalpine.kicad_pcb"
+        where: 
+          ref: [thumbs_right_row1]
+          shift: [-7, -22]
+          rotate: 90
       usb:
         what: 
           github:
@@ -230,9 +222,8 @@ pcbs:
           MCU_J1:
             where:
               ref: [matrix_col1_row4]
-              shift: [-53, 45]
-    
-    `
+              shift: [-53, 5]
+`
 };
 
 export default ErgoCaiRight;

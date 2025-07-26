@@ -134,6 +134,7 @@ const ConfigContextProvider = ({initialInput, children}: Props) => {
                     // @ts-ignore
                     setError(e.toString());
                 }
+                console.log(e);
                 options.setProcessing?.(false);
                 return;
             }
