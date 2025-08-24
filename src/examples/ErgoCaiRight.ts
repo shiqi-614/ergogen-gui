@@ -177,7 +177,7 @@ pcbs:
         what:
           github:
             repo: "shiqi-614/ErgoCai.modules"
-            file: "battery/default_battery/default_battery.kicad_pcb"
+            file: "battery/battery_led_back/battery_led_back.kicad_pcb"
         where:
           ref: [matrix_col1_row4]
           shift: [-42, 18]
