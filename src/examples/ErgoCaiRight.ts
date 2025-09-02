@@ -191,11 +191,11 @@ pcbs:
         what: 
           github:
             repo: "shiqi-614/ErgoCai.modules"
-            file: "joystick/Alpsalpine/Alpsalpine.kicad_pcb"
+            file: "joystick/JoystickMount/JoystickMount.kicad_pcb"
         where: 
           ref: [thumbs_right_row1]
-          shift: [-7, -22]
-          rotate: 90
+          shift: [-6, -25]
+          rotate: 0
       usb:
         what: 
           github:
