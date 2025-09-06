@@ -38,6 +38,7 @@ points:
         col3:
           key:
             stagger: 2.5
+          rows.row5.skip: true 
         col4:
           key:  
             stagger: -2.5
@@ -122,8 +123,8 @@ outlines:
           shift: [-0.6px,0.6py + 1]
         - ref: thumbs_left_row1
           shift: [-0.6px, -0.6py]
-        - ref: matrix_col3_row5
-          shift: [2,-0.7py - 5]
+        - ref: matrix_col4_row5
+          shift: [-0.9px,-0.6py - 4.5]
         - ref: matrix_col6_row1
           shift: [0.8px , -5.0py + 0.46px]
       fillet: 1
@@ -166,13 +167,23 @@ pcbs:
           shift: [0, -8.4]
           rotate: 180
         side: back
-      stab:
+      stab: 
         what: 
           github:
             repo: "shiqi-614/ErgoCaiLib"
             file: "footprints/ErgoCai.pretty/STAB_MX_2u.kicad_mod"
         where: [thumbs_right_row1, thumbs_right_row2]
     modules:
+      led:
+        what: 
+          github:
+            repo: "shiqi-614/ErgoCai.modules"
+            file: "led/RGB_WS2812B_3/RGB_WS2812B_3.kicad_pcb"
+        where: 
+          ref: [matrix_col1_row1]
+          shift: [-40, 14.5]
+          rotate: 0
+
       battery:
         what:
           github:
@@ -206,23 +217,23 @@ pcbs:
           shift: [0, 17]
       mcu:
         what: 
-          github:
+          github: 
             repo: "shiqi-614/ErgoCai.modules"
             file: "mcu/nRF52840_holyiot_18010/nRF52840_holyiot_18010.kicad_pcb"
         where:
           ref: matrix_col1_row4
           shift: [-45, 26]
-          rotate: 90
+          rotate: 90 
         footprints:
           MCU_SW1:
-            where:
+            where: 
               ref: [matrix_col1_row4]
               shift: [-42, 4]
               rotate: 90
           MCU_J1:
             where:
               ref: [matrix_col1_row4]
-              shift: [-53, 5]
+              shift: [-53, 5] 
 `
 };
 
