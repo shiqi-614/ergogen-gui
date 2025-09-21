@@ -13,7 +13,7 @@ units:
 points:
   zones:
     matrix:
-      columns:
+      columns: 
         col0: 
           key:
             stagger: -2.5
@@ -100,9 +100,9 @@ outlines:
         - ref: matrix_col3_row1
           shift: [0.3px, 1py - 5]
         - ref: matrix_col3_row1
-          shift: [0.3px, 1py]
+          shift: [0.3px, 1py -2]
         - ref: matrix_col3_row1
-          shift: [-0.3px, 1py]
+          shift: [-0.3px, 1py-2]
         - ref: matrix_col3_row1
           shift: [-0.3px, 1py - 5]
         - ref: matrix_col1_row1
@@ -124,7 +124,7 @@ outlines:
         - ref: thumbs_left_row1
           shift: [-0.6px, -0.6py]
         - ref: matrix_col4_row5
-          shift: [-0.9px,-0.6py - 4.5]
+          shift: [-0.8px, -0.6py - 4.8]
         - ref: matrix_col6_row1
           shift: [0.8px , -5.0py + 0.46px]
       fillet: 1
@@ -181,9 +181,8 @@ pcbs:
             file: "led/RGB_WS2812B_3/RGB_WS2812B_3.kicad_pcb"
         where: 
           ref: [matrix_col1_row1]
-          shift: [-40, 14.5]
+          shift: [-42, 14.5]
           rotate: 0
-
       battery:
         what:
           github:
@@ -196,8 +195,8 @@ pcbs:
         footprints:
           BAT_SW1:
             where:
-              ref: matrix_col1_row1
-              shift: [-20.5, 20]
+              ref: [matrix_col3_row1]
+              shift: [0, 15.5]
       joystick: 
         what: 
           github:
@@ -205,16 +204,16 @@ pcbs:
             file: "joystick/JoystickMount/JoystickMount.kicad_pcb"
         where: 
           ref: [thumbs_right_row1]
-          shift: [-6, -25]
-          rotate: 0
+          shift: [-7, -30]
+          rotate: -90
       usb:
         what: 
           github:
             repo: "shiqi-614/ErgoCai.modules"
             file: "usb/default_usb/default_usb.kicad_pcb"
         where:
-          ref: [matrix_col3_row1]
-          shift: [0, 17]
+          ref: matrix_col1_row1
+          shift: [-20.5, 20]
       mcu:
         what: 
           github: 
