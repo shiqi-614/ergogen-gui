@@ -223,16 +223,19 @@ pcbs:
           ref: matrix_col1_row4
           shift: [-45, 26]
           rotate: 90 
-        footprints:
-          MCU_SW1:
-            where: 
-              ref: [matrix_col1_row4]
-              shift: [-42, 4]
-              rotate: 90
+        footprints: 
           MCU_J1:
             where:
               ref: [matrix_col1_row4]
               shift: [-53, 5] 
+      reset:
+        what: 
+          github: 
+            repo: "shiqi-614/ErgoCai.modules"
+            file: "reset/reset/reset.kicad_pcb"
+        where: 
+          ref: [matrix_col1_row4]
+          shift: [-42.5, 5]
 `
 };
 
