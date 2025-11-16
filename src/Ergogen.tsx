@@ -109,6 +109,7 @@ const Ergogen = () => {
     previewKey.split(".").forEach((key) => walkArray = walkArray?.[key]);
 
     let previewContent = typeof walkArray === 'string' ? walkArray : "";
+    let selectedOptionLabel = selectedOption?.label;
 
     return (
         <FlexContainer>
@@ -163,7 +164,7 @@ const Ergogen = () => {
                             <StyledFilePreview key={previewKey} previewKey={previewKey} previewContent={previewContent}/>
                         </LeftSplitPane>
                         <RightSplitPane>
-                            <Downloads setPreview={setPreviewKey}/>
+                            <Downloads setPreview={setPreviewKey} label={selectedOptionLabel}/>
                         </RightSplitPane>
                     </StyledSplit>
                 </RightSplitPane>

@@ -9,6 +9,8 @@ import Alpha from "./alpha";
 import Plank from "./plank";
 import ErgoCaiLeft from "./ErgoCaiLeft";
 import ErgoCaiRight from "./ErgoCaiRight";
+import ErgoCaiLeftV2 from "./ErgoCaiLeftV2";
+import ErgoCaiRightV2 from "./ErgoCaiRightV2";
 import Flatfootfox from "./Flatfootfox";
 
 export interface GroupedOption {
@@ -40,7 +42,9 @@ const completeExamples = [
     Tiny20,
     Flatfootfox,
     ErgoCaiLeft,
-    ErgoCaiRight
+    ErgoCaiRight,
+    ErgoCaiLeftV2,
+    ErgoCaiRightV2
 ];
 
 const miscExamples = [

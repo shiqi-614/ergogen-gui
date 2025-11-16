@@ -12,7 +12,8 @@ const DownloadsContainer = styled.div`
 `;
 
 type Props = {
-    setPreview: Dispatch<SetStateAction<string>>
+    setPreview: Dispatch<SetStateAction<string>>,
+    label: string | undefined
 };
 
 type DownloadObj = {
@@ -24,7 +25,7 @@ type DownloadObj = {
 
 type DownloadArr = Array<DownloadObj>;
 
-const Downloads = ({setPreview}: Props) => {
+const Downloads = ({setPreview, label}: Props) => {
     let downloads: DownloadArr = [];
     const configContext = useConfigContext();
     const tabContext = useContext(TabContext);
@@ -33,9 +34,10 @@ const Downloads = ({setPreview}: Props) => {
     const {configInput, results} = configContext;
 
     if (results?.demo) {
+        let rawFileName = label + "_raw";
         downloads.push({
-                fileName: 'raw',
-                extension: 'txt',
+                fileName: rawFileName,
+                extension: 'yaml',
                 content: configInput ?? ''
             }, {
                 fileName: 'canonical',
