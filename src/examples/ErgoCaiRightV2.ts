@@ -190,15 +190,22 @@ pcbs:
               ref: [matrix_col3_row1]
               shift: [-0, 27]
               rotate: 180
-
+      power_switch:
+        what:
+          github:
+            repo: "shiqi-614/ErgoCai.modules"
+            file: "battery/power_switch_right/power_switch_right.kicad_pcb"
+        where:
+          ref: [matrix_col3_row1]
+          shift: [-0, 27]
       usb:
         what: 
           github:
             repo: "shiqi-614/ErgoCai.modules"
             file: "usb/default_usb/default_usb.kicad_pcb"
         where:
-            ref: matrix_col0_row1
-            shift: [0, 32]
+          ref: matrix_col0_row1
+          shift: [0, 32]
       mcu:
         what: 
           github: 
@@ -208,7 +215,6 @@ pcbs:
           ref: matrix_col1_row1
           shift: [13, 23]
           rotate: 0 
-
       joystick: 
         what: 
           github:
@@ -218,7 +224,6 @@ pcbs:
           ref: [thumbs_right_row1]
           shift: [-7, -30]
           rotate: -90
-
       reset:
         what: 
           github: 
