@@ -184,12 +184,6 @@ pcbs:
           ref: [matrix_col6_row1]
           shift: [-18.5, 22]
           rotate: 90
-        footprints:
-          BAT_SW1:
-            where:
-              ref: [matrix_col3_row1]
-              shift: [-0, 27]
-              rotate: 180
       power_switch:
         what:
           github:

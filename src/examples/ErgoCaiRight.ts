@@ -192,12 +192,14 @@ pcbs:
           ref: [matrix_col1_row4]
           shift: [-38, 18]
           rotate: 0
-        footprints:
-          BAT_SW1:
-            where:
-              ref: [matrix_col3_row1]
-              shift: [-0, 27]
-              rotate: 180
+      power_switch:
+        what:
+          github:
+            repo: "shiqi-614/ErgoCai.modules"
+            file: "battery/power_switch_right/power_switch_right.kicad_pcb"
+        where:
+          ref: [matrix_col3_row1]
+          shift: [-0, 15]
       joystick: 
         what: 
           github:
