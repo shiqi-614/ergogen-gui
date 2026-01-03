@@ -106,19 +106,19 @@ outlines:
         - ref: matrix_col3_row1
           shift: [-0.3px, 1py - 5]
         - ref: matrix_col1_row1
-          shift: [-0.7px, 1py ]
+          shift: [-0.16px, 1py ]
         - ref: matrix_col1_row1
-          shift: [-0.7px, 1py + 3]
+          shift: [-0.16px, 1py + 3]
         - ref: matrix_col1_row1
-          shift: [-1.26px, 1py + 3]
+          shift: [-0.75px, 1py + 3]
         - ref: matrix_col1_row1
-          shift: [-1.26px, 1py ]
+          shift: [-0.75px, 1py ]
         - ref: matrix_col1_row1
-          shift: [-2.6px, 1py ]
+          shift: [-2.32px, 1py ]
         - ref: matrix_col1_row4
-          shift: [-2.6px, -0.7py]
+          shift: [-2.32px, -0.7py]
         - ref: matrix_col1_row4
-          shift: [-2.3px, -1.3py]
+          shift: [-2.32px, -1.3py]
         - ref: thumbs_left_row2
           shift: [-0.6px,0.6py + 1]
         - ref: thumbs_left_row1
@@ -181,7 +181,7 @@ pcbs:
             file: "led/RGB_WS2812B_3/RGB_WS2812B_3.kicad_pcb"
         where: 
           ref: [matrix_col1_row1]
-          shift: [-42, 14.5]
+          shift: [-38, 14.5]
           rotate: 0
       battery:
         what:
@@ -190,13 +190,14 @@ pcbs:
             file: "battery/battery_led_back/battery_led_back.kicad_pcb"
         where:
           ref: [matrix_col1_row4]
-          shift: [-42, 18]
+          shift: [-38, 18]
           rotate: 0
         footprints:
           BAT_SW1:
             where:
               ref: [matrix_col3_row1]
-              shift: [0, 15.5]
+              shift: [-0, 27]
+              rotate: 180
       joystick: 
         what: 
           github:
@@ -213,7 +214,7 @@ pcbs:
             file: "usb/default_usb/default_usb.kicad_pcb"
         where:
           ref: matrix_col1_row1
-          shift: [-20.5, 20]
+          shift: [-9.5, 20]
       mcu:
         what: 
           github: 
@@ -221,13 +222,13 @@ pcbs:
             file: "mcu/nRF52840_holyiot_18010/nRF52840_holyiot_18010.kicad_pcb"
         where:
           ref: matrix_col1_row4
-          shift: [-45, 26]
+          shift: [-40, 26]
           rotate: 90 
         footprints: 
           MCU_J1:
             where:
               ref: [matrix_col1_row4]
-              shift: [-53, 5] 
+              shift: [-47, 5] 
       reset:
         what: 
           github: 
@@ -235,7 +236,7 @@ pcbs:
             file: "reset/reset/reset.kicad_pcb"
         where: 
           ref: [matrix_col1_row4]
-          shift: [-42.5, 5]
+          shift: [-38, 5]
 `
 };
 
