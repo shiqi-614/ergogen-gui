@@ -114,11 +114,11 @@ outlines:
         - ref: matrix_col1_row1
           shift: [-0.75px, 1py ]
         - ref: matrix_col1_row1
-          shift: [-2.32px, 1py ]
+          shift: [-2.36px, 1py ]
         - ref: matrix_col1_row4
-          shift: [-2.32px, -0.7py]
+          shift: [-2.36px, -0.7py]
         - ref: matrix_col1_row4
-          shift: [-2.32px, -1.3py]
+          shift: [-2.36px, -1.3py]
         - ref: thumbs_left_row2
           shift: [-0.6px,0.6py + 1]
         - ref: thumbs_left_row1
@@ -174,33 +174,25 @@ pcbs:
             file: "footprints/ErgoCai.pretty/STAB_MX_2u.kicad_mod"
         where: [thumbs_right_row1, thumbs_right_row2]
     modules:
-      led:
-        what: 
-          github:
-            repo: "shiqi-614/ErgoCai.modules"
-            file: "led/RBG_WS2812B_1/RBG_WS2812B_1.kicad_pcb"
-        where: 
-          ref: [matrix_col1_row4]
-          shift: [-38, -15]
-          rotate: 0
+
       charger:
         what:
           github:
             repo: "shiqi-614/ErgoCai.modules"
             file: "battery/TP4056_charger/TP4056_charger.kicad_pcb"
         where:
-          ref: [matrix_col1_row4]
-          shift: [-38.5, 10]
-          rotate: 0
+          ref: [matrix_col1_row1]
+          shift: [-38, 0]
+          rotate: 180
       e-paper:
         what:
           github:
             repo: "shiqi-614/ErgoCai.modules"
             file: "e-paper/1.02inch-e-Paper-socket/1.02inch-e-Paper-socket.kicad_pcb"
         where:
-          ref: [matrix_col1_row1]
-          shift: [-38, 16]
-          rotate: -90
+          ref: [matrix_col0_row4]
+          shift: [-5, 20]
+          rotate: -0
       power_switch:
         what:
           github:
@@ -233,7 +225,7 @@ pcbs:
             file: "mcu/nRF52840_holyiot_18010/nRF52840_holyiot_18010.kicad_pcb"
         where:
           ref: matrix_col1_row3
-          shift: [-40, 26]
+          shift: [-40.5, 15]
           rotate: 90 
       reset:
         what: 
@@ -241,8 +233,17 @@ pcbs:
             repo: "shiqi-614/ErgoCai.modules"
             file: "reset/reset/reset.kicad_pcb"
         where: 
-          ref: [matrix_col1_row3]
-          shift: [-38, 5]
+          ref: [matrix_col1_row4]
+          shift: [-38.5, -10]
+      led:
+        what: 
+          github:
+            repo: "shiqi-614/ErgoCai.modules"
+            file: "led/RBG_WS2812B_1/RBG_WS2812B_1.kicad_pcb"
+        where: 
+          ref: [matrix_col1_row4]
+          shift: [-38.5, -10]
+          rotate: 0
 `
 };
 
