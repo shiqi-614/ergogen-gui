@@ -12,7 +12,7 @@ import Select from "react-select";
 import GenOption from "./atoms/GenOption";
 import {ConfigOption, exampleOptions } from "./examples";
 import ErgoCaiLeft from "./examples/ErgoCaiLeft";
-import ErgoCaiRightV2 from "./examples/ErgoCaiRightV2";
+import ErgoCaiRight from "./examples/ErgoCaiRight";
 
 const EditorContainer = styled.div`
   position: relative;
@@ -92,7 +92,7 @@ const RightSplitPane = styled.div`
 
 const Ergogen = () => {
     const [previewKey, setPreviewKey] = useState("demo.svg");
-    const [selectedOption, setSelectedOption] = useState<ConfigOption|null>(ErgoCaiRightV2);
+    const [selectedOption, setSelectedOption] = useState<ConfigOption|null>(ErgoCaiRight);
     const configContext = useConfigContext();
     const [isProcessing, setIsProcessing] = useState(false);
 

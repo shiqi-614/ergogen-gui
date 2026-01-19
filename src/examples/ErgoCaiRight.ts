@@ -178,20 +178,29 @@ pcbs:
         what: 
           github:
             repo: "shiqi-614/ErgoCai.modules"
-            file: "led/RGB_WS2812B_3/RGB_WS2812B_3.kicad_pcb"
+            file: "led/RBG_WS2812B_1/RBG_WS2812B_1.kicad_pcb"
         where: 
-          ref: [matrix_col1_row1]
-          shift: [-38, 14.5]
+          ref: [matrix_col1_row4]
+          shift: [-38, -15]
           rotate: 0
-      battery:
+      charger:
         what:
           github:
             repo: "shiqi-614/ErgoCai.modules"
-            file: "battery/battery_led_back/battery_led_back.kicad_pcb"
+            file: "battery/TP4056_charger/TP4056_charger.kicad_pcb"
         where:
           ref: [matrix_col1_row4]
-          shift: [-38, 18]
+          shift: [-38.5, 10]
           rotate: 0
+      e-paper:
+        what:
+          github:
+            repo: "shiqi-614/ErgoCai.modules"
+            file: "e-paper/1.02inch-e-Paper-socket/1.02inch-e-Paper-socket.kicad_pcb"
+        where:
+          ref: [matrix_col1_row1]
+          shift: [-38, 16]
+          rotate: -90
       power_switch:
         what:
           github:
@@ -223,21 +232,16 @@ pcbs:
             repo: "shiqi-614/ErgoCai.modules"
             file: "mcu/nRF52840_holyiot_18010/nRF52840_holyiot_18010.kicad_pcb"
         where:
-          ref: matrix_col1_row4
+          ref: matrix_col1_row3
           shift: [-40, 26]
           rotate: 90 
-        footprints: 
-          MCU_J1:
-            where:
-              ref: [matrix_col1_row4]
-              shift: [-47, 5] 
       reset:
         what: 
           github: 
             repo: "shiqi-614/ErgoCai.modules"
             file: "reset/reset/reset.kicad_pcb"
         where: 
-          ref: [matrix_col1_row4]
+          ref: [matrix_col1_row3]
           shift: [-38, 5]
 `
 };
