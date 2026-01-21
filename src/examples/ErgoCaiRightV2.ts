@@ -135,7 +135,7 @@ outlines:
       name: keys
 
 pcbs:
-  ergo_cai_right:
+  ergo_cai_right_v2:
     outlines:
       main:
         outline: board

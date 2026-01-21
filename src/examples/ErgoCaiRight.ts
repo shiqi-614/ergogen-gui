@@ -174,7 +174,6 @@ pcbs:
             file: "footprints/ErgoCai.pretty/STAB_MX_2u.kicad_mod"
         where: [thumbs_right_row1, thumbs_right_row2]
     modules:
-
       charger:
         what:
           github:
