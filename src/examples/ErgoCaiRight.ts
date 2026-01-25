@@ -132,6 +132,11 @@ outlines:
     - name: board
     - operation: subtract
       name: keys
+cases:  
+  switchplate:
+    - what: outline
+      name: combo
+      extrude: 1.5 
 
 pcbs:
   ergo_cai_right: 
