@@ -8,7 +8,7 @@ type Props = {
 
 const StyledOpenJSCAD = styled(OpenJSCAD)`
   width: 100%;
-  height: 400px;
+  height: 1000px;
 `;
 
 const JscadPreview = ({previewContent}: Props): JSX.Element => (
@@ -16,7 +16,7 @@ const JscadPreview = ({previewContent}: Props): JSX.Element => (
          jscadScript={previewContent}
          style={{
              wrapperDiv: {'height': '100%', 'width': '100%'},
-             viewerCanvas: {'height': '400px', 'width': '100%'},
+             viewerCanvas: {'height': '1000px', 'width': '100%'},
          }}
     />
 );

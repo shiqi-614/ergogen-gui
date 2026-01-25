@@ -128,16 +128,22 @@ outlines:
         - ref: matrix_col6_row1
           shift: [0.8px , -5.0py + 0.46px]
       fillet: 1
-  combo:
+  expand:
     - name: board
+      expand: 3
+  combo:
+    - name: expand
     - operation: subtract
       name: keys
 cases:  
   switchplate:
     - what: outline
       name: combo
-      extrude: 1.5 
-
+      extrude: 1.5
+  buttom:
+  - what: outline
+    name: expand
+    extrude: 0.5
 pcbs:
   ergo_cai_right: 
     outlines:
