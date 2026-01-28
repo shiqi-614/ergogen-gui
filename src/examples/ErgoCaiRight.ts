@@ -135,15 +135,6 @@ outlines:
     - name: expand
     - operation: subtract
       name: keys
-cases:  
-  switchplate:
-    - what: outline
-      name: combo
-      extrude: 1.5
-  buttom:
-  - what: outline
-    name: expand
-    extrude: 0.5
 pcbs:
   ergo_cai_right: 
     outlines:
@@ -254,6 +245,19 @@ pcbs:
           ref: [matrix_col1_row4]
           shift: [-38.5, -10]
           rotate: 0
+cases:  
+  switchplate:
+    - what: outline
+      name: combo
+      extrude: 1.5
+    - what: pcb
+      name: /ergo_cai_right.modules/
+      extrude: 1.5
+      operation: subtract
+  buttom:
+  - what: outline
+    name: expand
+    extrude: 0.5
 `
 };
 
