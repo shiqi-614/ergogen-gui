@@ -5,11 +5,10 @@ const ErgoCaiRight : ConfigExample = {
     author: "jinsongc",
     value: `
 units:
-  kx: cx
-  ky: cy
-  px: kx + 3
-  py: ky + 3
- 
+  kx: u
+  ky: u
+  screwSize: 1.05
+  studSize: 1.75
 points:
   zones:
     matrix:
@@ -67,74 +66,171 @@ points:
         rotate: 25
       columns:
         left:    
-        right:
-          rows:
-            row2: 
+        right: 
+          rows: 
+            row2:  
               width: 2kx
               rotate: 90
-              shift: [0kx, -0.54kx]
-            row1:
-              width: 2kx
+              shift: [0kx, -0.5kx]  
+            row1: 
+              width: 2kx 
               rotate: 90
-              shift: [1.15kx, 0.52kx]
+              shift: [1.15kx, 0.5kx]
       rows:
         row1:
         row2:
 
-
 outlines:
-  raw:
+  positioning_hole:
     - what: rectangle
       where: true
-      size: [kx, ky]
-  keys:
+      size: [14, 14]
     - what: rectangle
-      where: true
-      size: [kx-0.5,ky-0.5]
+      where: [thumbs_right_row2, thumbs_right_row1]
+      size: [33, 20]
+  usb_and_swith:
+    - what: polygon
+      operation: stack
+      points:
+        - ref: matrix_col1_row1
+          shift: [-9.5 + 20, 1ky + 11]
+        - ref: matrix_col1_row1
+          shift: [-9.5 + 5, 1ky + 5]
+        - ref: matrix_col1_row1
+          shift: [-9.5 - 5, 1ky + 5]
+        - ref: matrix_col1_row1
+          shift: [-9.5 - 20, 1ky + 11]
+    - what: polygon
+      operation: stack
+      points:
+        - ref: matrix_col3_row1
+          shift: [0 + 20, 1ky + 6]
+        - ref: matrix_col3_row1
+          shift: [0 + 5, 1ky]
+        - ref: matrix_col3_row1
+          shift: [0 - 5, 1ky]
+        - ref: matrix_col3_row1
+          shift: [0 - 20, 1ky + 6.01]
+  usb_and_swith_hole:
+    - what: rectangle
+      where: 
+        ref: matrix_col1_row1
+        shift: [-9.5, 1kx + 4]
+      size: [10.6, 4]
+    
+    - what: rectangle
+      where: 
+        ref: matrix_col3_row1
+        shift: [0, 1kx -1]
+      size: [10, 4]
+
+
   board:
     - what: polygon
       operation: stack
       points:
         - ref: matrix_col6_row1
-          shift: [0.8px, 1py]
+          shift: [0.8kx, 1ky + 1]
         - ref: matrix_col3_row1
-          shift: [0.3px, 1py - 5]
+          shift: [0.3kx, 1ky - 4]
         - ref: matrix_col3_row1
-          shift: [0.3px, 1py -2]
+          shift: [0.3kx, 1ky - 2]
         - ref: matrix_col3_row1
-          shift: [-0.3px, 1py-2]
+          shift: [-0.3kx, 1ky- 2]
         - ref: matrix_col3_row1
-          shift: [-0.3px, 1py - 5]
+          shift: [-0.3kx, 1ky - 4]
         - ref: matrix_col1_row1
-          shift: [-0.16px, 1py ]
+          shift: [-0.15kx, 1ky + 1]
         - ref: matrix_col1_row1
-          shift: [-0.16px, 1py + 3]
+          shift: [-0.15kx, 1ky + 3]
         - ref: matrix_col1_row1
-          shift: [-0.75px, 1py + 3]
+          shift: [-0.85kx, 1ky + 3]
         - ref: matrix_col1_row1
-          shift: [-0.75px, 1py ]
+          shift: [-0.85kx, 1ky + 1]
         - ref: matrix_col1_row1
-          shift: [-2.36px, 1py ]
-        - ref: matrix_col1_row4
-          shift: [-2.36px, -0.7py]
-        - ref: matrix_col1_row4
-          shift: [-2.36px, -1.3py]
+          shift: [-2.7kx, 1ky + 1]
+        - ref: matrix_col1_row1
+          shift: [-2.7kx, -4.5ky]
         - ref: thumbs_left_row2
-          shift: [-0.6px,0.6py + 1]
+          shift: [-0.65kx, 0.65ky]
         - ref: thumbs_left_row1
-          shift: [-0.6px, -0.6py]
-        - ref: matrix_col4_row5
-          shift: [-0.8px, -0.6py - 4.8]
+          shift: [-0.65kx, -0.65ky]
         - ref: matrix_col6_row1
-          shift: [0.8px , -5.0py + 0.46px]
-      fillet: 1
+          shift: [-2.8kx, -4.7ky]
+        - ref: matrix_col6_row1
+          shift: [0.8kx , -4.7ky]
+      fillet: 0.9
+  
+  shell_mounting_positions: 
+    matrix_top_right: &shell_pos1
+      what: circle
+      where:
+        ref: [matrix_col6_row1]
+        shift: [0.95kx, 1.15ky]
+    matrix_top_left: &shell_pos2
+      what: circle
+      where: 
+        ref: [matrix_col0_row1]
+        shift: [-1.85kx, 1.15ky]
+    matrix_bottom_right: &shell_pos3 
+      what: circle
+      where:
+        ref: [matrix_col6_row5]
+        shift: [1.2kx, -0.84ky]
+    matrix_bottom_left: &shell_pos4
+      what: circle
+      where:
+        ref: [matrix_col6_row5]
+        shift: [-2.48kx, -0.9ky]
+    thumb_upper: &shell_pos5
+      what: circle
+      where:
+        ref: [thumbs_left_row2]
+        shift: [-0.8kx, 0.75ky]
+    thumb_lower: &shell_pos6
+      what: circle
+      where:
+        ref: [thumbs_left_row1]
+        shift: [-0.75kx, -0.77ky]
+
+  stud_mounting:
+    - <<: *shell_pos1
+      radius: studSize
+    - <<: *shell_pos2
+      radius: studSize
+    - <<: *shell_pos3
+      radius: studSize
+    - <<: *shell_pos4
+      radius: studSize
+    - <<: *shell_pos5
+      radius: studSize
+    - <<: *shell_pos6
+      radius: studSize
+  screw_mounting:
+    - <<: *shell_pos1
+      radius: screwSize
+    - <<: *shell_pos2
+      radius: screwSize
+    - <<: *shell_pos3
+      radius: screwSize
+    - <<: *shell_pos4
+      radius: screwSize
+    - <<: *shell_pos5
+      radius: screwSize
+    - <<: *shell_pos6
+      radius: screwSize 
+
   expand:
     - name: board
-      expand: 3
+      expand: 8
+
   combo:
     - name: expand
     - operation: subtract
-      name: keys
+      name: positioning_hole
+    - operation: subtract
+      name: stud_mounting
+  
 pcbs:
   ergo_cai_right: 
     outlines:
@@ -182,18 +278,18 @@ pcbs:
             repo: "shiqi-614/ErgoCai.modules"
             file: "battery/TP4056_charger/TP4056_charger.kicad_pcb"
         where:
-          ref: [matrix_col1_row1]
-          shift: [-38, 0]
+          ref: [matrix_col0_row1]
+          shift: [-20, -2]
           rotate: 180
       e-paper:
-        what:
+        what: 
           github:
             repo: "shiqi-614/ErgoCai.modules"
             file: "e-paper/1.02inch-e-Paper-socket/1.02inch-e-Paper-socket.kicad_pcb"
         where:
-          ref: [matrix_col0_row4]
-          shift: [-5, 20]
-          rotate: -0
+          ref: [matrix_col0_row1]
+          shift: [-21, -66.5]
+          rotate: 90
       power_switch:
         what:
           github:
@@ -201,7 +297,7 @@ pcbs:
             file: "battery/power_switch_right/power_switch_right.kicad_pcb"
         where:
           ref: [matrix_col3_row1]
-          shift: [-0, 15]
+          shift: [-0, 14]
       joystick: 
         what: 
           github:
@@ -218,15 +314,15 @@ pcbs:
             file: "usb/default_usb/default_usb.kicad_pcb"
         where:
           ref: matrix_col1_row1
-          shift: [-9.5, 20]
+          shift: [-9.5, 19]
       mcu:
         what: 
           github: 
             repo: "shiqi-614/ErgoCai.modules"
             file: "mcu/nRF52840_holyiot_18010/nRF52840_holyiot_18010.kicad_pcb"
         where:
-          ref: matrix_col1_row3
-          shift: [-40.5, 15]
+          ref: matrix_col0_row1
+          shift: [-23, -25]
           rotate: 90 
       reset:
         what: 
@@ -234,30 +330,61 @@ pcbs:
             repo: "shiqi-614/ErgoCai.modules"
             file: "reset/reset/reset.kicad_pcb"
         where: 
-          ref: [matrix_col1_row4]
-          shift: [-38.5, -10]
-      led:
-        what: 
-          github:
-            repo: "shiqi-614/ErgoCai.modules"
-            file: "led/RBG_WS2812B_1/RBG_WS2812B_1.kicad_pcb"
-        where: 
-          ref: [matrix_col1_row4]
-          shift: [-38.5, -10]
-          rotate: 0
+          ref: [matrix_col0_row1]
+          shift: [-21, -75]
+
 cases:  
   switchplate:
     - what: outline
       name: combo
-      extrude: 1.5
+      extrude: 5
     - what: pcb
       name: /ergo_cai_right.modules/
-      extrude: 1.5
+      extrude: 5
       operation: subtract
+    - what: pcb
+      name: /ergo_cai_right.modules.e-paper/
+      shift: [0, 15, 0]
+      extrude: 5
+      operation: subtract
+    - what: outline
+      name: usb_and_swith
+      extrude: 5
+      operation: subtract
+    - what: outline
+      name: usb_and_swith_hole
+      extrude: 5
+      operation: subtract
+
+  gap: 
+    - what: outline
+      name: expand
+      extrude: 3
+    - what: outline
+      name: board
+      extrude: 3
+      operation: subtract
+    - what: outline
+      name: usb_and_swith
+      extrude: 3
+      operation: subtract
+    - what: outline
+      name: stud_mounting
+      extrude: 3
+      operation: subtract
+
   buttom:
-  - what: outline
-    name: expand
-    extrude: 0.5
+    - what: outline
+      name: expand
+      extrude: 3
+    - what: outline
+      name: screw_mounting
+      extrude: 3
+      operation: subtract
+    - what: outline
+      name: usb_and_swith
+      extrude: 3
+      operation: subtract
 `
 };
 

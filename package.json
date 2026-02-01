@@ -1,78 +1,81 @@
 {
-    "name": "ergogen-gui",
-    "version": "0.2.0",
-    "homepage": "https://ergogen.cache.works/",
-    "private": false,
-    "dependencies": {
-        "@monaco-editor/react": "4.2.2",
-        "@svgdotjs/svg.js": "^3.1.1",
-        "@testing-library/jest-dom": "^5.11.4",
-        "@testing-library/react": "^11.1.0",
-        "@testing-library/user-event": "^12.1.10",
-        "@types/jest": "^27.0.1",
-        "@types/node": "^16.9.4",
-        "@types/react": "^17.0.21",
-        "@types/react-dom": "^17.0.9",
-        "ergogen": "github:shiqi-614/ergogen#develop",
-        "js-yaml": "^4.1.0",
-        "lodash.debounce": "^4.0.8",
-        "openjscad-react": "^0.0.1-canary-07",
-        "react": "^17.0.2",
-        "react-dom": "^17.0.2",
-        "react-easy-panzoom": "^0.4.4",
-        "react-scripts": "4.0.3",
-        "react-select": "^5.2.1",
-        "react-split": "^2.0.14",
-        "react-use": "^17.3.2",
-        "styled-components": "^5.3.1",
-        "three-dxf": "^1.0.1",
-        "typescript": "^4.4.3",
-        "web-vitals": "^1.0.1",
-        "yaml-js": "^0.2.3"
-    },
-    "scripts": {
-        "build-ergogen": "cd node_modules/ergogen && yarn install && yarn run build && cp dist/ergogen.js ../../public/dependencies/ergogen.js",
-        "postinstall": "yarn upgrade ergogen && yarn run build-ergogen",
-        "start": "react-scripts --openssl-legacy-provider start",
-        "build": "react-scripts --openssl-legacy-provider build",
-        "postbuild": "yarn run build-ergogen",
-        "test": "react-scripts --openssl-legacy-provider test",
-        "eject": "react-scripts eject",
-        "predeploy": "yarn run build",
-        "deploy": "gh-pages -d build"
-    },
-    "eslintConfig": {
-        "extends": [
-            "react-app",
-            "react-app/jest"
-        ]
-    },
-    "browserslist": {
-        "production": [
-            ">0.2%",
-            "not dead",
-            "not op_mini all"
-        ],
-        "development": [
-            "last 1 chrome version",
-            "last 1 firefox version",
-            "last 1 safari version"
-        ]
-    },
-    "devDependencies": {
-        "@types/js-yaml": "^4.0.3",
-        "@types/lodash-es": "^4.17.5",
-        "@types/lodash.debounce": "^4.0.6",
-        "@types/styled-components": "^5.1.14",
-        "@typescript-eslint/eslint-plugin": "^4.0.0",
-        "@typescript-eslint/parser": "^4.0.0",
-        "babel-eslint": "^10.0.0",
-        "eslint": "^7.5.0",
-        "eslint-config-react-app": "^6.0.0",
-        "eslint-plugin-flowtype": "^5.2.0",
-        "eslint-plugin-import": "^2.22.0",
-        "eslint-plugin-jsx-a11y": "^6.3.1",
-        "eslint-plugin-react": "^7.20.3",
-        "eslint-plugin-react-hooks": "^4.0.8"
-    }
+  "name": "ergogen-gui",
+  "version": "0.2.0",
+  "homepage": "https://ergogen.cache.works/",
+  "private": false,
+  "dependencies": {
+    "@jscad/csg": "^0.7.0",
+    "@jscad/io": "1.0.0-alpha.f58d6f4e",
+    "@jscad/openjscad": "^1.6.1",
+    "@monaco-editor/react": "4.2.2",
+    "@svgdotjs/svg.js": "^3.1.1",
+    "@testing-library/jest-dom": "^5.11.4",
+    "@testing-library/react": "^11.1.0",
+    "@testing-library/user-event": "^12.1.10",
+    "@types/jest": "^27.0.1",
+    "@types/node": "^16.9.4",
+    "@types/react": "^17.0.21",
+    "@types/react-dom": "^17.0.9",
+    "ergogen": "github:shiqi-614/ergogen#develop",
+    "js-yaml": "^4.1.0",
+    "lodash.debounce": "^4.0.8",
+    "openjscad-react": "^0.0.1-canary-07",
+    "react": "^17.0.2",
+    "react-dom": "^17.0.2",
+    "react-easy-panzoom": "^0.4.4",
+    "react-scripts": "4.0.3",
+    "react-select": "^5.2.1",
+    "react-split": "^2.0.14",
+    "react-use": "^17.3.2",
+    "styled-components": "^5.3.1",
+    "three-dxf": "^1.0.1",
+    "typescript": "^4.4.3",
+    "web-vitals": "^1.0.1",
+    "yaml-js": "^0.2.3"
+  },
+  "scripts": {
+    "build-ergogen": "cd node_modules/ergogen && yarn install && yarn run build && cp dist/ergogen.js ../../public/dependencies/ergogen.js",
+    "postinstall": "yarn upgrade ergogen && yarn run build-ergogen",
+    "start": "react-scripts --openssl-legacy-provider start",
+    "build": "react-scripts --openssl-legacy-provider build",
+    "postbuild": "yarn run build-ergogen",
+    "test": "react-scripts --openssl-legacy-provider test",
+    "eject": "react-scripts eject",
+    "predeploy": "yarn run build",
+    "deploy": "gh-pages -d build"
+  },
+  "eslintConfig": {
+    "extends": [
+      "react-app",
+      "react-app/jest"
+    ]
+  },
+  "browserslist": {
+    "production": [
+      ">0.2%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
+  },
+  "devDependencies": {
+    "@types/js-yaml": "^4.0.3",
+    "@types/lodash-es": "^4.17.5",
+    "@types/lodash.debounce": "^4.0.6",
+    "@types/styled-components": "^5.1.14",
+    "@typescript-eslint/eslint-plugin": "^4.0.0",
+    "@typescript-eslint/parser": "^4.0.0",
+    "babel-eslint": "^10.0.0",
+    "eslint": "^7.5.0",
+    "eslint-config-react-app": "^6.0.0",
+    "eslint-plugin-flowtype": "^5.2.0",
+    "eslint-plugin-import": "^2.22.0",
+    "eslint-plugin-jsx-a11y": "^6.3.1",
+    "eslint-plugin-react": "^7.20.3",
+    "eslint-plugin-react-hooks": "^4.0.8"
+  }
 }

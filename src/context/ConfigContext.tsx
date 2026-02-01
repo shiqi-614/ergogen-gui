@@ -3,6 +3,8 @@ import { DebouncedFunc } from "lodash-es";
 import yaml from "js-yaml";
 import debounce from "lodash.debounce";
 import { useLocalStorage } from 'react-use';
+import { stlSerializer } from '@jscad/io';
+import { compile } from '@jscad/openjscad';
 
 type Props = {
     initialInput: string,
@@ -32,6 +34,12 @@ type ProcessOptions = {
 
 export const ConfigContext = createContext<ContextProps | null>(null);
 export const CONFIG_LOCAL_STORAGE_KEY = 'LOCAL_STORAGE_CONFIG'
+
+async function exportSTL(jscadSource: string): Promise<Blob> {
+  const results = await compile(jscadSource);
+    const data = stlSerializer.serialize({ binary: true}, results);
+    return new Blob(data, { type: 'model/stl' });
+}
 
 
 const ConfigContextProvider = ({initialInput, children}: Props) => {
@@ -122,6 +130,7 @@ const ConfigContextProvider = ({initialInput, children}: Props) => {
                             throw new Error(errorData.error?.message || 'An error occurred');
                         }
                         const data = await postResponse.json();
+
                         results = data.results;
                     }
                 }
@@ -138,6 +147,13 @@ const ConfigContextProvider = ({initialInput, children}: Props) => {
                 console.log(e);
                 options.setProcessing?.(false);
                 return;
+            }
+            if (results?.cases) {
+                for (const [name, caseObj] of Object.entries(results.cases as Record<string, Record<string, any>>)) {
+                    if ('jscad' in caseObj) {
+                        caseObj.stl = await exportSTL(caseObj.jscad);
+                    }
+                }
             }
             options.setProcessing?.(false);
             setResults(results);
