@@ -21,11 +21,11 @@ points:
           rows.row2:
             width: 1.5kx
             rotate: 90
-            shift: [0, -0.27kx]
+            shift: [0, -0.255kx]
           rows.row4:
             width: 1.5kx
             rotate: 90
-            shift: [0, 0.25kx]
+            shift: [0, 0.24kx]
         col1:
           key:
             stagger: 0
@@ -48,7 +48,7 @@ points:
         col6:
           key:
             width: 1.5kx
-            shift: [0.27kx, 0]
+            shift: [0.255kx, 0]
           rows:
             row5:
               width: 1kx
@@ -75,54 +75,36 @@ points:
             row1: 
               width: 2kx 
               rotate: 90
-              shift: [1.15kx, 0.5kx]
+              shift: [1.1kx, 0.5kx]
       rows:
         row1:
         row2:
 
 outlines:
-  positioning_hole:
-    - what: rectangle
-      where: true
-      size: [14, 14]
-    - what: rectangle
-      where: [thumbs_right_row2, thumbs_right_row1]
-      size: [33, 20]
   usb_and_swith:
     - what: polygon
       operation: stack
       points:
         - ref: matrix_col1_row1
-          shift: [-9.5 + 20, 1ky + 11]
+          shift: [-9.5 + 25, 1ky + 14]
         - ref: matrix_col1_row1
           shift: [-9.5 + 5, 1ky + 5]
         - ref: matrix_col1_row1
           shift: [-9.5 - 5, 1ky + 5]
         - ref: matrix_col1_row1
-          shift: [-9.5 - 20, 1ky + 11]
+          shift: [-9.5 - 25, 1ky + 14]
     - what: polygon
       operation: stack
       points:
         - ref: matrix_col3_row1
-          shift: [0 + 20, 1ky + 6]
+          shift: [0 + 25, 1ky + 9]
         - ref: matrix_col3_row1
           shift: [0 + 5, 1ky]
         - ref: matrix_col3_row1
           shift: [0 - 5, 1ky]
         - ref: matrix_col3_row1
-          shift: [0 - 20, 1ky + 6.01]
-  usb_and_swith_hole:
-    - what: rectangle
-      where: 
-        ref: matrix_col1_row1
-        shift: [-9.5, 1kx + 4]
-      size: [10.6, 4]
-    
-    - what: rectangle
-      where: 
-        ref: matrix_col3_row1
-        shift: [0, 1kx -1]
-      size: [10, 4]
+          shift: [0 - 25, 1ky + 9.01]
+
 
 
   board:
@@ -130,25 +112,25 @@ outlines:
       operation: stack
       points:
         - ref: matrix_col6_row1
-          shift: [0.8kx, 1ky + 1]
-        - ref: matrix_col3_row1
-          shift: [0.3kx, 1ky - 4]
+          shift: [0.8kx, 1ky + 3]
         - ref: matrix_col3_row1
           shift: [0.3kx, 1ky - 2]
         - ref: matrix_col3_row1
-          shift: [-0.3kx, 1ky- 2]
+          shift: [0.3kx, 1ky]
         - ref: matrix_col3_row1
-          shift: [-0.3kx, 1ky - 4]
-        - ref: matrix_col1_row1
-          shift: [-0.15kx, 1ky + 1]
+          shift: [-0.3kx, 1ky]
+        - ref: matrix_col3_row1
+          shift: [-0.3kx, 1ky - 2]
         - ref: matrix_col1_row1
           shift: [-0.15kx, 1ky + 3]
         - ref: matrix_col1_row1
+          shift: [-0.15kx, 1ky + 5]
+        - ref: matrix_col1_row1
+          shift: [-0.85kx, 1ky + 5]
+        - ref: matrix_col1_row1
           shift: [-0.85kx, 1ky + 3]
         - ref: matrix_col1_row1
-          shift: [-0.85kx, 1ky + 1]
-        - ref: matrix_col1_row1
-          shift: [-2.7kx, 1ky + 1]
+          shift: [-2.7kx, 1ky + 3]
         - ref: matrix_col1_row1
           shift: [-2.7kx, -4.5ky]
         - ref: thumbs_left_row2
@@ -227,8 +209,6 @@ outlines:
   combo:
     - name: expand
     - operation: subtract
-      name: positioning_hole
-    - operation: subtract
       name: stud_mounting
   
 pcbs:
@@ -297,7 +277,7 @@ pcbs:
             file: "battery/power_switch_right/power_switch_right.kicad_pcb"
         where:
           ref: [matrix_col3_row1]
-          shift: [-0, 14]
+          shift: [-0, 16.3]
       joystick: 
         what: 
           github:
@@ -314,7 +294,7 @@ pcbs:
             file: "usb/default_usb/default_usb.kicad_pcb"
         where:
           ref: matrix_col1_row1
-          shift: [-9.5, 19]
+          shift: [-9.5, 21]
       mcu:
         what: 
           github: 
@@ -334,10 +314,39 @@ pcbs:
           shift: [-21, -75]
 
 cases:  
+  middle:
+    - what: outline
+      name: combo
+      extrude: 5
+    - what: pcb
+      name: /ergo_cai_right.footprints.keys/
+      extrude: 5
+      operation: subtract
+      layers: [Dwgs.User]
+      expand: 1
+    - what: pcb
+      name: /ergo_cai_right.modules/
+      extrude: 5
+      operation: subtract
+      expand: 1
+    - what: pcb
+      name: /ergo_cai_right.modules.e-paper/
+      shift: [0, 15, 0]
+      extrude: 5
+      operation: subtract
+    - what: outline
+      name: usb_and_swith
+      extrude: 5
+      operation: subtract
+    
   switchplate:
     - what: outline
       name: combo
       extrude: 5
+    - what: pcb
+      name: /ergo_cai_right.footprints.keys/
+      extrude: 5
+      operation: subtract
     - what: pcb
       name: /ergo_cai_right.modules/
       extrude: 5
@@ -349,10 +358,6 @@ cases:
       operation: subtract
     - what: outline
       name: usb_and_swith
-      extrude: 5
-      operation: subtract
-    - what: outline
-      name: usb_and_swith_hole
       extrude: 5
       operation: subtract
 
