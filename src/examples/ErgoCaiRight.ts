@@ -104,9 +104,6 @@ outlines:
           shift: [0 - 5, 1ky]
         - ref: matrix_col3_row1
           shift: [0 - 25, 1ky + 9.01]
-
-
-
   board:
     - what: polygon
       operation: stack
@@ -312,7 +309,6 @@ pcbs:
         where: 
           ref: [matrix_col0_row1]
           shift: [-21, -75]
-
 cases:  
   middle:
     - what: outline
@@ -344,9 +340,18 @@ cases:
       name: combo
       extrude: 5
     - what: pcb
-      name: /ergo_cai_right.footprints.keys/
+      name: /ergo_cai_right.footprints.keys[12]/
       extrude: 5
       operation: subtract
+    - what: pcb
+      name: /ergo_cai_right.footprints.stab/
+      extrude: 5
+      operation: subtract
+    - what: pcb
+      name: /ergo_cai_right.footprints.keys3/
+      extrude: 5
+      operation: subtract
+      layers: [Dwgs.User]
     - what: pcb
       name: /ergo_cai_right.modules/
       extrude: 5
