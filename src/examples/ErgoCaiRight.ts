@@ -88,22 +88,58 @@ outlines:
         - ref: matrix_col1_row1
           shift: [-9.5 + 25, 1ky + 14]
         - ref: matrix_col1_row1
-          shift: [-9.5 + 5, 1ky + 5]
+          shift: [-9.5 + 5, 1ky + 7]
         - ref: matrix_col1_row1
-          shift: [-9.5 - 5, 1ky + 5]
+          shift: [-9.5 - 5, 1ky + 7]
         - ref: matrix_col1_row1
           shift: [-9.5 - 25, 1ky + 14]
     - what: polygon
       operation: stack
       points:
         - ref: matrix_col3_row1
-          shift: [0 + 25, 1ky + 9]
+          shift: [0 + 25, 1ky + 12]
         - ref: matrix_col3_row1
-          shift: [0 + 5, 1ky]
+          shift: [0 + 5, 1ky + 2]
         - ref: matrix_col3_row1
-          shift: [0 - 5, 1ky]
+          shift: [0 - 5, 1ky + 2]
         - ref: matrix_col3_row1
-          shift: [0 - 25, 1ky + 9.01]
+          shift: [0 - 25, 1ky + 12.01]
+  usb_and_swith_hole:
+    - what: polygon
+      operation: stack
+      points:
+        - ref: matrix_col1_row1
+          shift: [-9.5 + 5.45, 1ky + 10]
+        - ref: matrix_col1_row1
+          shift: [-9.5 + 5.45, 1ky + 4]
+        - ref: matrix_col1_row1
+          shift: [-9.5 - 5.45, 1ky + 4]
+        - ref: matrix_col1_row1
+          shift: [-9.5 - 5.45, 1ky + 10]
+    - what: polygon
+      operation: stack
+      points:
+        - ref: matrix_col3_row1
+          shift: [0 + 5.0, 1ky - 1]
+        - ref: matrix_col3_row1
+          shift: [0 + 5.0, 1ky + 2]
+        - ref: matrix_col3_row1
+          shift: [0 - 5.0, 1ky + 2]
+        - ref: matrix_col3_row1
+          shift: [0 - 5.0, 1ky - 1]
+  cut: 
+    - what: polygon
+      operation: stack
+      points:
+        - ref: matrix_col6_row1
+          shift: [0.8kx, 1ky + 11]
+        - ref: matrix_col1_row1
+          shift: [-2.7kx, 1ky + 11]
+        - ref: matrix_col1_row1
+          shift: [-2.7kx, 1ky + 15]
+        - ref: matrix_col6_row1
+          shift: [0.8kx, 1ky + 15]
+
   board:
     - what: polygon
       operation: stack
@@ -145,12 +181,12 @@ outlines:
       what: circle
       where:
         ref: [matrix_col6_row1]
-        shift: [0.95kx, 1.15ky]
+        shift: [0.95kx, 1.25ky]
     matrix_top_left: &shell_pos2
       what: circle
       where: 
         ref: [matrix_col0_row1]
-        shift: [-1.85kx, 1.15ky]
+        shift: [-1.85kx, 1.25ky]
     matrix_bottom_right: &shell_pos3 
       what: circle
       where:
@@ -310,6 +346,29 @@ pcbs:
           ref: [matrix_col0_row1]
           shift: [-21, -75]
 cases:  
+  top:
+    - what: outline
+      name: expand
+      extrude: 3
+    - what: outline
+      name: screw_mounting
+      extrude: 3
+      operation: subtract
+    - what: outline
+      name: cut
+      extrude: 3
+      operation: subtract
+    - what: pcb
+      name: /ergo_cai_right.footprints.keys/
+      extrude: 3
+      operation: subtract
+      expand: 1
+      layers: [Dwgs.User]
+    - what: pcb
+      name: /ergo_cai_right.modules.joystick/
+      extrude: 5
+      expand: 0.1
+      operation: subtract
   middle:
     - what: outline
       name: combo
@@ -318,13 +377,13 @@ cases:
       name: /ergo_cai_right.footprints.keys/
       extrude: 5
       operation: subtract
-      layers: [Dwgs.User]
       expand: 1
+      layers: [Dwgs.User]
     - what: pcb
       name: /ergo_cai_right.modules/
       extrude: 5
+      expand: 0.1
       operation: subtract
-      expand: 1
     - what: pcb
       name: /ergo_cai_right.modules.e-paper/
       shift: [0, 15, 0]
@@ -334,7 +393,10 @@ cases:
       name: usb_and_swith
       extrude: 5
       operation: subtract
-    
+    - what: outline
+      name: usb_and_swith_hole
+      extrude: 5
+      operation: subtract
   switchplate:
     - what: outline
       name: combo
@@ -352,6 +414,7 @@ cases:
       name: /ergo_cai_right.modules/
       extrude: 5
       operation: subtract
+      expand: 0.1
     - what: pcb
       name: /ergo_cai_right.modules.e-paper/
       shift: [0, 15, 0]
@@ -359,6 +422,10 @@ cases:
       operation: subtract
     - what: outline
       name: usb_and_swith
+      extrude: 5
+      operation: subtract
+    - what: outline
+      name: usb_and_swith_hole
       extrude: 5
       operation: subtract
 
