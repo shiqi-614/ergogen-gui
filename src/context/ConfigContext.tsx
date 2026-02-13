@@ -37,8 +37,8 @@ export const CONFIG_LOCAL_STORAGE_KEY = 'LOCAL_STORAGE_CONFIG'
 
 async function exportSTL(jscadSource: string): Promise<Blob> {
   const results = await compile(jscadSource);
-    const data = stlSerializer.serialize({ binary: true}, results);
-    return new Blob(data, { type: 'model/stl' });
+  const data = stlSerializer.serialize(results[0]);
+  return new Blob(data, { type: 'model/stl' });
 }
 
 

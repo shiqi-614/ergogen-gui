@@ -344,10 +344,6 @@ cases:
       extrude: 5
       operation: subtract
     - what: pcb
-      name: /ergo_cai_right.footprints.stab/
-      extrude: 5
-      operation: subtract
-    - what: pcb
       name: /ergo_cai_right.footprints.keys3/
       extrude: 5
       operation: subtract
