@@ -75,7 +75,7 @@ points:
             row1: 
               width: 2kx 
               rotate: 90
-              shift: [1.1kx, 0.5kx]
+              shift: [1.08kx, 0.5kx]
       rows:
         row1:
         row2:
@@ -120,13 +120,13 @@ outlines:
       operation: stack
       points:
         - ref: matrix_col3_row1
-          shift: [0 + 5.0, 1ky - 1]
+          shift: [0 + 5.6, 1ky - 1]
         - ref: matrix_col3_row1
-          shift: [0 + 5.0, 1ky + 2]
+          shift: [0 + 5.6, 1ky + 3]
         - ref: matrix_col3_row1
-          shift: [0 - 5.0, 1ky + 2]
+          shift: [0 - 5.6, 1ky + 3]
         - ref: matrix_col3_row1
-          shift: [0 - 5.0, 1ky - 1]
+          shift: [0 - 5.6, 1ky - 1]
   cut: 
     - what: polygon
       operation: stack
@@ -243,6 +243,14 @@ outlines:
     - name: expand
     - operation: subtract
       name: stud_mounting
+
+  reset_hole:
+    - what: circle
+      radius: 1.5
+      where:
+        ref: [matrix_col0_row1]
+        shift: [-21, -75]
+
   
 pcbs:
   ergo_cai_right: 
@@ -292,7 +300,7 @@ pcbs:
             file: "battery/TP4056_charger/TP4056_charger.kicad_pcb"
         where:
           ref: [matrix_col0_row1]
-          shift: [-20, -2]
+          shift: [-20, 0]
           rotate: 180
       e-paper:
         what: 
@@ -301,7 +309,7 @@ pcbs:
             file: "e-paper/1.02inch-e-Paper-socket/1.02inch-e-Paper-socket.kicad_pcb"
         where:
           ref: [matrix_col0_row1]
-          shift: [-21, -66.5]
+          shift: [-21, -71.5]
           rotate: 90
       power_switch:
         what:
@@ -327,7 +335,7 @@ pcbs:
             file: "usb/default_usb/default_usb.kicad_pcb"
         where:
           ref: matrix_col1_row1
-          shift: [-9.5, 21]
+          shift: [-9.5, 21.5]
       mcu:
         what: 
           github: 
@@ -335,7 +343,7 @@ pcbs:
             file: "mcu/nRF52840_holyiot_18010/nRF52840_holyiot_18010.kicad_pcb"
         where:
           ref: matrix_col0_row1
-          shift: [-23, -25]
+          shift: [-23, -35]
           rotate: 90 
       reset:
         what: 
@@ -362,13 +370,19 @@ cases:
       name: /ergo_cai_right.footprints.keys/
       extrude: 3
       operation: subtract
-      expand: 1
+      expand: 0.5
       layers: [Dwgs.User]
     - what: pcb
-      name: /ergo_cai_right.modules.joystick/
+      name: /ergo_cai_right.modules.(joystick|e-paper)/
       extrude: 5
-      expand: 0.1
       operation: subtract
+      expand: 0.6
+    - what: pcb
+      name: /ergo_cai_right.footprints.stab/
+      expand: 0.5
+      extrude: 5
+      operation: subtract
+      layers: [Dwgs.User]
   middle:
     - what: outline
       name: combo
@@ -377,24 +391,26 @@ cases:
       name: /ergo_cai_right.footprints.keys/
       extrude: 5
       operation: subtract
-      expand: 1
+      expand: 0.5
       layers: [Dwgs.User]
     - what: pcb
-      name: /ergo_cai_right.modules/
+      name: /ergo_cai_right.footprints.stab/
       extrude: 5
-      expand: 0.1
+      expand: 0.5
       operation: subtract
+      layers: [Dwgs.User]
+    - what: pcb
+      name: /ergo_cai_right.modules.(joystick|e-paper|charger)/
+      extrude: 5
+      operation: subtract
+      expand: 0.6
     - what: pcb
       name: /ergo_cai_right.modules.e-paper/
-      shift: [0, 15, 0]
+      shift: [0, 26, 0]
       extrude: 5
       operation: subtract
     - what: outline
       name: usb_and_swith
-      extrude: 5
-      operation: subtract
-    - what: outline
-      name: usb_and_swith_hole
       extrude: 5
       operation: subtract
   switchplate:
@@ -411,13 +427,23 @@ cases:
       operation: subtract
       layers: [Dwgs.User]
     - what: pcb
-      name: /ergo_cai_right.modules/
+      name: /ergo_cai_right.footprints.stab/
+      extrude: 5
+      operation: subtract
+      layers: [Dwgs.User]
+    - what: pcb
+      name: /ergo_cai_right.modules.(usb|power_switch)/
       extrude: 5
       operation: subtract
       expand: 0.1
     - what: pcb
+      name: /ergo_cai_right.modules.(joystick|e-paper|charger)/
+      extrude: 5
+      operation: subtract
+      expand: 0.5
+    - what: pcb
       name: /ergo_cai_right.modules.e-paper/
-      shift: [0, 15, 0]
+      shift: [0, 26, 0]
       extrude: 5
       operation: subtract
     - what: outline
@@ -432,18 +458,18 @@ cases:
   gap: 
     - what: outline
       name: expand
-      extrude: 3
+      extrude: 5
     - what: outline
       name: board
-      extrude: 3
+      extrude: 5
       operation: subtract
     - what: outline
       name: usb_and_swith
-      extrude: 3
+      extrude: 5
       operation: subtract
     - what: outline
       name: stud_mounting
-      extrude: 3
+      extrude: 5
       operation: subtract
 
   buttom:
@@ -456,6 +482,10 @@ cases:
       operation: subtract
     - what: outline
       name: usb_and_swith
+      extrude: 3
+      operation: subtract
+    - what: outline
+      name: reset_hole
       extrude: 3
       operation: subtract
 `
