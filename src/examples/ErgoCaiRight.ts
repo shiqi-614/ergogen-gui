@@ -175,6 +175,78 @@ outlines:
         - ref: matrix_col6_row1
           shift: [0.8kx , -4.7ky]
       fillet: 0.9
+
+  pcb_mounting_positions:
+    pcb_pos1: 
+      what: circle
+      where: &pcb_pos1
+        ref: [matrix_col0_row1]
+        shift: [-1.55kx, 1ky]
+    pcb_pos2: 
+      what: circle
+      where: &pcb_pos2
+        ref: [matrix_col6_row1]
+        shift: [0.65kx, 1ky]
+    pcb_pos3: 
+      what: circle
+      where: &pcb_pos3
+        ref: [matrix_col6_row5]
+        shift: [0.9kx, -0.55ky]
+    pcb_pos4: 
+      what: circle
+      where: &pcb_pos4
+        ref: [matrix_col6_row5]
+        shift: [-2.7kx, -0.55ky]
+    pcb_pos5: 
+      what: circle
+      where: &pcb_pos5
+        ref: [thumbs_left_row2]
+        shift: [0.65kx, 0.75ky]
+
+  pcb_stud_mounting: 
+    - what: circle
+      where:
+        <<: *pcb_pos1
+      radius: studSize
+    - what: circle
+      where:
+        <<: *pcb_pos2
+      radius: studSize
+    - what: circle
+      where:
+        <<: *pcb_pos3
+      radius: studSize
+    - what: circle
+      where:
+        <<: *pcb_pos4
+      radius: studSize
+    - what: circle
+      where:
+        <<: *pcb_pos5
+      radius: studSize
+
+  pcb_screw_mounting: 
+    - what: circle
+      where:
+        <<: *pcb_pos1
+      radius: screwSize
+    - what: circle
+      where:
+        <<: *pcb_pos2
+      radius: screwSize
+    - what: circle
+      where:
+        <<: *pcb_pos3
+      radius: screwSize
+    - what: circle
+      where:
+        <<: *pcb_pos4
+      radius: screwSize
+    - what: circle
+      where:
+        <<: *pcb_pos5
+      radius: screwSize
+
   
   shell_mounting_positions: 
     matrix_top_right: &shell_pos1
@@ -243,14 +315,14 @@ outlines:
     - name: expand
     - operation: subtract
       name: stud_mounting
+    
 
   reset_hole:
     - what: circle
-      radius: 1.5
+      radius: 1.5 
       where:
         ref: [matrix_col0_row1]
         shift: [-21, -75]
-
   
 pcbs:
   ergo_cai_right: 
@@ -292,6 +364,41 @@ pcbs:
             repo: "shiqi-614/ErgoCaiLib"
             file: "footprints/ErgoCai.pretty/STAB_MX_2u.kicad_mod"
         where: [thumbs_right_row1, thumbs_right_row2]
+      mount_hole1:
+        what: 
+          github:
+            repo: "shiqi-614/ErgoCaiLib"
+            file: "footprints/ErgoCai.pretty/MountingHole_2.2mm_M2_DIN965.kicad_mod"
+        where: 
+          <<: *pcb_pos1
+      mount_hole2:
+        what: 
+          github:
+            repo: "shiqi-614/ErgoCaiLib"
+            file: "footprints/ErgoCai.pretty/MountingHole_2.2mm_M2_DIN965.kicad_mod"
+        where: 
+          <<: *pcb_pos2
+      mount_hole3:
+        what: 
+          github:
+            repo: "shiqi-614/ErgoCaiLib"
+            file: "footprints/ErgoCai.pretty/MountingHole_2.2mm_M2_DIN965.kicad_mod"
+        where: 
+          <<: *pcb_pos3
+      mount_hole4:
+        what: 
+          github:
+            repo: "shiqi-614/ErgoCaiLib"
+            file: "footprints/ErgoCai.pretty/MountingHole_2.2mm_M2_DIN965.kicad_mod"
+        where: 
+          <<: *pcb_pos4
+      mount_hole5:
+        what: 
+          github:
+            repo: "shiqi-614/ErgoCaiLib"
+            file: "footprints/ErgoCai.pretty/MountingHole_2.2mm_M2_DIN965.kicad_mod"
+        where: 
+          <<: *pcb_pos5
     modules:
       charger:
         what:
@@ -343,7 +450,7 @@ pcbs:
             file: "mcu/nRF52840_holyiot_18010/nRF52840_holyiot_18010.kicad_pcb"
         where:
           ref: matrix_col0_row1
-          shift: [-23, -35]
+          shift: [-23, -38]
           rotate: 90 
       reset:
         what: 
@@ -383,6 +490,10 @@ cases:
       extrude: 5
       operation: subtract
       layers: [Dwgs.User]
+    - what: outline
+      name: pcb_screw_mounting
+      extrude: 3
+      operation: subtract
   middle:
     - what: outline
       name: combo
@@ -413,6 +524,11 @@ cases:
       name: usb_and_swith
       extrude: 5
       operation: subtract
+    - what: outline
+      name: pcb_stud_mounting
+      extrude: 5
+      operation: subtract
+
   switchplate:
     - what: outline
       name: combo
@@ -448,6 +564,10 @@ cases:
       operation: subtract
     - what: outline
       name: usb_and_swith
+      extrude: 5
+      operation: subtract
+    - what: outline
+      name: pcb_stud_mounting
       extrude: 5
       operation: subtract
     - what: outline
