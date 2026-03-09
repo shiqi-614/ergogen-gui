@@ -151,7 +151,11 @@ const ConfigContextProvider = ({initialInput, children}: Props) => {
             if (results?.cases) {
                 for (const [name, caseObj] of Object.entries(results.cases as Record<string, Record<string, any>>)) {
                     if ('jscad' in caseObj) {
-                        caseObj.stl = await exportSTL(caseObj.jscad);
+                        try {
+                            caseObj.stl = await exportSTL(caseObj.jscad);
+                        } catch (e: unknown) {
+                            setError("cases:" + name + " cannot export to stl");
+                        }
                     }
                 }
             }
