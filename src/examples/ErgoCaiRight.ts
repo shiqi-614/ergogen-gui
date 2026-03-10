@@ -29,7 +29,7 @@ points:
         col1:
           key:
             stagger: 0
-          rows.row4.skip: true
+          rows.row4.skip: true 
         col2:
           key:
             stagger: 2.5
@@ -63,22 +63,27 @@ points:
         ref: matrix_col1_row4
         shift: [-2.37kx, -2.2kx]
         rotate: 25
-      columns:
+      columns: 
         col0: 
+          key.column_net: col5
           rows: 
             row5:  
-              shift: [0kx, 1kx]  
+              shift: [0kx, 1kx] 
         col1:
+          key.column_net: col6
           rows: 
-            row5:  
+            row5:   
               shift: [-1kx, -0kx]  
+ 
         col2:
+          key.column_net: col4
           rows: 
             row5:  
               width: 2kx
               rotate: 90
               shift: [-1kx, 0.5kx]   
         col3:
+          key.column_net: col3
           rows:  
             row5:  
               width: 2kx 
