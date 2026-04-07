@@ -175,9 +175,9 @@ outlines:
         - ref: matrix_col1_row0
           shift: [-0.85kx, 1ky + 3]
         - ref: matrix_col1_row0
-          shift: [-2.7kx, 1ky + 3]
+          shift: [-2.75kx, 1ky + 3]
         - ref: matrix_col1_row0
-          shift: [-2.7kx, -4.53ky]
+          shift: [-2.75kx, -4.53ky]
         - ref: thumbs_col0_row5
           shift: [-0.65kx, 0.65ky]
         - ref: thumbs_col1_row5
@@ -419,17 +419,26 @@ pcbs:
             file: "battery/TP4056_charger/TP4056_charger.kicad_pcb"
         where:
           ref: [matrix_col0_row0]
-          shift: [-20, 0]
-          rotate: 180
+          shift: [-10, 15]
+          rotate: -90
+      battery:
+        what:
+          github:
+            repo: "shiqi-614/ErgoCai.modules"
+            file: "battery/18650_Nickel/18650_Nickel.kicad_pcb"
+        where:
+          ref: [matrix_col0_row0]
+          shift: [-24, -31.5]
+          rotate: 0
       e-paper:
         what: 
           github:
             repo: "shiqi-614/ErgoCai.modules"
-            file: "e-paper/1.02inch-e-Paper-socket/1.02inch-e-Paper-socket.kicad_pcb"
+            file: "e-paper/1.02inch-e-paper-socket-right/1.02inch-e-paper-socket-right.kicad_pcb"
         where:
           ref: [matrix_col0_row0]
-          shift: [-21, -71.5]
-          rotate: 90
+          shift: [-24, -31.5]
+          rotate: -90
       power_switch:
         what:
           github:
@@ -462,7 +471,7 @@ pcbs:
             file: "mcu/nRF52840_holyiot_18010/nRF52840_holyiot_18010.kicad_pcb"
         where:
           ref: matrix_col0_row0
-          shift: [-23, -38]
+          shift: [-24, -25.5]
           rotate: 90 
       reset:
         what: 
@@ -492,20 +501,21 @@ cases:
       expand: 0.5
       layers: [Dwgs.User]
     - what: pcb
-      name: /ergo_cai_right.modules.(joystick|e-paper)/
-      extrude: 5
+      name: /ergo_cai_right.modules.(joystick|battery)/
+      extrude: 3
       operation: subtract
-      expand: 0.6
+      expand: 0.5
     - what: pcb
       name: /ergo_cai_right.footprints.stab/
       expand: 0.5
-      extrude: 5
+      extrude: 3
       operation: subtract
       layers: [Dwgs.User]
     - what: outline
       name: pcb_screw_mounting
       extrude: 3
       operation: subtract
+
   middle:
     - what: outline
       name: combo
@@ -523,15 +533,10 @@ cases:
       operation: subtract
       layers: [Dwgs.User]
     - what: pcb
-      name: /ergo_cai_right.modules.(joystick|e-paper|charger)/
+      name: /ergo_cai_right.modules.(joystick|charger|battery)/
       extrude: 5
       operation: subtract
-      expand: 0.6
-    - what: pcb
-      name: /ergo_cai_right.modules.e-paper/
-      shift: [0, 26, 0]
-      extrude: 5
-      operation: subtract
+      expand: 0.5
     - what: outline
       name: usb_and_swith
       extrude: 5
@@ -565,15 +570,10 @@ cases:
       operation: subtract
       expand: 0.1
     - what: pcb
-      name: /ergo_cai_right.modules.(joystick|e-paper|charger)/
+      name: /ergo_cai_right.modules.(joystick|charger|battery)/
       extrude: 5
       operation: subtract
       expand: 0.5
-    - what: pcb
-      name: /ergo_cai_right.modules.e-paper/
-      shift: [0, 26, 0]
-      extrude: 5
-      operation: subtract
     - what: outline
       name: usb_and_swith
       extrude: 5
@@ -598,7 +598,7 @@ cases:
     - what: outline
       name: usb_and_swith
       extrude: 5
-      operation: subtract
+      operation: subtract 
     - what: outline
       name: stud_mounting
       extrude: 5
@@ -620,6 +620,7 @@ cases:
       name: reset_hole
       extrude: 3
       operation: subtract
+
 `
 };
 
