@@ -216,23 +216,23 @@ outlines:
         shift: [0.65kx, 0.75ky]
 
   pcb_stud_mounting: 
-    - what: circle
+    - what: hexagon
       where:
         <<: *pcb_pos1
       radius: studSize
-    - what: circle
+    - what: hexagon
       where:
         <<: *pcb_pos2
       radius: studSize
-    - what: circle
+    - what: hexagon
       where:
         <<: *pcb_pos3
       radius: studSize
-    - what: circle
+    - what: hexagon
       where:
         <<: *pcb_pos4
       radius: studSize
-    - what: circle
+    - what: hexagon
       where:
         <<: *pcb_pos5
       radius: studSize
@@ -261,62 +261,86 @@ outlines:
 
   
   shell_mounting_positions: 
-    matrix_top_right: &shell_pos1
-      what: circle
-      where:
+    matrix_top_right: 
+      what: hexagon
+      where: &shell_pos1
         ref: [matrix_col6_row0]
         shift: [0.95kx, 1.25ky]
-    matrix_top_left: &shell_pos2
-      what: circle
-      where: 
+    matrix_top_left: 
+      what: hexagon
+      where: &shell_pos2
         ref: [matrix_col0_row0]
         shift: [-1.85kx, 1.25ky]
-    matrix_bottom_right: &shell_pos3 
-      what: circle
-      where:
+    matrix_bottom_right: 
+      what: hexagon
+      where: &shell_pos3 
         ref: [matrix_col6_row4]
         shift: [1.2kx, -0.84ky]
-    matrix_bottom_left: &shell_pos4
-      what: circle
-      where:
+    matrix_bottom_left:
+      what: hexagon
+      where: &shell_pos4
         ref: [matrix_col6_row4]
         shift: [-2.48kx, -0.9ky]
-    thumb_upper: &shell_pos5
-      what: circle
-      where:
+    thumb_upper: 
+      what: hexagon
+      where: &shell_pos5
         ref: [thumbs_col0_row5]
         shift: [-0.8kx, 0.75ky]
-    thumb_lower: &shell_pos6
-      what: circle
-      where:
+    thumb_lower: 
+      what: hexagon
+      where: &shell_pos6
         ref: [thumbs_col1_row5]
         shift: [-0.75kx, -0.77ky]
 
   stud_mounting:
-    - <<: *shell_pos1
+    - what: hexagon
+      where:
+        <<: *shell_pos1
       radius: studSize
-    - <<: *shell_pos2
+    - what: hexagon
+      where: 
+        <<: *shell_pos2
       radius: studSize
-    - <<: *shell_pos3
+    - what: hexagon
+      where:
+        <<: *shell_pos3
       radius: studSize
-    - <<: *shell_pos4
+    - what: hexagon
+      where:
+        <<: *shell_pos4
       radius: studSize
-    - <<: *shell_pos5
+    - what: hexagon
+      where:
+        <<: *shell_pos5
       radius: studSize
-    - <<: *shell_pos6
+    - what: hexagon
+      where:
+        <<: *shell_pos6
       radius: studSize
   screw_mounting:
-    - <<: *shell_pos1
+    - what: circle
+      where:
+        <<: *shell_pos1
       radius: screwSize
-    - <<: *shell_pos2
+    - what: circle
+      where:
+        <<: *shell_pos2
       radius: screwSize
-    - <<: *shell_pos3
+    - what: circle
+      where:
+        <<: *shell_pos3
       radius: screwSize
-    - <<: *shell_pos4
+    - what: circle
+      where:
+        <<: *shell_pos4
       radius: screwSize
-    - <<: *shell_pos5
+    - what: circle
+      where:
+        <<: *shell_pos5
       radius: screwSize
-    - <<: *shell_pos6
+    - what: circle
+      where:
+        <<: *shell_pos6
       radius: screwSize 
 
   expand:
@@ -327,7 +351,6 @@ outlines:
     - name: expand
     - operation: subtract
       name: stud_mounting
-    
 
   reset_hole:
     - what: circle
@@ -434,7 +457,7 @@ pcbs:
         what: 
           github:
             repo: "shiqi-614/ErgoCai.modules"
-            file: "e-paper/1.02inch-e-paper-socket-right/1.02inch-e-paper-socket-right.kicad_pcb"
+            file: "e-paper/1.02inch-socket-right/1.02inch-socket-right.kicad_pcb"
         where:
           ref: [matrix_col0_row0]
           shift: [-24, -31.5]
@@ -481,6 +504,7 @@ pcbs:
         where: 
           ref: [matrix_col0_row0]
           shift: [-21, -75]
+          rotate: 180
 cases:  
   top:
     - what: outline
@@ -511,10 +535,11 @@ cases:
       extrude: 3
       operation: subtract
       layers: [Dwgs.User]
-    - what: outline
-      name: pcb_screw_mounting
+    - what: pcb
+      name: /ergo_cai_right.modules.e-paper.EPM_H/
       extrude: 3
       operation: subtract
+      layers: ["*.Cu"]
 
   middle:
     - what: outline
@@ -545,6 +570,11 @@ cases:
       name: pcb_stud_mounting
       extrude: 5
       operation: subtract
+    - what: pcb
+      name: /ergo_cai_right.modules.e-paper.EPM_H/
+      extrude: 5
+      operation: subtract
+      layers: ["*.Cu"]
 
   switchplate:
     - what: outline
@@ -579,13 +609,18 @@ cases:
       extrude: 5
       operation: subtract
     - what: outline
-      name: pcb_stud_mounting
+      name: pcb_screw_mounting
       extrude: 5
       operation: subtract
     - what: outline
       name: usb_and_swith_hole
       extrude: 5
       operation: subtract
+    - what: pcb
+      name: /ergo_cai_right.modules.e-paper.EPM_H/
+      extrude: 5
+      operation: subtract
+      layers: ["*.Cu"]
 
   gap: 
     - what: outline
@@ -603,6 +638,11 @@ cases:
       name: stud_mounting
       extrude: 5
       operation: subtract
+    - what: pcb
+      name: /ergo_cai_right.modules.e-paper.EPM_H/
+      extrude: 5
+      operation: subtract
+      layers: ["*.Cu"]
 
   buttom:
     - what: outline
@@ -620,6 +660,11 @@ cases:
       name: reset_hole
       extrude: 3
       operation: subtract
+    - what: pcb
+      name: /ergo_cai_right.modules.e-paper.EPM_H/
+      extrude: 5
+      operation: subtract
+      layers: ["*.Cu"]
 
 `
 };
