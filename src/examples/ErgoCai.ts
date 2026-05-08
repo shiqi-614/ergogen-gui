@@ -5,191 +5,679 @@ const ErgoCai : ConfigExample = {
     author: "jinsongc",
     value: `
 units:
-  kx: cx
-  ky: cy
-  px: kx + 3
-  py: ky + 3
-
+  kx: u
+  ky: u
+  screwSize: 1.05
+  studSize: 1.75
 points:
   zones:
     matrix:
-      columns:
-        outer:
+      columns: 
+        col0: 
           key:
+            stagger: -2.5
+          rows.row4.skip: true
+          rows.row2.skip: true
+          rows.row1:
             width: 1.5kx
-            shift: [-0.02kx, 0]
-          rows:
-            mod:
-              width: 1kx
-              shift: [0.24kx, 0]
-        pinky:
+            rotate: 90
+            shift: [0, -0.255kx]
+          rows.row3:
+            width: 1.5kx
+            rotate: 90
+            shift: [0, 0.24kx]
+        col1:
           key:
-            spread: 1.3kx 
-        ring:
-          key:
-            stagger: 5
-        middle:
+            stagger: 0
+          rows.row4.skip: true 
+        col2:
           key:
             stagger: 2.5
-        index:
+          rows.row4.asym: clone 
+        col3:
+          key:
+            stagger: 2.5
+          rows.row4.asym: clone 
+        col4:
+          key:  
+            stagger: -2.5
+        col5:
           key:
             stagger: -2.5
-        inner:
+        col6:
           key:
-            stagger: -2.5
-          rows.mod.skip: true
+            width: 1.5kx
+            shift: [0.255kx, 0]
+          rows:
+            row4:
+              width: 1kx
+              shift: [0, 0]
       rows:
-        mod:
-        bottom:
-        home:
-        top:
-        num:
+        row4:
+        row3:
+        row2:
+        row1:
+        row0:
     thumbs:
       anchor:
-        ref: matrix_inner_mod
-        shift: [1.37kx, -1.70kx]
-        rotate: -25
-      columns:
-        left:
-          rows:
-            up.skip: true
-            middle: 
+        ref: matrix_col1_row4
+        shift: [-2.37kx, -2.2kx]
+        rotate: 25
+      columns: 
+        col0: 
+          key.column_net: col5
+          rows: 
+            row5:  
+              shift: [0kx, 1kx] 
+        col1:
+          key.column_net: col6
+          rows: 
+            row5:   
+              shift: [-1kx, -0kx]  
+ 
+        col2:
+          key.column_net: col4
+          rows: 
+            row5:  
               width: 2kx
-              rotate: -90
-              shift: [-0kx, -0.54kx]
-            down:
-              width: 2kx
-              rotate: -90
-              shift: [-1.05kx, 0.52kx]
-            up: 
-        right:
-          rows:
-            up:
-            middle:
-            down:
+              rotate: 90
+              shift: [-1kx, 0.5kx]   
+        col3:
+          key.column_net: col3
+          rows:  
+            row5:  
+              width: 2kx 
+              rotate: 90 
+              shift: [-0.9kx, 0.5kx] 
       rows:
-        down:
-        middle:
-        up:        
+        row5:
+
+  mirror: &mirror
+    ref: thumbs_col0_row5
+    distance: -2kx
 
 outlines:
-  raw:
-    - what: rectangle
-      where: true
-      size: [kx, ky]
-  keys:
-    - what: rectangle
-      where: true
-      size: [kx-0.5,ky-0.5]
+  usb_and_swith:
+    - what: polygon
+      operation: stack
+      points:
+        - ref: matrix_col1_row0
+          shift: [-9.5 + 25, 1ky + 14]
+        - ref: matrix_col1_row0
+          shift: [-9.5 + 5, 1ky + 7]
+        - ref: matrix_col1_row0
+          shift: [-9.5 - 5, 1ky + 7]
+        - ref: matrix_col1_row0
+          shift: [-9.5 - 25, 1ky + 14]
+    - what: polygon
+      operation: stack
+      points:
+        - ref: matrix_col3_row0
+          shift: [0 + 25, 1ky + 12]
+        - ref: matrix_col3_row0
+          shift: [0 + 5, 1ky + 2]
+        - ref: matrix_col3_row0
+          shift: [0 - 5, 1ky + 2]
+        - ref: matrix_col3_row0
+          shift: [0 - 25, 1ky + 12.01]
+  usb_and_swith_hole:
+    - what: polygon
+      operation: stack
+      points:
+        - ref: matrix_col1_row0
+          shift: [-9.5 + 5.45, 1ky + 10]
+        - ref: matrix_col1_row0
+          shift: [-9.5 + 5.45, 1ky + 4]
+        - ref: matrix_col1_row0
+          shift: [-9.5 - 5.45, 1ky + 4]
+        - ref: matrix_col1_row0
+          shift: [-9.5 - 5.45, 1ky + 10]
+    - what: polygon
+      operation: stack
+      points:
+        - ref: matrix_col3_row0
+          shift: [0 + 5.6, 1ky - 1]
+        - ref: matrix_col3_row0
+          shift: [0 + 5.6, 1ky + 3]
+        - ref: matrix_col3_row0
+          shift: [0 - 5.6, 1ky + 3]
+        - ref: matrix_col3_row0
+          shift: [0 - 5.6, 1ky - 1]
+  cut: 
+    - what: polygon
+      operation: stack
+      points:
+        - ref: matrix_col6_row0
+          shift: [0.8kx, 1ky + 11]
+        - ref: matrix_col1_row0
+          shift: [-2.7kx, 1ky + 11]
+        - ref: matrix_col1_row0
+          shift: [-2.7kx, 1ky + 15]
+        - ref: matrix_col6_row0
+          shift: [0.8kx, 1ky + 15]
+
   board:
     - what: polygon
       operation: stack
       points:
-        - ref: matrix_outer_num
-          shift: [-0.8px,1py + 2.5]
-        - ref: matrix_middle_num
-          shift: [-0.3px, 1py - 5]
-        - ref: matrix_middle_num
-          shift: [-0.3px, 0.9 py]
-        - ref: matrix_middle_num
-          shift: [0.3px, 0.9py]
-        - ref: matrix_middle_num
-          shift: [0.3px, 1py - 5]
-        - ref: matrix_inner_num
-          shift: [0.7px, 1py ]
-        - ref: matrix_inner_num
-          shift: [0.7px, 1py + 3 ]
-        - ref: matrix_inner_num
-          shift: [1.26px, 1py + 3 ]
-        - ref: matrix_inner_num
-          shift: [1.26px, 1py ]
-        - ref: matrix_inner_num
-          shift: [1.55px, 1py]
-        - ref: matrix_inner_bottom
-          shift: [1.55px,0.2py]
-        - ref: thumbs_right_up
-          shift: [0.6px,0.6py + 1]
-        - ref: thumbs_right_down
-          shift: [0.6px,-0.6py]
-        - ref: matrix_middle_mod
-          shift: [4,-0.7py - 7.5]
-        - ref: matrix_pinky_mod
-          shift: [0.5px,-0.7py]
-        - ref: matrix_outer_mod
-          shift: [-0.8px - 0.25kx,-0.7py]
-      fillet: 3
-  combo:
-    - name: board
-    - operation: subtract
-      name: keys
+        - ref: matrix_col6_row0
+          shift: [0.8kx, 1ky + 3]
+        - ref: matrix_col3_row0
+          shift: [0.3kx, 1ky - 2]
+        - ref: matrix_col3_row0
+          shift: [0.3kx, 1ky]
+        - ref: matrix_col3_row0
+          shift: [-0.3kx, 1ky]
+        - ref: matrix_col3_row0
+          shift: [-0.3kx, 1ky - 2]
+        - ref: matrix_col1_row0
+          shift: [-0.15kx, 1ky + 3]
+        - ref: matrix_col1_row0
+          shift: [-0.15kx, 1ky + 5]
+        - ref: matrix_col1_row0
+          shift: [-0.85kx, 1ky + 5]
+        - ref: matrix_col1_row0
+          shift: [-0.85kx, 1ky + 3]
+        - ref: matrix_col1_row0
+          shift: [-2.75kx, 1ky + 3]
+        - ref: matrix_col1_row0
+          shift: [-2.75kx, -4.53ky]
+        - ref: thumbs_col0_row5
+          shift: [-0.65kx, 0.65ky]
+        - ref: thumbs_col1_row5
+          shift: [-0.65kx, -0.65ky]
+        - ref: matrix_col6_row0
+          shift: [-2.8kx, -4.7ky]
+        - ref: matrix_col6_row0
+          shift: [0.8kx , -4.7ky]
+      fillet: 0.9
 
+  pcb_mounting_positions:
+    pcb_pos1: 
+      what: circle
+      where: &pcb_pos1
+        ref: [matrix_col0_row0]
+        shift: [-1.55kx, 1ky]
+    pcb_pos2: 
+      what: circle
+      where: &pcb_pos2
+        ref: [matrix_col6_row0]
+        shift: [0.65kx, 1ky]
+    pcb_pos3: 
+      what: circle
+      where: &pcb_pos3
+        ref: [matrix_col6_row4]
+        shift: [0.9kx, -0.55ky]
+    pcb_pos4: 
+      what: circle
+      where: &pcb_pos4
+        ref: [matrix_col6_row4]
+        shift: [-2.7kx, -0.55ky]
+    pcb_pos5: 
+      what: circle
+      where: &pcb_pos5
+        ref: [thumbs_col0_row5]
+        shift: [0.65kx, 0.75ky]
+
+  pcb_stud_mounting: 
+    - what: hexagon
+      where:
+        <<: *pcb_pos1
+      radius: studSize
+    - what: hexagon
+      where:
+        <<: *pcb_pos2
+      radius: studSize
+    - what: hexagon
+      where:
+        <<: *pcb_pos3
+      radius: studSize
+    - what: hexagon
+      where:
+        <<: *pcb_pos4
+      radius: studSize
+    - what: hexagon
+      where:
+        <<: *pcb_pos5
+      radius: studSize
+
+  pcb_screw_mounting: 
+    - what: circle
+      where:
+        <<: *pcb_pos1
+      radius: screwSize
+    - what: circle
+      where:
+        <<: *pcb_pos2
+      radius: screwSize
+    - what: circle
+      where:
+        <<: *pcb_pos3
+      radius: screwSize
+    - what: circle
+      where:
+        <<: *pcb_pos4
+      radius: screwSize
+    - what: circle
+      where:
+        <<: *pcb_pos5
+      radius: screwSize
+
+  
+  shell_mounting_positions: 
+    matrix_top_right: 
+      what: hexagon
+      where: &shell_pos1
+        ref: [matrix_col6_row0]
+        shift: [0.95kx, 1.25ky]
+    matrix_top_left: 
+      what: hexagon
+      where: &shell_pos2
+        ref: [matrix_col0_row0]
+        shift: [-1.85kx, 1.25ky]
+    matrix_bottom_right: 
+      what: hexagon
+      where: &shell_pos3 
+        ref: [matrix_col6_row4]
+        shift: [1.2kx, -0.84ky]
+    matrix_bottom_left:
+      what: hexagon
+      where: &shell_pos4
+        ref: [matrix_col6_row4]
+        shift: [-2.48kx, -0.9ky]
+    thumb_upper: 
+      what: hexagon
+      where: &shell_pos5
+        ref: [thumbs_col0_row5]
+        shift: [-0.8kx, 0.75ky]
+    thumb_lower: 
+      what: hexagon
+      where: &shell_pos6
+        ref: [thumbs_col1_row5]
+        shift: [-0.75kx, -0.77ky]
+
+  stud_mounting:
+    - what: hexagon
+      where:
+        <<: *shell_pos1
+      radius: studSize
+    - what: hexagon
+      where: 
+        <<: *shell_pos2
+      radius: studSize
+    - what: hexagon
+      where:
+        <<: *shell_pos3
+      radius: studSize
+    - what: hexagon
+      where:
+        <<: *shell_pos4
+      radius: studSize
+    - what: hexagon
+      where:
+        <<: *shell_pos5
+      radius: studSize
+    - what: hexagon
+      where:
+        <<: *shell_pos6
+      radius: studSize
+  screw_mounting:
+    - what: circle
+      where:
+        <<: *shell_pos1
+      radius: screwSize
+    - what: circle
+      where:
+        <<: *shell_pos2
+      radius: screwSize
+    - what: circle
+      where:
+        <<: *shell_pos3
+      radius: screwSize
+    - what: circle
+      where:
+        <<: *shell_pos4
+      radius: screwSize
+    - what: circle
+      where:
+        <<: *shell_pos5
+      radius: screwSize
+    - what: circle
+      where:
+        <<: *shell_pos6
+      radius: screwSize 
+
+  expand:
+    - name: board
+      expand: 8
+
+  combo:
+    - name: expand
+    - operation: subtract
+      name: stud_mounting
+
+  reset_hole:
+    - what: circle
+      radius: 1.5 
+      where:
+        ref: [matrix_col0_row0]
+        shift: [-21, -75]
+  
+  
 pcbs:
-  ergo_cai: 
+  ergo_cai_right: 
     outlines:
       main:
         outline: board
     footprints:
-      SWA:
+      keys1:
         what: 
           github:
-            repo: "shiqi-614/ErgoCai.pretty"
-            file: "SW_Hotswap_Kailh_MX_1.00u.kicad_mod"
+            repo: "shiqi-614/ErgoCaiLib"
+            file: "footprints/ErgoCai.pretty/SW_MX_HS_CPG151101S11_1u.kicad_mod"
         where: true
-        meta:
-          type: "key"
-      SWB:
-        what: "SW_Hotswap_Kailh_MX_1.50u.kicad_mod"
-        where: [matrix_outer_num, matrix_outer_top, matrix_outer_home, matrix_outer_bottom]
-        meta:
-          type: "key"
-      SWC:
-        what: "SW_Hotswap_Kailh_MX_2.00u.kicad_mod"
-        where: [thumbs_left_middle, thumbs_left_down]
-        meta:
-          type: "key"
+      keys2:
+        what: 
+          github:
+            repo: "shiqi-614/ErgoCaiLib"
+            file: "footprints/ErgoCai.pretty/SW_MX_HS_CPG151101S11_1.5u.kicad_mod"
+        where: [matrix_col0_row1, matrix_col0_row3, matrix_col6_row0, matrix_col6_row1, matrix_col6_row2, matrix_col6_row3]
+      keys3:
+        what: 
+          github:
+            repo: "shiqi-614/ErgoCaiLib"
+            file: "footprints/ErgoCai.pretty/SW_MX_HS_CPG151101S11_2u.kicad_mod"
+        where: [thumbs_col2_row5, thumbs_col3_row5]
       diodes:
-        what: "Diode-Dual.kicad_mod"
+        what: 
+          github:
+            repo: "shiqi-614/ErgoCaiLib"
+            file: "footprints/ErgoCai.pretty/Diode-Dual.kicad_mod"
         where: true
         adjust:
           shift: [0, -8.4]
           rotate: 180
         side: back
-        meta:
-          type: "diode"
+      stab: 
+        what: 
+          github:
+            repo: "shiqi-614/ErgoCaiLib"
+            file: "footprints/ErgoCai.pretty/STAB_MX_2u.kicad_mod"
+        where: [thumbs_col2_row5, thumbs_col3_row5]
+      mount_hole1:
+        what: 
+          github:
+            repo: "shiqi-614/ErgoCaiLib"
+            file: "footprints/ErgoCai.pretty/MountingHole_2.2mm_M2_DIN965.kicad_mod"
+        where: 
+          <<: *pcb_pos1
+      mount_hole2:
+        what: 
+          github:
+            repo: "shiqi-614/ErgoCaiLib"
+            file: "footprints/ErgoCai.pretty/MountingHole_2.2mm_M2_DIN965.kicad_mod"
+        where: 
+          <<: *pcb_pos2
+      mount_hole3:
+        what: 
+          github:
+            repo: "shiqi-614/ErgoCaiLib"
+            file: "footprints/ErgoCai.pretty/MountingHole_2.2mm_M2_DIN965.kicad_mod"
+        where: 
+          <<: *pcb_pos3
+      mount_hole4:
+        what: 
+          github:
+            repo: "shiqi-614/ErgoCaiLib"
+            file: "footprints/ErgoCai.pretty/MountingHole_2.2mm_M2_DIN965.kicad_mod"
+        where: 
+          <<: *pcb_pos4
+      mount_hole5:
+        what: 
+          github:
+            repo: "shiqi-614/ErgoCaiLib"
+            file: "footprints/ErgoCai.pretty/MountingHole_2.2mm_M2_DIN965.kicad_mod"
+        where: 
+          <<: *pcb_pos5
     modules:
+      charger:
+        what:
+          github:
+            repo: "shiqi-614/ErgoCai.modules"
+            file: "battery/TP4056_charger/TP4056_charger.kicad_pcb"
+        where:
+          ref: [matrix_col0_row0]
+          shift: [-10, 15]
+          rotate: -90
       battery:
         what:
           github:
             repo: "shiqi-614/ErgoCai.modules"
-            file: "battery/default_battery/default_battery.kicad_pcb"
+            file: "battery/18650_Nickel/18650_Nickel.kicad_pcb"
         where:
-          ref: [matrix_inner_home]
-          shift: [20.5, 5]
-        footprints:
-          BAT_SW1:
-            where:
-              ref: [matrix_middle_num]
-              shift: [0, 16]
+          ref: [matrix_col0_row0]
+          shift: [-24, -31.5]
+          rotate: 0
+      e-paper:
+        what: 
+          github:
+            repo: "shiqi-614/ErgoCai.modules"
+            file: "e-paper/1.02inch-socket-right/1.02inch-socket-right.kicad_pcb"
+        where:
+          ref: [matrix_col0_row0]
+          shift: [-24, -31.5]
+          rotate: -90
+      power_switch:
+        what:
+          github:
+            repo: "shiqi-614/ErgoCai.modules"
+            file: "battery/power_switch_right/power_switch_right.kicad_pcb"
+        where:
+          ref: [matrix_col3_row0]
+          shift: [-0, 16.3]
+      joystick: 
+        what: 
+          github:
+            repo: "shiqi-614/ErgoCai.modules"
+            file: "joystick/JoystickMount/JoystickMount.kicad_pcb"
+        where: 
+          ref: [thumbs_col3_row5]
+          shift: [-7, -30]
+          rotate: -90
+        asym: source
       usb:
         what: 
           github:
             repo: "shiqi-614/ErgoCai.modules"
             file: "usb/default_usb/default_usb.kicad_pcb"
         where:
-          ref: matrix_inner_num
-          shift: [20.5, 20]
+          ref: matrix_col1_row0
+          shift: [-9.5, 21.5]
       mcu:
         what: 
-          github:
+          github: 
             repo: "shiqi-614/ErgoCai.modules"
             file: "mcu/nRF52840_holyiot_18010/nRF52840_holyiot_18010.kicad_pcb"
         where:
-          ref: matrix_inner_home
-          shift: [24,12]
-          rotate: -90
-        side: back  
-    
-    `
+          ref: matrix_col0_row0
+          shift: [-24, -25.5]
+          rotate: 90 
+      reset:
+        what: 
+          github: 
+            repo: "shiqi-614/ErgoCai.modules"
+            file: "reset/reset/reset.kicad_pcb"
+        where: 
+          ref: [matrix_col0_row0]
+          shift: [-21, -75]
+          rotate: 180
+
+  ergo_cai_left:
+    mirror:
+      from: ergo_cai_right
+
+cases:  
+  top:
+    - what: outline
+      name: expand
+      extrude: 3
+    - what: outline
+      name: screw_mounting
+      extrude: 3
+      operation: subtract
+    - what: outline
+      name: cut
+      extrude: 3
+      operation: subtract
+    - what: pcb
+      name: /ergo_cai_right.footprints.keys/
+      extrude: 3
+      operation: subtract
+      expand: 0.5
+      layers: [Dwgs.User]
+    - what: pcb
+      name: /ergo_cai_right.modules.(joystick|battery)/
+      extrude: 3
+      operation: subtract
+      expand: 0.5
+    - what: pcb
+      name: /ergo_cai_right.footprints.stab/
+      expand: 0.5
+      extrude: 3
+      operation: subtract
+      layers: [Dwgs.User]
+    - what: pcb
+      name: /ergo_cai_right.modules.e-paper.EPM_H/
+      extrude: 3
+      operation: subtract
+      layers: ["*.Cu"]
+
+  middle:
+    - what: outline
+      name: combo
+      extrude: 5
+    - what: pcb
+      name: /ergo_cai_right.footprints.keys/
+      extrude: 5
+      operation: subtract
+      expand: 0.5
+      layers: [Dwgs.User]
+    - what: pcb
+      name: /ergo_cai_right.footprints.stab/
+      extrude: 5
+      expand: 0.5
+      operation: subtract
+      layers: [Dwgs.User]
+    - what: pcb
+      name: /ergo_cai_right.modules.(joystick|charger|battery)/
+      extrude: 5
+      operation: subtract
+      expand: 0.5
+    - what: outline
+      name: usb_and_swith
+      extrude: 5
+      operation: subtract
+    - what: outline
+      name: pcb_stud_mounting
+      extrude: 5
+      operation: subtract
+    - what: pcb
+      name: /ergo_cai_right.modules.e-paper.EPM_H/
+      extrude: 5
+      operation: subtract
+      layers: ["*.Cu"]
+
+  switchplate:
+    - what: outline
+      name: combo
+      extrude: 5
+    - what: pcb
+      name: /ergo_cai_right.footprints.keys[12]/
+      extrude: 5
+      operation: subtract
+    - what: pcb
+      name: /ergo_cai_right.footprints.keys3/
+      extrude: 5
+      operation: subtract
+      layers: [Dwgs.User]
+    - what: pcb
+      name: /ergo_cai_right.footprints.stab/
+      extrude: 5
+      operation: subtract
+      layers: [Dwgs.User]
+    - what: pcb
+      name: /ergo_cai_right.modules.(usb|power_switch)/
+      extrude: 5
+      operation: subtract
+      expand: 0.1
+    - what: pcb
+      name: /ergo_cai_right.modules.(joystick|charger|battery)/
+      extrude: 5
+      operation: subtract
+      expand: 0.5
+    - what: outline
+      name: usb_and_swith
+      extrude: 5
+      operation: subtract
+    - what: outline
+      name: pcb_screw_mounting
+      extrude: 5
+      operation: subtract
+    - what: outline
+      name: usb_and_swith_hole
+      extrude: 5
+      operation: subtract
+    - what: pcb
+      name: /ergo_cai_right.modules.e-paper.EPM_H/
+      extrude: 5
+      operation: subtract
+      layers: ["*.Cu"]
+
+  gap: 
+    - what: outline
+      name: expand
+      extrude: 5
+    - what: outline
+      name: board
+      extrude: 5 
+      operation: subtract
+    - what: outline
+      name: usb_and_swith
+      extrude: 5
+      operation: subtract 
+    - what: outline
+      name: stud_mounting
+      extrude: 5
+      operation: subtract
+    - what: pcb
+      name: /ergo_cai_right.modules.e-paper.EPM_H/
+      extrude: 5
+      operation: subtract
+      layers: ["*.Cu"]
+
+  buttom:
+    - what: outline
+      name: expand
+      extrude: 3
+    - what: outline
+      name: screw_mounting
+      extrude: 3
+      operation: subtract
+    - what: outline
+      name: usb_and_swith
+      extrude: 3
+      operation: subtract
+    - what: outline
+      name: reset_hole
+      extrude: 3
+      operation: subtract
+    - what: pcb
+      name: /ergo_cai_right.modules.e-paper.EPM_H/
+      extrude: 5
+      operation: subtract
+      layers: ["*.Cu"]
+
+`
 };
 
 export default ErgoCai;
