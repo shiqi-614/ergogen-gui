@@ -467,6 +467,17 @@ pcbs:
           ref: [matrix_col0_row0]
           shift: [-24, -31.5]
           rotate: -90
+        asym: source
+      e-paper-left:
+        what: 
+          github:
+            repo: "shiqi-614/ErgoCai.modules"
+            file: "e-paper/1.02inch-socket-right/1.02inch-socket-right.kicad_pcb"
+        where:
+          ref: [matrix_col0_row0]
+          shift: [-24, -31.5]
+          rotate: 90
+        asym: clone 
       power_switch:
         what:
           github:
@@ -517,7 +528,7 @@ pcbs:
       from: ergo_cai_right
 
 cases:  
-  top:
+  right_top:
     - what: outline
       name: expand
       extrude: 3
@@ -530,46 +541,47 @@ cases:
       extrude: 3
       operation: subtract
     - what: pcb
-      name: /ergo_cai_right.footprints.keys/
+      name: /footprints.keys/
       extrude: 3
       operation: subtract
       expand: 0.5
       layers: [Dwgs.User]
+      asym: source
     - what: pcb
-      name: /ergo_cai_right.modules.(joystick|battery)/
+      name: /modules.(joystick|battery)/
       extrude: 3
       operation: subtract
       expand: 0.5
     - what: pcb
-      name: /ergo_cai_right.footprints.stab/
+      name: /footprints.stab/
       expand: 0.5
       extrude: 3
       operation: subtract
       layers: [Dwgs.User]
     - what: pcb
-      name: /ergo_cai_right.modules.e-paper.EPM_H/
+      name: /modules.e-paper.EPM_H/
       extrude: 3
       operation: subtract
       layers: ["*.Cu"]
 
-  middle:
+  right_middle:
     - what: outline
       name: combo
       extrude: 5
     - what: pcb
-      name: /ergo_cai_right.footprints.keys/
+      name: /footprints.keys/
       extrude: 5
       operation: subtract
       expand: 0.5
       layers: [Dwgs.User]
     - what: pcb
-      name: /ergo_cai_right.footprints.stab/
+      name: /footprints.stab/
       extrude: 5
       expand: 0.5
       operation: subtract
       layers: [Dwgs.User]
     - what: pcb
-      name: /ergo_cai_right.modules.(joystick|charger|battery)/
+      name: /modules.(joystick|charger|battery)/
       extrude: 5
       operation: subtract
       expand: 0.5
@@ -582,36 +594,36 @@ cases:
       extrude: 5
       operation: subtract
     - what: pcb
-      name: /ergo_cai_right.modules.e-paper.EPM_H/
+      name: /modules.e-paper.EPM_H/
       extrude: 5
       operation: subtract
       layers: ["*.Cu"]
 
-  switchplate:
+  right_switchplate:
     - what: outline
       name: combo
       extrude: 5
     - what: pcb
-      name: /ergo_cai_right.footprints.keys[12]/
+      name: /footprints.keys[12]/
       extrude: 5
       operation: subtract
     - what: pcb
-      name: /ergo_cai_right.footprints.keys3/
-      extrude: 5
-      operation: subtract
-      layers: [Dwgs.User]
-    - what: pcb
-      name: /ergo_cai_right.footprints.stab/
+      name: /footprints.keys3/
       extrude: 5
       operation: subtract
       layers: [Dwgs.User]
     - what: pcb
-      name: /ergo_cai_right.modules.(usb|power_switch)/
+      name: /ootprints.stab/
+      extrude: 5
+      operation: subtract
+      layers: [Dwgs.User]
+    - what: pcb
+      name: /modules.(usb|power_switch)/
       extrude: 5
       operation: subtract
       expand: 0.1
     - what: pcb
-      name: /ergo_cai_right.modules.(joystick|charger|battery)/
+      name: /modules.(joystick|charger|battery)/
       extrude: 5
       operation: subtract
       expand: 0.5
@@ -628,12 +640,12 @@ cases:
       extrude: 5
       operation: subtract
     - what: pcb
-      name: /ergo_cai_right.modules.e-paper.EPM_H/
+      name: /modules.e-paper.EPM_H/
       extrude: 5
       operation: subtract
       layers: ["*.Cu"]
 
-  gap: 
+  right_gap: 
     - what: outline
       name: expand
       extrude: 5
@@ -650,12 +662,12 @@ cases:
       extrude: 5
       operation: subtract
     - what: pcb
-      name: /ergo_cai_right.modules.e-paper.EPM_H/
+      name: /modules.e-paper.EPM_H/
       extrude: 5
       operation: subtract
       layers: ["*.Cu"]
 
-  buttom:
+  right_buttom:
     - what: outline
       name: expand
       extrude: 3
@@ -672,10 +684,30 @@ cases:
       extrude: 3
       operation: subtract
     - what: pcb
-      name: /ergo_cai_right.modules.e-paper.EPM_H/
+      name: /modules.e-paper.EPM_H/
       extrude: 5
       operation: subtract
       layers: ["*.Cu"]
+
+  left_top:
+    mirror:
+      from: right_top
+
+  left_middle:
+    mirror:
+      from: right_middle
+
+  left_switchplate:
+    mirror:
+      from: right_switchplate
+
+  left_gap:
+    mirror:
+      from: right_gap
+
+  left_buttom:
+    mirror:
+      from: right_buttom
 
 `
 };
