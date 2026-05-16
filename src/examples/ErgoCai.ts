@@ -447,7 +447,7 @@ pcbs:
             file: "battery/TP4056_charger/TP4056_charger.kicad_pcb"
         where:
           ref: [matrix_col0_row0]
-          shift: [-10, 15]
+          shift: [-9.5, 15]
           rotate: -90
       battery:
         what:
@@ -457,6 +457,15 @@ pcbs:
         where:
           ref: [matrix_col0_row0]
           shift: [-24, -31.5]
+          rotate: 0
+      battery-backup:
+        what:
+          github:
+            repo: "shiqi-614/ErgoCai.modules"
+            file: "battery/JST_PH_P2.00mm/JST_PH_P2.00mm.kicad_pcb"
+        where:
+          ref: [matrix_col0_row0]
+          shift: [-29, 14.5]
           rotate: 0
       e-paper:
         what: 
@@ -486,6 +495,16 @@ pcbs:
         where:
           ref: [matrix_col3_row0]
           shift: [-0, 16.3]
+        asym: source
+      power_switch-left:
+        what:
+          github:
+            repo: "shiqi-614/ErgoCai.modules"
+            file: "battery/power_switch_right/power_switch_right.kicad_pcb"
+        where:
+          ref: [matrix_col3_row0]
+          shift: [-0, 16.3]
+        asym: clone
       joystick: 
         what: 
           github:
