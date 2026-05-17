@@ -40,10 +40,6 @@ const Downloads = ({setPreview, label}: Props) => {
                 fileName: rawFileName,
                 extension: 'yaml',
                 content: configInput ?? ''
-            }, {
-                fileName: 'canonical',
-                extension: 'yaml',
-                content: yaml.dump(results.points)
             },
             {
                 fileName: 'demo',
