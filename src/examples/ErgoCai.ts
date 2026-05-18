@@ -447,7 +447,7 @@ pcbs:
             file: "battery/TP4056_charger/TP4056_charger.kicad_pcb"
         where:
           ref: [matrix_col0_row0]
-          shift: [-9.5, 15]
+          shift: [-9.5, 14]
           rotate: -90
       battery:
         what:
@@ -458,7 +458,7 @@ pcbs:
           ref: [matrix_col0_row0]
           shift: [-24, -31.5]
           rotate: 0
-      battery-backup:
+      jst-ph-battery-backup:
         what:
           github:
             repo: "shiqi-614/ErgoCai.modules"
@@ -493,8 +493,8 @@ pcbs:
             repo: "shiqi-614/ErgoCai.modules"
             file: "battery/power_switch_right/power_switch_right.kicad_pcb"
         where:
-          ref: [matrix_col3_row0]
-          shift: [-0, 16.3]
+          ref: matrix_col1_row0
+          shift: [-9.5, 21.5]
         asym: source
       power_switch-left:
         what:
@@ -502,8 +502,8 @@ pcbs:
             repo: "shiqi-614/ErgoCai.modules"
             file: "battery/power_switch_right/power_switch_right.kicad_pcb"
         where:
-          ref: [matrix_col3_row0]
-          shift: [-0, 16.3]
+          ref: matrix_col1_row0
+          shift: [-9.5, 21.5]
         asym: clone
       joystick: 
         what: 
@@ -521,10 +521,10 @@ pcbs:
             repo: "shiqi-614/ErgoCai.modules"
             file: "usb/default_usb/default_usb.kicad_pcb"
         where:
-          ref: matrix_col1_row0
-          shift: [-9.5, 21.5]
+          ref: [matrix_col3_row0]
+          shift: [-0, 16.3] 
       mcu:
-        what: 
+        what:  
           github: 
             repo: "shiqi-614/ErgoCai.modules"
             file: "mcu/nRF52840_holyiot_18010/nRF52840_holyiot_18010.kicad_pcb"
@@ -541,7 +541,17 @@ pcbs:
           ref: [matrix_col0_row0]
           shift: [-21, -75]
           rotate: 180
-
+        asym: source
+      reset-left:
+        what: 
+          github: 
+            repo: "shiqi-614/ErgoCai.modules"
+            file: "reset/reset/reset.kicad_pcb"
+        where: 
+          ref: [matrix_col0_row0]
+          shift: [-21, -75]
+          rotate: 0
+        asym: clone
   ergo_cai_left:
     mirror:
       from: ergo_cai_right
@@ -578,7 +588,7 @@ cases:
       operation: subtract
       layers: [Dwgs.User]
     - what: pcb
-      name: /modules.e-paper.EPM_H/
+      name: /modules.(e-paper|e-paper-left).EPM_H/
       extrude: 3
       operation: subtract
       layers: ["*.Cu"]
@@ -613,7 +623,7 @@ cases:
       extrude: 5
       operation: subtract
     - what: pcb
-      name: /modules.e-paper.EPM_H/
+      name: /modules.(e-paper|e-paper-left).EPM_H/
       extrude: 5
       operation: subtract
       layers: ["*.Cu"]
@@ -659,7 +669,7 @@ cases:
       extrude: 5
       operation: subtract
     - what: pcb
-      name: /modules.e-paper.EPM_H/
+      name: /modules.(e-paper|e-paper-left).EPM_H/
       extrude: 5
       operation: subtract
       layers: ["*.Cu"]
@@ -681,7 +691,7 @@ cases:
       extrude: 5
       operation: subtract
     - what: pcb
-      name: /modules.e-paper.EPM_H/
+      name: /modules.(e-paper|e-paper-left).EPM_H/
       extrude: 5
       operation: subtract
       layers: ["*.Cu"]
@@ -703,7 +713,7 @@ cases:
       extrude: 3
       operation: subtract
     - what: pcb
-      name: /modules.e-paper.EPM_H/
+      name: /modules.(e-paper|e-paper-left).EPM_H/
       extrude: 5
       operation: subtract
       layers: ["*.Cu"]
