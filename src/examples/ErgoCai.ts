@@ -444,10 +444,10 @@ pcbs:
         what:
           github:
             repo: "shiqi-614/ErgoCai.modules"
-            file: "battery/TP4056_charger/TP4056_charger.kicad_pcb"
+            file: "battery/BQ24072_charger/BQ24072_charger.kicad_pcb"
         where:
           ref: [matrix_col0_row0]
-          shift: [-9.5, 14]
+          shift: [-17, 16]
           rotate: -90
       battery:
         what:
@@ -527,7 +527,7 @@ pcbs:
         what:  
           github: 
             repo: "shiqi-614/ErgoCai.modules"
-            file: "mcu/nRF52840_holyiot_18010/nRF52840_holyiot_18010.kicad_pcb"
+            file: "mcu/E73-2G4M08S1C/E73-2G4M08S1C.kicad_pcb"
         where:
           ref: matrix_col0_row0
           shift: [-24, -25.5]
@@ -737,7 +737,6 @@ cases:
   left_buttom:
     mirror:
       from: right_buttom
-
 `
 };
 
