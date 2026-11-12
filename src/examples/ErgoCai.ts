@@ -449,6 +449,7 @@ pcbs:
           ref: [matrix_col0_row0]
           shift: [-17, 16]
           rotate: -90
+        side: back
       battery:
         what:
           github:
@@ -471,21 +472,21 @@ pcbs:
         what: 
           github:
             repo: "shiqi-614/ErgoCai.modules"
-            file: "e-paper/1.02inch-socket-right/1.02inch-socket-right.kicad_pcb"
+            file: "e-paper/2.13inch-socket/2.13inch-socket.kicad_pcb"
         where:
           ref: [matrix_col0_row0]
           shift: [-24, -31.5]
-          rotate: -90
+          rotate: -0
         asym: source
       e-paper-left:
         what: 
           github:
             repo: "shiqi-614/ErgoCai.modules"
-            file: "e-paper/1.02inch-socket-right/1.02inch-socket-right.kicad_pcb"
+            file: "e-paper/2.13inch-socket/2.13inch-socket.kicad_pcb"
         where:
           ref: [matrix_col0_row0]
           shift: [-24, -31.5]
-          rotate: 90
+          rotate: 0
         asym: clone 
       power_switch:
         what:
@@ -539,9 +540,10 @@ pcbs:
             file: "reset/reset/reset.kicad_pcb"
         where: 
           ref: [matrix_col0_row0]
-          shift: [-21, -75]
+          shift: [-12, -72]
           rotate: 180
         asym: source
+  
       reset-left:
         what: 
           github: 
@@ -549,7 +551,7 @@ pcbs:
             file: "reset/reset/reset.kicad_pcb"
         where: 
           ref: [matrix_col0_row0]
-          shift: [-21, -75]
+          shift: [-12, -72]
           rotate: 0
         asym: clone
   ergo_cai_left:
