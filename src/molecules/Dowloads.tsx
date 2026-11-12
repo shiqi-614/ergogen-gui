@@ -2,7 +2,7 @@ import DownloadRow from "../atoms/DownloadRow";
 import yaml from 'js-yaml';
 import styled from "styled-components";
 import {useConfigContext} from "../context/ConfigContext";
-import {Dispatch, SetStateAction, useContext} from "react";
+import {Dispatch, SetStateAction, useContext, useState} from "react";
 import {TabContext} from "../organisms/Tabs";
 
 
@@ -10,6 +10,30 @@ const DownloadsContainer = styled.div`
   display: flex;
   flex-direction: column;
   flex-grow: 1;
+`;
+
+const SectionContainer = styled.div`
+  margin-bottom: 0.5em;
+`;
+
+const SectionHeader = styled.button`
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+  margin-bottom: 0.5em;
+  padding: 0.5rem 1rem;
+  border: none;
+  border-radius: 0.25rem;
+  background: #595959;
+  color: #ffffff;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 150ms ease-in-out;
+
+  &:hover {
+    background: #525252;
+  }
 `;
 
 type Props = {
@@ -26,17 +50,30 @@ type DownloadObj = {
 
 type DownloadArr = Array<DownloadObj>;
 
+type DownloadSection = {
+    title: string,
+    items: DownloadArr
+};
+
 const Downloads = ({setPreview, label}: Props) => {
-    let downloads: DownloadArr = [];
     const configContext = useConfigContext();
     const tabContext = useContext(TabContext);
+    // sections start closed, a click on the title opens one
+    const [open, setOpen] = useState<Record<string, boolean>>({});
     if(!configContext) return null;
 
     const {configInput, results} = configContext;
 
+    const sections: Array<DownloadSection> = [];
+    const section = (title: string) => {
+        const items: DownloadArr = [];
+        sections.push({title, items});
+        return items;
+    };
+
     if (results?.demo) {
         let rawFileName = label + "_raw";
-        downloads.push({
+        section('Config & points').push({
                 fileName: rawFileName,
                 extension: 'yaml',
                 content: configInput ?? ''
@@ -60,8 +97,9 @@ const Downloads = ({setPreview, label}: Props) => {
     }
 
     if (results?.outlines) {
+        const outlines = section('Outlines');
         for (const [name, outline] of Object.entries(results.outlines)) {
-            downloads.push(
+            outlines.push(
                 {
                     fileName: name,
                     extension: 'dxf',
@@ -81,13 +119,14 @@ const Downloads = ({setPreview, label}: Props) => {
     }
 
     if (results?.pcbs) {
-        for (const [pcb_name, pcb_data] of Object.entries(results.pcbs as Record<string, { preview?: { dxf: any; svg: any} }>)) {
-            if (pcb_data?.preview) {
-                downloads.push({
-                        fileName: pcb_name,
-                        extension: 'dxf',
-                        content: pcb_data.preview.dxf,
-                        preview: `pcbs.${pcb_name}.preview.svg`, 
+        const pcbs = section('PCBs');
+        for (const [pcb_name, pcb_data] of Object.entries(results.pcbs as Record<string, { preview?: { kicad_pcb?: string } }>)) {
+            if (pcb_data?.preview?.kicad_pcb) {
+                pcbs.push({
+                        fileName: `${pcb_name}_preview`,
+                        extension: 'kicad_pcb',
+                        content: pcb_data.preview.kicad_pcb,
+                        preview: `pcbs.${pcb_name}.preview.kicad_pcb`,
                     }
                 )
             }
@@ -96,8 +135,9 @@ const Downloads = ({setPreview, label}: Props) => {
 
 
     if (results?.cases) {
+        const cases = section('Cases');
         for (const [name, caseObj] of Object.entries(results.cases)) {
-            downloads.push(
+            cases.push(
                 {
                     fileName: name,
                     extension: 'stl',
@@ -111,6 +151,7 @@ const Downloads = ({setPreview, label}: Props) => {
     }
 
     if (results?.kicad) {
+        const kicad = section('KiCad projects');
         for (const [name, content] of Object.entries(results.kicad)) {
             if (typeof content === "string") {
                 const binaryString = atob(content);
@@ -122,7 +163,7 @@ const Downloads = ({setPreview, label}: Props) => {
                     binaryArray[i] = binaryString.charCodeAt(i);
                 }
 
-                downloads.push(
+                kicad.push(
                     {
                         fileName: name,
                         extension: 'zip',
@@ -140,13 +181,23 @@ const Downloads = ({setPreview, label}: Props) => {
       <DownloadsContainer>
           <h3>Downloads</h3>
           {
-              downloads.map(
-                  (download, i) => {
-                      if (download.fileName.startsWith("_")) return false;
+              sections.map(({title, items}) => {
+                  const shown = items.filter(download => !download.fileName.startsWith("_"));
+                  if (!shown.length) return null;
+                  const isOpen = !!open[title];
 
-                      return <DownloadRow key={i} {...download} setPreview={setPreview} setTabIndex={tabContext?.setTabIndex}/>;
-                  }
-              )
+                  return (
+                      <SectionContainer key={title}>
+                          <SectionHeader aria-expanded={isOpen} onClick={() => setOpen({...open, [title]: !isOpen})}>
+                              <span>{isOpen ? '▾' : '▸'} {title}</span>
+                              <span>{shown.length}</span>
+                          </SectionHeader>
+                          {isOpen && shown.map((download, i) =>
+                              <DownloadRow key={i} {...download} setPreview={setPreview} setTabIndex={tabContext?.setTabIndex}/>
+                          )}
+                      </SectionContainer>
+                  );
+              })
           }
       </DownloadsContainer>
   );
