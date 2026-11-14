@@ -213,7 +213,7 @@ pcbs:
         what: 
           github:
             repo: "shiqi-614/ErgoCai.modules"
-            file: "joystick/JoystickMount/JoystickMount.kicad_pcb"
+            file: "joystick/joystick-mount/joystick-mount.kicad_pcb"
         where: 
           ref: [thumbs_right_row1]
           shift: [-7, -30]

@@ -510,7 +510,7 @@ pcbs:
         what: 
           github:
             repo: "shiqi-614/ErgoCai.modules"
-            file: "joystick/JoystickMount/JoystickMount.kicad_pcb"
+            file: "joystick/joystick-mount/joystick-mount.kicad_pcb"
         where: 
           ref: [thumbs_col3_row5]
           shift: [-7, -30]
@@ -579,10 +579,15 @@ cases:
       layers: [Dwgs.User]
       asym: source
     - what: pcb
-      name: /modules.(joystick|battery)/
+      name: /modules.battery/
       extrude: 3
       operation: subtract
       expand: 0.5
+    - what: pcb
+      name: /modules.joystick/
+      extrude: 3
+      operation: subtract
+      expand: 1.5
     - what: pcb
       name: /footprints.stab/
       expand: 0.5
@@ -612,10 +617,15 @@ cases:
       operation: subtract
       layers: [Dwgs.User]
     - what: pcb
-      name: /modules.(joystick|charger|battery)/
+      name: /modules.(charger|battery)/
       extrude: 5
       operation: subtract
       expand: 0.5
+    - what: pcb
+      name: /modules.joystick/
+      extrude: 5
+      operation: subtract
+      expand: 1.5
     - what: outline
       name: usb_and_swith
       extrude: 5
@@ -654,10 +664,15 @@ cases:
       operation: subtract
       expand: 0.1
     - what: pcb
-      name: /modules.(joystick|charger|battery)/
+      name: /modules.(charger|battery)/
       extrude: 5
       operation: subtract
       expand: 0.5
+    - what: pcb
+      name: /modules.joystick/
+      extrude: 5
+      operation: subtract
+      expand: 1.5
     - what: outline
       name: usb_and_swith
       extrude: 5

@@ -10,7 +10,7 @@ const DownloadsContainer = styled.div`
   display: flex;
   flex-direction: column;
   flex-grow: 1;
-  padding-left: 0.5rem;
+  padding-left: 1rem;
 `;
 
 const Title = styled.h3`
