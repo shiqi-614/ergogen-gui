@@ -9,13 +9,14 @@ import FilePreview from "./molecules/FilePreview";
 import {useConfigContext} from "./context/ConfigContext";
 import Button from "./atoms/Button";
 import Select from "react-select";
-import GenOption from "./atoms/GenOption";
+import DownloadIcon from "./atoms/DownloadIcon";
 import {ConfigOption, exampleOptions } from "./examples";
 import ErgoCai from "./examples/ErgoCai";
 
+// fills the screen below the header: 100vh minus the header (4rem) and the split padding (2rem)
 const EditorContainer = styled.div`
   position: relative;
-  height: 80%;
+  height: calc(100vh - 6rem);
   display: flex;
   flex-direction: column;
   width: 100%;
@@ -42,12 +43,33 @@ const StyledFilePreview = styled(FilePreview)`
 
 const StyledConfigEditor = styled(ConfigEditor)`
   position: relative;
+  flex-grow: 1;
+  min-height: 0;
 `;
 
-const OptionContainer = styled.div`
+const GenerateContainer = styled.div`
   display: flex;
-  justify-content: space-between;
+  gap: 0.5em;
 `;
+
+const GenerateButton = styled(Button)`
+  flex-grow: 1;
+`;
+
+const IconButton = styled(Button)`
+  display: inline-flex;
+  align-items: center;
+  padding: 0 0.8rem;
+`;
+
+// saves the config as typed in the editor
+const downloadConfig = (fileName: string, content: string) => {
+    const link = document.createElement("a");
+    link.href = window.URL.createObjectURL(new Blob([content], {type: "text/yaml"}));
+    link.download = fileName;
+    link.click();
+    setTimeout(() => window.URL.revokeObjectURL(link.href), 1000);
+};
 
 const StyledSelect = styled(Select)`
     color: black;
@@ -79,13 +101,17 @@ const StyledSplit = styled(Split)`
   }
 `;
 
+// the outer split already pads the page, the nested one lines up with the editor's top
+// @ts-ignore
+const InnerSplit = styled(StyledSplit)`
+  padding: 0;
+`;
+
 const LeftSplitPane = styled.div`
-    padding-right: 1rem;
     position: relative;
 `;
 
 const RightSplitPane = styled.div`
-    padding-left: 1rem;
     position: relative;
 `;
 
@@ -131,29 +157,35 @@ const Ergogen = () => {
                         />
                         <StyledConfigEditor/>
 
-                        <Button 
-                          onClick={() => configContext?.processInput(
-                            configContext?.configInput, 
-                            {
-                                is_preview: false,
-                                setProcessing: setIsProcessing
-                            }
-                          )}
-                        >
-                          {isProcessing ? 'Processing...' : 'Generate'}
-                        </Button>
-
-                        <OptionContainer>
-                            <GenOption optionId={'autogen'} label={'Auto-generate'} setSelected={configContext?.setAutoGen} checked={configContext?.autoGen}/>
-                            <GenOption optionId={'debug'} label={'Debug'} setSelected={configContext?.setDebug} checked={configContext?.debug}/>
-                            <GenOption optionId={'autogen3d'} label={<>Auto-gen 3D <small>(slow)</small></>} setSelected={configContext?.setAutoGen3D} checked={configContext?.autoGen3D}/>
-                        </OptionContainer>
+                        <GenerateContainer>
+                            <GenerateButton
+                              size={'medium'}
+                              disabled={isProcessing}
+                              onClick={() => configContext?.processInput(
+                                configContext?.configInput,
+                                {
+                                    is_preview: false,
+                                    setProcessing: setIsProcessing
+                                }
+                              )}
+                            >
+                              {isProcessing ? 'Processing...' : 'Generate'}
+                            </GenerateButton>
+                            <IconButton
+                              size={'medium'}
+                              title={'Download the config'}
+                              disabled={!configContext?.configInput}
+                              onClick={() => downloadConfig(`${selectedOptionLabel ?? "config"}_raw.yaml`, configContext?.configInput ?? '')}
+                            >
+                              <DownloadIcon/>
+                            </IconButton>
+                        </GenerateContainer>
                         {configContext?.error && <Error>{configContext?.error?.toString()}</Error>}
                     </EditorContainer>
                 </LeftSplitPane>
 
                 <RightSplitPane>
-                    <StyledSplit
+                    <InnerSplit
                         direction={"horizontal"}
                         sizes={[70, 30]}
                         minSize={100}
@@ -166,7 +198,7 @@ const Ergogen = () => {
                         <RightSplitPane>
                             <Downloads setPreview={setPreviewKey} label={selectedOptionLabel}/>
                         </RightSplitPane>
-                    </StyledSplit>
+                    </InnerSplit>
                 </RightSplitPane>
             </StyledSplit>
         </FlexContainer>

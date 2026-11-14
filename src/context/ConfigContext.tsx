@@ -42,6 +42,8 @@ async function exportSTL(jscadSource: string): Promise<Blob> {
 }
 
 
+const GENERATE_TIMEOUT_MS = 3 * 60 * 1000;
+
 const ConfigContextProvider = ({initialInput, children}: Props) => {
     const [configInput, setConfigInput] = useLocalStorage<string>(CONFIG_LOCAL_STORAGE_KEY, initialInput);
     const [error, setError] = useState<string|null>(null);
@@ -118,13 +120,27 @@ const ConfigContextProvider = ({initialInput, children}: Props) => {
                     let apiUrl = process.env.REACT_APP_ERGOGEN_API_URL;
                     console.log("Current api URL:" + apiUrl);
                     if (apiUrl) {
-                        const postResponse = await fetch(apiUrl, {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json'
-                            },
-                            body: JSON.stringify(inputConfig)
-                        });
+                        // generating the KiCad project takes a while, give up after 3 minutes
+                        const controller = new AbortController();
+                        const timer = setTimeout(() => controller.abort(), GENERATE_TIMEOUT_MS);
+                        let postResponse: Response;
+                        try {
+                            postResponse = await fetch(apiUrl, {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json'
+                                },
+                                body: JSON.stringify(inputConfig),
+                                signal: controller.signal
+                            });
+                        } catch (e: unknown) {
+                            if (controller.signal.aborted) {
+                                throw new Error(`Generate timed out after ${GENERATE_TIMEOUT_MS / 60000} minutes`);
+                            }
+                            throw e;
+                        } finally {
+                            clearTimeout(timer);
+                        }
                         if (!postResponse.ok) {
                             // Handle 400 and 500-level errors
                             const errorData = await postResponse.json();

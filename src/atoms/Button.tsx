@@ -5,6 +5,9 @@ type Props = {
     size?: string,
     children: React.ReactNode,
     onClick?: React.MouseEventHandler<HTMLButtonElement> | undefined;
+    disabled?: boolean,
+    title?: string,
+    className?: string,
 };
 
 const Button = styled.button`
@@ -36,6 +39,14 @@ const Button = styled.button`
     transform: scale(0.98);
     outline: 2px solid #fff;
     outline-offset: -5px;
+  }
+
+  &:disabled,
+  &:disabled:hover {
+    background-color: #6c757d;
+    cursor: not-allowed;
+    transform: none;
+    outline: none;
   }
 `;
 

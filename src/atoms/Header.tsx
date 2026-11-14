@@ -38,9 +38,6 @@ const Header = (): JSX.Element => {
                 <a href="https://docs.ergogen.xyz/" target="_blank" rel="noreferrer">
                     Docs
                 </a>
-                <a href="https://discord.gg/nbKcAZB" target="_blank" rel="noreferrer">
-                    Discord
-                </a>
             </LinkContainer>
         </HeaderContainer>
     );

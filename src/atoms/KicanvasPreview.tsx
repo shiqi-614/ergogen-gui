@@ -32,7 +32,7 @@ const boardViewer = (embed: HTMLElement): any =>
 // give it a fixed height (the viewport below the header) so the two cannot grow each other
 const Container = styled.div`
   width: 100%;
-  height: calc(100vh - 7rem);
+  height: calc(100vh - 6rem);
   min-height: 20rem;
   overflow: hidden;
 `;

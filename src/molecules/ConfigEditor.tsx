@@ -26,7 +26,8 @@ const ConfigEditor = ({className}: Props) => {
     return (
         <div className={className}>
             <Editor
-                height="70vh"
+                height="100%"
+                options={{automaticLayout: true}}
                 defaultLanguage="JSON"
                 onChange={handleChange}
                 value={configInput}

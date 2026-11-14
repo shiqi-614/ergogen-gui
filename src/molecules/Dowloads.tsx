@@ -10,6 +10,11 @@ const DownloadsContainer = styled.div`
   display: flex;
   flex-direction: column;
   flex-grow: 1;
+  padding-left: 0.5rem;
+`;
+
+const Title = styled.h3`
+  margin-top: 0;
 `;
 
 const SectionContainer = styled.div`
@@ -123,7 +128,7 @@ const Downloads = ({setPreview, label}: Props) => {
         for (const [pcb_name, pcb_data] of Object.entries(results.pcbs as Record<string, { preview?: { kicad_pcb?: string } }>)) {
             if (pcb_data?.preview?.kicad_pcb) {
                 pcbs.push({
-                        fileName: `${pcb_name}_preview`,
+                        fileName: pcb_name,
                         extension: 'kicad_pcb',
                         content: pcb_data.preview.kicad_pcb,
                         preview: `pcbs.${pcb_name}.preview.kicad_pcb`,
@@ -179,7 +184,7 @@ const Downloads = ({setPreview, label}: Props) => {
 
     return (
       <DownloadsContainer>
-          <h3>Downloads</h3>
+          <Title>Downloads</Title>
           {
               sections.map(({title, items}) => {
                   const shown = items.filter(download => !download.fileName.startsWith("_"));
