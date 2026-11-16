@@ -23,18 +23,20 @@
   <body style="background: #2d2d2d;">
     <noscript>You need to enable JavaScript to run this app.</noscript>
     <div id="root"></div>
-    <!-- ergogen.js reads makerjs, jsyaml, math, kle and axios as globals: served from here, not from CDNs -->
-    <script src="%PUBLIC_URL%/dependencies/js-yaml-3.14.0.min.js"></script>
-    <script src="%PUBLIC_URL%/dependencies/math-8.1.1.min.js"></script>
-    <script src="%PUBLIC_URL%/dependencies/maker.js"></script>
+    <!-- ergogen.js reads makerjs, jsyaml, math, kle and axios as globals: the versions ergogen itself depends on,
+         pinned, from jsDelivr -->
+    <script src="https://cdn.jsdelivr.net/npm/js-yaml@3.14.2/dist/js-yaml.min.js" integrity="sha384-VB35dRNbaeCelpj1WJOImRbg3tDL4YW785BNkTLhHtSNt7TGAOWFQ+GIU0IjiBB7" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mathjs@11.12.0/lib/browser/math.js" integrity="sha384-88DqLWMdRCi4oxuBRmFFUaZauJLUVRXNry8v840iAOr9FRmFH20cMrBRM9Lmffd9" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/makerjs@0.19.2/dist/browser.maker.js" integrity="sha384-2NKBApAuvsXwQIPlPYnRrs7qrcCgLVDkrrmY0jcGzHR8cgrkjaM6bdtnIrKJftqG" crossorigin="anonymous"></script>
     <script>
       makerjs = require('makerjs')
     </script>
-    <script src="%PUBLIC_URL%/dependencies/axios-1.21.1.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios@1.13.6/dist/axios.min.js" integrity="sha384-EtqfExzDvAOmLLdnOsa5Dy174/rTmPzv9OnQXw8NQOXnTypob284TIsp6Gt3yEyL" crossorigin="anonymous"></script>
     <script src="%PUBLIC_URL%/dependencies/kle.js"></script>
     <script>
-      window.ergogenManifoldUrl = "%PUBLIC_URL%/dependencies/manifold.js"
+      window.ergogenManifoldUrl = "https://cdn.jsdelivr.net/npm/manifold-3d@3.5.5/manifold.js"
     </script>
+    <!-- built from the ergogen fork when the app is built (yarn run build-ergogen) -->
     <script src="%PUBLIC_URL%/dependencies/ergogen.js"></script>
   </body>
 </html>

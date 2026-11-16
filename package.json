@@ -32,7 +32,7 @@
     "yaml-js": "^0.2.3"
   },
   "scripts": {
-    "build-ergogen": "cd node_modules/ergogen && yarn install && yarn run build && cp dist/ergogen.js ../../public/dependencies/ergogen.js && cp node_modules/manifold-3d/manifold.js node_modules/manifold-3d/manifold.wasm ../../public/dependencies/",
+    "build-ergogen": "cd node_modules/ergogen && yarn install && yarn run build && cp dist/ergogen.js ../../public/dependencies/ergogen.js",
     "postinstall": "yarn upgrade ergogen && yarn run build-ergogen",
     "start": "react-scripts --openssl-legacy-provider start",
     "build": "react-scripts --openssl-legacy-provider build",
