@@ -9,6 +9,11 @@ units:
   ky: u
   screwSize: 1.05
   studSize: 1.75
+  # the funnels through the case wall in front of the power switch and the USB port (usb_and_swith): half width
+  # where they start at the board edge, half width at the far end, and how far out the far end is
+  funnelNarrow: 5
+  funnelWide: 25
+  funnelDepth: 10
 points:
   zones:
     matrix:
@@ -97,29 +102,32 @@ points:
     distance: -2kx
 
 outlines:
+  # one funnel shape (units funnelNarrow, funnelWide, funnelDepth), starting at the board edge in front of each part
   usb_and_swith:
+    # the power switch, on the board tab that ends at 1ky + 5
     - what: polygon
       operation: stack
       points:
         - ref: matrix_col1_row0
-          shift: [-9.5 + 25, 1ky + 14]
+          shift: [-9.5 + funnelWide, 1ky + 5 + funnelDepth]
         - ref: matrix_col1_row0
-          shift: [-9.5 + 5, 1ky + 7]
+          shift: [-9.5 + funnelNarrow, 1ky + 5]
         - ref: matrix_col1_row0
-          shift: [-9.5 - 5, 1ky + 7]
+          shift: [-9.5 - funnelNarrow, 1ky + 5]
         - ref: matrix_col1_row0
-          shift: [-9.5 - 25, 1ky + 14]
+          shift: [-9.5 - funnelWide, 1ky + 5 + funnelDepth]
+    # the USB port, on the board tab that ends at 1ky
     - what: polygon
       operation: stack
       points:
         - ref: matrix_col3_row0
-          shift: [0 + 25, 1ky + 12]
+          shift: [funnelWide, 1ky + funnelDepth]
         - ref: matrix_col3_row0
-          shift: [0 + 5, 1ky + 2]
+          shift: [funnelNarrow, 1ky]
         - ref: matrix_col3_row0
-          shift: [0 - 5, 1ky + 2]
+          shift: [-funnelNarrow, 1ky]
         - ref: matrix_col3_row0
-          shift: [0 - 25, 1ky + 12]
+          shift: [-funnelWide, 1ky + funnelDepth]
   usb_and_swith_hole:
     - what: polygon
       operation: stack
