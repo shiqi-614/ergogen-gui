@@ -192,160 +192,92 @@ outlines:
           shift: [0.8kx , -4.7ky]
       fillet: 0.9
 
-  pcb_mounting_positions:
-    pcb_pos1: 
-      what: circle
+  # Where the pcb is screwed down (its mounting hole footprints use these too), as a template: ergogen drops an
+  # outline with $params and no $args, and fills one in for each outline below that extends it with $args.
+  _pcb_mounts:
+    $params: [__what__, __radius__]
+    pcb_pos1:
+      what: __what__
+      radius: __radius__
       where: &pcb_pos1
         ref: [matrix_col0_row0]
         shift: [-1.55kx, 1ky]
-    pcb_pos2: 
-      what: circle
+    pcb_pos2:
+      what: __what__
+      radius: __radius__
       where: &pcb_pos2
         ref: [matrix_col6_row0]
         shift: [0.65kx, 1ky]
-    pcb_pos3: 
-      what: circle
+    pcb_pos3:
+      what: __what__
+      radius: __radius__
       where: &pcb_pos3
         ref: [matrix_col6_row4]
         shift: [0.9kx, -0.55ky]
-    pcb_pos4: 
-      what: circle
+    pcb_pos4:
+      what: __what__
+      radius: __radius__
       where: &pcb_pos4
         ref: [matrix_col6_row4]
         shift: [-2.7kx, -0.55ky]
-    pcb_pos5: 
-      what: circle
+    pcb_pos5:
+      what: __what__
+      radius: __radius__
       where: &pcb_pos5
         ref: [thumbs_col0_row5]
         shift: [0.65kx, 0.75ky]
+  pcb_stud_mounting:
+    $extends: outlines._pcb_mounts
+    $args: [hexagon, studSize]
+  pcb_screw_mounting:
+    $extends: outlines._pcb_mounts
+    $args: [circle, screwSize]
 
-  pcb_stud_mounting: 
-    - what: hexagon
+  # where the case parts are screwed together
+  _shell_mounts:
+    $params: [__what__, __radius__]
+    matrix_top_right:
+      what: __what__
+      radius: __radius__
       where:
-        <<: *pcb_pos1
-      radius: studSize
-    - what: hexagon
-      where:
-        <<: *pcb_pos2
-      radius: studSize
-    - what: hexagon
-      where:
-        <<: *pcb_pos3
-      radius: studSize
-    - what: hexagon
-      where:
-        <<: *pcb_pos4
-      radius: studSize
-    - what: hexagon
-      where:
-        <<: *pcb_pos5
-      radius: studSize
-
-  pcb_screw_mounting: 
-    - what: circle
-      where:
-        <<: *pcb_pos1
-      radius: screwSize
-    - what: circle
-      where:
-        <<: *pcb_pos2
-      radius: screwSize
-    - what: circle
-      where:
-        <<: *pcb_pos3
-      radius: screwSize
-    - what: circle
-      where:
-        <<: *pcb_pos4
-      radius: screwSize
-    - what: circle
-      where:
-        <<: *pcb_pos5
-      radius: screwSize
-
-  
-  shell_mounting_positions: 
-    matrix_top_right: 
-      what: hexagon
-      where: &shell_pos1
         ref: [matrix_col6_row0]
         shift: [0.95kx, 1.25ky]
-    matrix_top_left: 
-      what: hexagon
-      where: &shell_pos2
+    matrix_top_left:
+      what: __what__
+      radius: __radius__
+      where:
         ref: [matrix_col0_row0]
         shift: [-1.85kx, 1.25ky]
-    matrix_bottom_right: 
-      what: hexagon
-      where: &shell_pos3 
+    matrix_bottom_right:
+      what: __what__
+      radius: __radius__
+      where:
         ref: [matrix_col6_row4]
         shift: [1.2kx, -0.84ky]
     matrix_bottom_left:
-      what: hexagon
-      where: &shell_pos4
+      what: __what__
+      radius: __radius__
+      where:
         ref: [matrix_col6_row4]
         shift: [-2.48kx, -0.9ky]
-    thumb_upper: 
-      what: hexagon
-      where: &shell_pos5
+    thumb_upper:
+      what: __what__
+      radius: __radius__
+      where:
         ref: [thumbs_col0_row5]
         shift: [-0.8kx, 0.75ky]
-    thumb_lower: 
-      what: hexagon
-      where: &shell_pos6
+    thumb_lower:
+      what: __what__
+      radius: __radius__
+      where:
         ref: [thumbs_col1_row5]
         shift: [-0.75kx, -0.77ky]
-
   stud_mounting:
-    - what: hexagon
-      where:
-        <<: *shell_pos1
-      radius: studSize
-    - what: hexagon
-      where: 
-        <<: *shell_pos2
-      radius: studSize
-    - what: hexagon
-      where:
-        <<: *shell_pos3
-      radius: studSize
-    - what: hexagon
-      where:
-        <<: *shell_pos4
-      radius: studSize
-    - what: hexagon
-      where:
-        <<: *shell_pos5
-      radius: studSize
-    - what: hexagon
-      where:
-        <<: *shell_pos6
-      radius: studSize
+    $extends: outlines._shell_mounts
+    $args: [hexagon, studSize]
   screw_mounting:
-    - what: circle
-      where:
-        <<: *shell_pos1
-      radius: screwSize
-    - what: circle
-      where:
-        <<: *shell_pos2
-      radius: screwSize
-    - what: circle
-      where:
-        <<: *shell_pos3
-      radius: screwSize
-    - what: circle
-      where:
-        <<: *shell_pos4
-      radius: screwSize
-    - what: circle
-      where:
-        <<: *shell_pos5
-      radius: screwSize
-    - what: circle
-      where:
-        <<: *shell_pos6
-      radius: screwSize 
+    $extends: outlines._shell_mounts
+    $args: [circle, screwSize]
 
   expand:
     - name: board
