@@ -15,7 +15,7 @@ const loadKicanvas = () => {
     if (!kicanvasReady) {
         const script = document.createElement('script');
         script.type = 'module';
-        script.src = `${process.env.PUBLIC_URL}/dependencies/kicanvas.js`;
+        script.src = `${import.meta.env.BASE_URL}dependencies/kicanvas.js`;
         document.head.appendChild(script);
         kicanvasReady = window.customElements.whenDefined('kicanvas-embed');
     }

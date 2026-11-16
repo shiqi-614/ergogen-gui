@@ -34,7 +34,7 @@ export const ConfigContext = createContext<ContextProps | null>(null);
 export const CONFIG_LOCAL_STORAGE_KEY = 'LOCAL_STORAGE_CONFIG'
 
 // ergogen hands over each case as a binary STL: bytes when it runs in this page, base64 when it ran on the server
-function stlBlob(stl: Uint8Array | string): Blob {
+function stlBlob(stl: Uint8Array<ArrayBuffer> | string): Blob {
   const bytes = typeof stl === 'string' ? Uint8Array.from(atob(stl), c => c.charCodeAt(0)) : stl;
   return new Blob([bytes], { type: 'model/stl' });
 }
@@ -101,9 +101,9 @@ const ConfigContextProvider = ({initialInput, children}: Props) => {
 
             try {
                 options.setProcessing?.(true);
-                console.log("Current Environment:", process.env.NODE_ENV);
+                console.log("Current Environment:", import.meta.env.MODE);
                 // @ts-ignore
-                window.stage = process.env.NODE_ENV || 'production';  
+                window.stage = import.meta.env.MODE || 'production';
                 if (options.is_preview) {
                     console.log("is preview");
                     results = await window.ergogen.process(
@@ -115,7 +115,7 @@ const ConfigContextProvider = ({initialInput, children}: Props) => {
                     console.log("get result from ergogen api");
                     // https://ergo.shiqi614.win/api/ergogen
                     // http://localhost:3001/api/ergogen
-                    let apiUrl = process.env.REACT_APP_ERGOGEN_API_URL;
+                    let apiUrl = import.meta.env.VITE_ERGOGEN_API_URL;
                     console.log("Current api URL:" + apiUrl);
                     if (apiUrl) {
                         // generating the KiCad project takes a while, give up after 3 minutes

@@ -1,8 +1,6 @@
 ## Ergogen GUI 
 This is a web interface for [Ergogen](https://github.com/mrzealot/ergogen) by @MrZealot.  
 
-### :warning: This repo currently relies on an outdated Webpack 4, moving to Webpack 5 is non-trivial due to outdated dependencies like openjscad which depend on browserify and node polyfills
-
 This adds some additional features like
 - Live preview reloading
 - VSCode editor (Monaco)
@@ -14,6 +12,8 @@ See the live demo at [https://mveerd.github.io/ergogen-gui/](https://mveerd.gith
 ### Running locally
 #### `yarn install` - installs dependencies
 #### `yarn start` - starts a development server at [http://localhost:3000](http://localhost:3000)
+#### `yarn build` - type-checks and builds the site into `build/` (with [Vite](https://vite.dev))
+#### `yarn test` - runs the unit tests (with [Vitest](https://vitest.dev))
 
 
 ### Using an Ergogen branch on github

@@ -1,3 +1,4 @@
+import {expect, it} from "vitest";
 import {applyEdits, findAnchorShift, findShift, findSite, formatLength, nudge, parseLength, EditSite} from "./layoutEdit";
 
 const config = `points:
