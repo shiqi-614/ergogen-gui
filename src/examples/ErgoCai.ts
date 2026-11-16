@@ -128,30 +128,7 @@ outlines:
           shift: [-funnelNarrow, 1ky]
         - ref: matrix_col3_row0
           shift: [-funnelWide, 1ky + funnelDepth]
-  usb_and_swith_hole:
-    - what: polygon
-      operation: stack
-      points:
-        - ref: matrix_col1_row0
-          shift: [-9.5 + 5.45, 1ky + 10]
-        - ref: matrix_col1_row0
-          shift: [-9.5 + 5.45, 1ky + 4]
-        - ref: matrix_col1_row0
-          shift: [-9.5 - 5.45, 1ky + 4]
-        - ref: matrix_col1_row0
-          shift: [-9.5 - 5.45, 1ky + 10]
-    - what: polygon
-      operation: stack
-      points:
-        - ref: matrix_col3_row0
-          shift: [0 + 5.6, 1ky - 1]
-        - ref: matrix_col3_row0
-          shift: [0 + 5.6, 1ky + 3]
-        - ref: matrix_col3_row0
-          shift: [0 - 5.6, 1ky + 3]
-        - ref: matrix_col3_row0
-          shift: [0 - 5.6, 1ky - 1]
-  cut: 
+  cut:
     - what: polygon
       operation: stack
       points:
@@ -616,10 +593,12 @@ cases:
       name: pcb_screw_mounting
       extrude: 5
       operation: subtract
-    - what: outline
-      name: usb_and_swith_hole
+    # the room the switch lever and the USB plug need, drawn on Dwgs.User in their footprints
+    - what: pcb
+      name: /modules.(usb.USB_J1|power_switch(-left)?.BAT_SW1)/
       extrude: 5
       operation: subtract
+      layers: [Dwgs.User]
     - what: pcb
       name: /modules.e-paper.EPM_H/
       extrude: 5
