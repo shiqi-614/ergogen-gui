@@ -477,17 +477,6 @@ pcbs:
           ref: [matrix_col0_row0]
           shift: [-24, -31.5]
           rotate: -0
-        asym: source
-      e-paper-left:
-        what: 
-          github:
-            repo: "shiqi-614/ErgoCai.modules"
-            file: "e-paper/2.13inch-socket/2.13inch-socket.kicad_pcb"
-        where:
-          ref: [matrix_col0_row0]
-          shift: [-24, -31.5]
-          rotate: 0
-        asym: clone 
       power_switch:
         what:
           github:
@@ -595,7 +584,7 @@ cases:
       operation: subtract
       layers: [Dwgs.User]
     - what: pcb
-      name: /modules.(e-paper|e-paper-left).EPM_H/
+      name: /modules.e-paper.EPM_H/
       extrude: 3
       operation: subtract
       layers: ["*.Cu"]
@@ -635,10 +624,16 @@ cases:
       extrude: 5
       operation: subtract
     - what: pcb
-      name: /modules.(e-paper|e-paper-left).EPM_H/
+      name: /modules.e-paper.EPM_H/
       extrude: 5
       operation: subtract
       layers: ["*.Cu"]
+    - what: pcb
+      name: /modules.e-paper.EPM_FPC1/
+      extrude: 5
+      operation: subtract
+      expand: 0.5
+      layers: [Dwgs.User]
 
   right_switchplate:
     - what: outline
@@ -686,10 +681,16 @@ cases:
       extrude: 5
       operation: subtract
     - what: pcb
-      name: /modules.(e-paper|e-paper-left).EPM_H/
+      name: /modules.e-paper.EPM_H/
       extrude: 5
       operation: subtract
       layers: ["*.Cu"]
+    - what: pcb
+      name: /modules.e-paper.EPM_FPC1/
+      extrude: 5
+      operation: subtract
+      expand: 0.5
+      layers: [Dwgs.User]
 
   right_gap: 
     - what: outline
@@ -708,7 +709,7 @@ cases:
       extrude: 5
       operation: subtract
     - what: pcb
-      name: /modules.(e-paper|e-paper-left).EPM_H/
+      name: /modules.e-paper.EPM_H/
       extrude: 5
       operation: subtract
       layers: ["*.Cu"]
@@ -730,7 +731,7 @@ cases:
       extrude: 3
       operation: subtract
     - what: pcb
-      name: /modules.(e-paper|e-paper-left).EPM_H/
+      name: /modules.e-paper.EPM_H/
       extrude: 5
       operation: subtract
       layers: ["*.Cu"]
