@@ -23,8 +23,9 @@
   <body style="background: #2d2d2d;">
     <noscript>You need to enable JavaScript to run this app.</noscript>
     <div id="root"></div>
-    <!-- ergogen.js reads makerjs, jsyaml, math, kle and axios as globals: the versions ergogen itself depends on,
-         pinned, from jsDelivr -->
+    <!-- ergogen.js reads makerjs, jsyaml, math and axios as globals: the versions ergogen itself depends on,
+         pinned, from jsDelivr. Its kle global (kle-serial) is left undefined, so keyboard-layout-editor JSON
+         is not read in the browser -->
     <script src="https://cdn.jsdelivr.net/npm/js-yaml@3.14.2/dist/js-yaml.min.js" integrity="sha384-VB35dRNbaeCelpj1WJOImRbg3tDL4YW785BNkTLhHtSNt7TGAOWFQ+GIU0IjiBB7" crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/mathjs@11.12.0/lib/browser/math.js" integrity="sha384-88DqLWMdRCi4oxuBRmFFUaZauJLUVRXNry8v840iAOr9FRmFH20cMrBRM9Lmffd9" crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/makerjs@0.19.2/dist/browser.maker.js" integrity="sha384-2NKBApAuvsXwQIPlPYnRrs7qrcCgLVDkrrmY0jcGzHR8cgrkjaM6bdtnIrKJftqG" crossorigin="anonymous"></script>
@@ -32,7 +33,6 @@
       makerjs = require('makerjs')
     </script>
     <script src="https://cdn.jsdelivr.net/npm/axios@1.13.6/dist/axios.min.js" integrity="sha384-EtqfExzDvAOmLLdnOsa5Dy174/rTmPzv9OnQXw8NQOXnTypob284TIsp6Gt3yEyL" crossorigin="anonymous"></script>
-    <script src="/dependencies/kle.js"></script>
     <script>
       window.ergogenManifoldUrl = "https://cdn.jsdelivr.net/npm/manifold-3d@3.5.5/manifold.js"
     </script>
