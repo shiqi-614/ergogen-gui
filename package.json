@@ -29,6 +29,7 @@
     "three-dxf": "^1.0.1",
     "typescript": "^4.4.3",
     "web-vitals": "^1.0.1",
+    "yaml": "^1.10.0",
     "yaml-js": "^0.2.3"
   },
   "scripts": {

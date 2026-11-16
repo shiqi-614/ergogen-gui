@@ -2,7 +2,7 @@ import DownloadRow from "../atoms/DownloadRow";
 import yaml from 'js-yaml';
 import styled from "styled-components";
 import {useConfigContext} from "../context/ConfigContext";
-import {Dispatch, SetStateAction, useContext, useState} from "react";
+import {useContext, useState} from "react";
 import {TabContext} from "../organisms/Tabs";
 
 
@@ -42,7 +42,7 @@ const SectionHeader = styled.button`
 `;
 
 type Props = {
-    setPreview: Dispatch<SetStateAction<string>>,
+    setPreview: (key: string) => void,
     label: string | undefined
 };
 

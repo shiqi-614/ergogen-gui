@@ -119,7 +119,7 @@ outlines:
         - ref: matrix_col3_row0
           shift: [0 - 5, 1ky + 2]
         - ref: matrix_col3_row0
-          shift: [0 - 25, 1ky + 12.01]
+          shift: [0 - 25, 1ky + 12]
   usb_and_swith_hole:
     - what: polygon
       operation: stack
