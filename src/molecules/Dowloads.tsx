@@ -148,7 +148,7 @@ const Downloads = ({setPreview, label}: Props) => {
                     extension: 'stl',
                     // @ts-ignore
                     content: caseObj.stl,
-                    preview: `cases.${name}.jscad`
+                    preview: `cases.${name}.stl`
                 }
             )
         }

@@ -3,8 +3,6 @@ import { DebouncedFunc } from "lodash-es";
 import yaml from "js-yaml";
 import debounce from "lodash.debounce";
 import { useLocalStorage } from 'react-use';
-import { stlSerializer } from '@jscad/io';
-import { compile } from '@jscad/openjscad';
 
 type Props = {
     initialInput: string,
@@ -35,10 +33,10 @@ type ProcessOptions = {
 export const ConfigContext = createContext<ContextProps | null>(null);
 export const CONFIG_LOCAL_STORAGE_KEY = 'LOCAL_STORAGE_CONFIG'
 
-async function exportSTL(jscadSource: string): Promise<Blob> {
-  const results = await compile(jscadSource);
-  const data = stlSerializer.serialize(results[0]);
-  return new Blob(data, { type: 'model/stl' });
+// ergogen hands over each case as a binary STL: bytes when it runs in this page, base64 when it ran on the server
+function stlBlob(stl: Uint8Array | string): Blob {
+  const bytes = typeof stl === 'string' ? Uint8Array.from(atob(stl), c => c.charCodeAt(0)) : stl;
+  return new Blob([bytes], { type: 'model/stl' });
 }
 
 
@@ -166,13 +164,9 @@ const ConfigContextProvider = ({initialInput, children}: Props) => {
                 return;
             }
             if (results?.cases) {
-                for (const [name, caseObj] of Object.entries(results.cases as Record<string, Record<string, any>>)) {
-                    if ('jscad' in caseObj) {
-                        try {
-                            caseObj.stl = await exportSTL(caseObj.jscad);
-                        } catch (e: unknown) {
-                            setError("cases:" + name + " cannot export to stl");
-                        }
+                for (const caseObj of Object.values(results.cases as Record<string, Record<string, any>>)) {
+                    if (caseObj.stl && !(caseObj.stl instanceof Blob)) {
+                        caseObj.stl = stlBlob(caseObj.stl);
                     }
                 }
             }

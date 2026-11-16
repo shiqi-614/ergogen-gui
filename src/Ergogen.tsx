@@ -134,7 +134,7 @@ const Ergogen = () => {
     // Walk through the JSON keys until we get the content of the desired previewKey
     previewKey.split(".").forEach((key) => walkArray = walkArray?.[key]);
 
-    let previewContent = typeof walkArray === 'string' ? walkArray : "";
+    let previewContent: string | Blob = typeof walkArray === 'string' || walkArray instanceof Blob ? walkArray : "";
     let selectedOptionLabel = selectedOption?.label;
 
     return (

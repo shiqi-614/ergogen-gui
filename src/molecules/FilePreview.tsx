@@ -1,10 +1,10 @@
 import SvgPreview from "../atoms/SvgPreview";
-import JscadPreview from "../atoms/JscadPreview";
+import StlPreview from "../atoms/StlPreview";
 import KicanvasPreview from "../atoms/KicanvasPreview";
 
 type Props = {
     previewKey: string,
-    previewContent: string,
+    previewContent: string | Blob,
     width?: number | string,
     height?: number | string,
     className?: string
@@ -12,20 +12,21 @@ type Props = {
 
 const FilePreview = ({previewKey, previewContent, width = '100%', height = '100%', className}: Props) => {
     const previewExt = previewKey.split(".").slice(-1)[0];
+    const text = typeof previewContent === 'string' ? previewContent : "";
 
     const renderFilePreview = (previewExt: string) => {
         switch (previewExt) {
             case 'svg':
                 return (
-                    <SvgPreview svg={previewContent} width={width} height={height}/>
+                    <SvgPreview svg={text} width={width} height={height}/>
                 )
-            case 'jscad':
+            case 'stl':
                 return (
-                    <JscadPreview previewContent={previewContent}/>
+                    <StlPreview stl={previewContent instanceof Blob ? previewContent : null}/>
                 )
             case 'kicad_pcb':
                 return (
-                    <KicanvasPreview pcb={previewContent} name={`${previewKey.split(".")[1]}_preview.kicad_pcb`}/>
+                    <KicanvasPreview pcb={text} name={`${previewKey.split(".")[1]}_preview.kicad_pcb`}/>
                 )
             default:
                 return <></>;
