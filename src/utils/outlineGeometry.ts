@@ -10,6 +10,8 @@ type PointLike = { x: number, y: number, r: number, meta?: { mirrored?: boolean 
 export type OutlineHandle = {
     kind: 'vertex' | 'center',
     key: string,
+    // the key the anchor is written relative to, when it names one
+    ref?: string,
     path: (string | number)[],
     label: string,
     at: Placed,
@@ -25,6 +27,12 @@ const ORIGIN: Placed = {x: 0, y: 0, r: 0, mirrored: false};
 const rotate = (x: number, y: number, degrees: number): [number, number] => {
     const a = degrees * Math.PI / 180;
     return [x * Math.cos(a) - y * Math.sin(a), x * Math.sin(a) + y * Math.cos(a)];
+};
+
+const refOf = (raw: any): string | undefined => {
+    const ref = typeof raw === 'string' ? raw : raw?.ref;
+    if (typeof ref === 'string') return ref;
+    return Array.isArray(ref) && ref.length === 1 && typeof ref[0] === 'string' ? ref[0] : undefined;
 };
 
 export const resolveAnchor = (
@@ -93,7 +101,7 @@ export const outlineHandles = (
                     }
                     const path = ['outlines', outline, key, 'points', i];
                     polygon.handles.push({
-                        kind: 'vertex', key: path.join('.'), path, label: `${name}.points[${i}]`,
+                        kind: 'vertex', key: path.join('.'), path, label: `${name}.points[${i}]`, ref: refOf(part.points[i]),
                         at: placed.at, frame: placed.frame, polygon: name, index: i,
                     });
                     last = placed.at;
@@ -107,7 +115,7 @@ export const outlineHandles = (
                     continue;
                 }
                 const path = ['outlines', outline, key, 'where'];
-                handles.push({kind: 'center', key: path.join('.'), path, label: `${name}.where`, at: placed.at, frame: placed.frame});
+                handles.push({kind: 'center', key: path.join('.'), path, label: `${name}.where`, ref: refOf(part.where), at: placed.at, frame: placed.frame});
             }
         } catch (e: unknown) {
             skipped.push(name);
@@ -117,7 +125,8 @@ export const outlineHandles = (
 };
 
 // Edges that are within a few degrees of horizontal or vertical without being exactly so:
-// usually a typo in the numbers rather than a design choice
+// usually a typo in the numbers rather than a design choice. Below 0.0001° (0.0001 mm over 50 mm)
+// is float noise, not a typo.
 export const nearMisses = (polygon: Polygon, limit = 3) => {
     const misses: { from: OutlineHandle, to: OutlineHandle, off: number }[] = [];
     const list = polygon.handles;
@@ -125,7 +134,7 @@ export const nearMisses = (polygon: Polygon, limit = 3) => {
         const to = list[(i + 1) % list.length];
         const angle = Math.atan2(to.at.y - from.at.y, to.at.x - from.at.x) * 180 / Math.PI;
         const off = Math.min(...[-180, -90, 0, 90, 180].map(t => Math.abs(angle - t)));
-        if (off > 1e-6 && off < limit) misses.push({from, to, off});
+        if (off > 1e-4 && off < limit) misses.push({from, to, off});
     });
     return misses;
 };

@@ -4,7 +4,8 @@ import yaml from "js-yaml";
 import {useConfigContext} from "../context/ConfigContext";
 import {
     ATTRS, AnchorShift, Attr, Edit, EditSite, Length,
-    applyEdits, findAnchorShift, findShift, findSite, formatLength, isPlainNumber, nudge, parseLength,
+    PartAttr, addOutline, applyEdits, findAnchorShift, findPartSites, findShift, findSite, formatLength, isPlainNumber,
+    nudge, parseLength,
 } from "../utils/layoutEdit";
 import {OutlineHandle, nearMisses, outlineHandles} from "../utils/outlineGeometry";
 
@@ -96,8 +97,8 @@ type HandleDrag = {
     sourceText: string,
     start: Vec,
     shift: AnchorShift,
-    // the polygon points before and after this one, to line it up with
-    neighbors: Vec[],
+    // the polygon points before and after this one, to line it up with, with their shifts as written
+    neighbors: { handle: OutlineHandle, raw: [string | undefined, string | undefined] }[],
     text?: string,
 };
 
@@ -105,6 +106,13 @@ type Drag = ColumnDrag | RotateDrag | ZoneDrag | HandleDrag;
 
 // where a dragged outline handle is now, and the lines it snapped to
 type HandleAt = { key: string, at: Vec, guides: [Vec, Vec][] };
+
+// A point of an outline being drawn: written as a shift from its nearest key, like hand-written ones
+type DrawnPoint = { ref: string, shift: [number, number], at: Vec };
+type Drawing = { name: string, points: DrawnPoint[] };
+type Cursor = { point: DrawnPoint, guides: [Vec, Vec][], closes: boolean };
+
+const NEW_OUTLINE = '__new__';
 
 const Container = styled.div`
   position: relative;
@@ -145,6 +153,8 @@ const Panel = styled.div`
   top: 0.75rem;
   right: 0.75rem;
   width: 15rem;
+  max-height: calc(100% - 4.5rem);
+  overflow-y: auto;
   padding: 0.75rem;
   border-radius: 0.25rem;
   background: rgba(45, 45, 45, 0.95);
@@ -177,6 +187,37 @@ const Panel = styled.div`
 
   input:disabled {
     color: #8a8a8a;
+  }
+
+  select {
+    width: 6rem;
+    padding: 0.2rem 0.4rem;
+    border: 1px solid #595959;
+    border-radius: 0.2rem;
+    background: #1e1e1e;
+    color: #ffffff;
+    font: inherit;
+  }
+
+  input[type=range] {
+    width: 100%;
+    padding: 0;
+    border: none;
+    accent-color: #ff9f1c;
+  }
+
+  .part {
+    padding: 0.5rem 0;
+    border-top: 1px solid #444444;
+  }
+
+  .part:first-of-type {
+    border-top: none;
+  }
+
+  .note {
+    color: #8a8a8a;
+    font-size: 0.8rem;
   }
 `;
 
@@ -211,6 +252,35 @@ const OutlineBar = styled.div`
   gap: 0.3rem;
   font-size: 0.85rem;
   color: #bdbdbd;
+
+  .row {
+    display: flex;
+    gap: 0.3rem;
+  }
+
+  input {
+    width: 9rem;
+    padding: 0.2rem 0.4rem;
+    border: 1px solid #595959;
+    border-radius: 0.2rem;
+    background: #1e1e1e;
+    color: #ffffff;
+    font: inherit;
+  }
+
+  button {
+    padding: 0.2rem 0.6rem;
+    border: none;
+    border-radius: 0.2rem;
+    background: #28a745;
+    color: #ffffff;
+    font: inherit;
+    cursor: pointer;
+  }
+
+  button.secondary {
+    background: #595959;
+  }
 
   select {
     padding: 0.2rem 0.4rem;
@@ -446,6 +516,137 @@ const ColumnPanel = ({column, text, units, effective, next, onCommit}: PanelProp
     );
 };
 
+const OPERATIONS = ['add', 'subtract', 'intersect', 'stack'];
+const JOINTS = ['round', 'pointy', 'beveled'];
+// "3]" is ergogen's shorthand for expand 3 with beveled joints
+const JOINT_SUFFIXES = [')', '>', ']'];
+
+type OutlinePanelProps = { outline: string, text: string, onCommit: (text: string) => void };
+
+// The settings of each part of an outline: how it joins the parts before it, and the expand and
+// fillet ergogen applies to everything up to and including it
+const OutlinePanel = ({outline, text, onCommit}: OutlinePanelProps) => {
+    const parts = useMemo(() => findPartSites(text, outline), [text, outline]);
+    const [drafts, setDrafts] = useState<Record<string, string | undefined>>({});
+    useEffect(() => setDrafts({}), [text, outline]);
+    // A slider writes once it rests, so a drag is one edit (and one undo), not dozens. Every write
+    // goes onto the newest text, the waiting slider value first, so neither undoes the other.
+    const latest = useRef(text);
+    useEffect(() => { latest.current = text; }, [text]);
+    const timer = useRef<number>();
+    const pending = useRef<{ key: string | number, attr: PartAttr, value: string } | null>(null);
+    useEffect(() => () => window.clearTimeout(timer.current), []);
+
+    if (typeof parts === 'string') return <Panel><h4>{outline}</h4><span className="note">{parts}</span></Panel>;
+
+    const applyTo = (base: string, key: string | number, attr: PartAttr, value: string) => {
+        const site = (() => { const now = findPartSites(base, outline); return typeof now === 'string' ? undefined : now.find(p => p.key === key)?.sites[attr]; })();
+        return site && typeof site !== 'string' ? applyEdits(base, [{site, value}]) : base;
+    };
+    const flush = (base: string) => {
+        window.clearTimeout(timer.current);
+        const waiting = pending.current;
+        pending.current = null;
+        return waiting ? applyTo(base, waiting.key, waiting.attr, waiting.value) : base;
+    };
+    const commitText = (next: string) => {
+        if (next === latest.current) return;
+        latest.current = next;
+        onCommit(next);
+    };
+    const write = (key: string | number, attr: PartAttr, site: EditSite | string, value: string, delay = 0) => {
+        if (typeof site === 'string') return;
+        const other = pending.current && (pending.current.key !== key || pending.current.attr !== attr);
+        if (delay && !other) {
+            pending.current = {key, attr, value};
+            window.clearTimeout(timer.current);
+            timer.current = window.setTimeout(() => commitText(flush(latest.current)), delay);
+            return;
+        }
+        const base = flush(latest.current);
+        if (delay) {
+            commitText(base);
+            pending.current = {key, attr, value};
+            timer.current = window.setTimeout(() => commitText(flush(latest.current)), delay);
+            return;
+        }
+        commitText(applyTo(base, key, attr, value));
+    };
+    const rawOf = (site: EditSite | string) => typeof site === 'string' ? undefined : site.raw;
+    const reason = (site: EditSite | string) => typeof site === 'string' ? `Can't edit here: ${site}` : undefined;
+
+    // a number with a slider; expressions ("studSize") are typed in the box and leave the slider alone
+    const numberField = (id: string, raw: string | undefined, max: number, min: number, disabled: string | undefined,
+                         toText: (value: string) => string, site: EditSite | string, key: string | number, attr: PartAttr) => {
+        const shown = drafts[id] ?? raw ?? '';
+        const value = shown === '' ? 0 : isPlainNumber(shown) ? Number(shown) : NaN;
+        const commitTyped = () => {
+            const typed = drafts[id]?.trim();
+            if (typed === undefined || typed === (raw ?? '') || typed === '') return;
+            write(key, attr, site, toText(typed));
+        };
+        return (
+            <>
+                <input value={shown} placeholder="0" disabled={!!disabled} title={disabled}
+                       onChange={e => setDrafts({...drafts, [id]: e.target.value})}
+                       onKeyDown={e => e.key === 'Enter' && commitTyped()} onBlur={commitTyped}/>
+                <input type="range" min={min} max={max} step={0.1} value={Number.isNaN(value) ? 0 : value}
+                       disabled={!!disabled || Number.isNaN(value)}
+                       title={Number.isNaN(value) ? `"${shown}" is an expression: change it in the box` : undefined}
+                       onChange={e => {
+                           setDrafts({...drafts, [id]: e.target.value});
+                           // nothing to write while it stays at the default
+                           if (raw !== undefined || Number(e.target.value) !== 0) write(key, attr, site, toText(e.target.value), 250);
+                       }}/>
+            </>
+        );
+    };
+
+    return (
+        <Panel onPointerDown={e => e.stopPropagation()}>
+            <h4>{outline}</h4>
+            {parts.map(part => {
+                const id = String(part.key);
+                const {operation, expand, joints, fillet} = part.sites;
+                const expandRaw = rawOf(expand);
+                const shorthand = expandRaw ? /^(.*?)\s*([)>\]])$/.exec(expandRaw.trim()) : null;
+                const suffix = shorthand?.[2];
+                const jointsRaw = rawOf(joints);
+                const joint = suffix ? JOINTS[JOINT_SUFFIXES.indexOf(suffix)]
+                    : jointsRaw === undefined ? 'round' : JOINTS[Number(jointsRaw)] ?? jointsRaw;
+                const field = (attr: PartAttr) => `${id}.${attr}`;
+                return (
+                    <div className="part" key={id}>
+                        <h4>{typeof part.key === 'number' ? `#${part.key}` : part.key} {part.what}</h4>
+                        <label>
+                            <span>operation</span>
+                            <select value={rawOf(operation) ?? 'add'} disabled={!!reason(operation)} title={reason(operation)}
+                                    onChange={e => write(part.key, 'operation', operation, e.target.value)}>
+                                {OPERATIONS.map(op => <option key={op} value={op}>{op}</option>)}
+                            </select>
+                        </label>
+                        <label><span>expand (mm)</span></label>
+                        {numberField(field('expand'), shorthand ? shorthand[1] : expandRaw, 10, -10, reason(expand),
+                            value => `${value}${suffix ?? ''}`, expand, part.key, 'expand')}
+                        <label>
+                            <span>joints</span>
+                            <select value={joint} disabled={!!reason(suffix ? expand : joints)}
+                                    onChange={e => suffix && shorthand
+                                        ? write(part.key, 'expand', expand, `${shorthand[1]}${JOINT_SUFFIXES[JOINTS.indexOf(e.target.value)]}`)
+                                        : write(part.key, 'joints', joints, e.target.value)}>
+                                {JOINTS.map(j => <option key={j} value={j}>{j}</option>)}
+                            </select>
+                        </label>
+                        <label><span>fillet (mm)</span></label>
+                        {numberField(field('fillet'), rawOf(fillet), 10, 0, reason(fillet), value => value, fillet, part.key, 'fillet')}
+                    </div>
+                );
+            })}
+            <span className="note">expand and fillet apply to the outline up to and including their part</span>
+        </Panel>
+    );
+};
+
 const LayoutEditor = (): JSX.Element | null => {
     const configContext = useConfigContext();
     const configInput = configContext?.configInput ?? '';
@@ -460,6 +661,16 @@ const LayoutEditor = (): JSX.Element | null => {
     const [outline, setOutline] = useState<string>('');
     const [paths, setPaths] = useState<Record<string, string>>({});
     const [handleAt, setHandleAt] = useState<HandleAt | null>(null);
+    const [newName, setNewName] = useState<string | null>(null);
+    const [drawing, setDrawing] = useState<Drawing | null>(null);
+    const [cursor, setCursor] = useState<Cursor | null>(null);
+    // Enter, Backspace and Escape while drawing; set each render so it sees the current state
+    const onDrawingKey = useRef<(e: KeyboardEvent) => void>();
+    useEffect(() => {
+        const listener = (e: KeyboardEvent) => onDrawingKey.current?.(e);
+        window.addEventListener('keydown', listener);
+        return () => window.removeEventListener('keydown', listener);
+    }, []);
     const showOutlines = useRef(false);
     showOutlines.current = outline !== '';
 
@@ -722,10 +933,13 @@ const LayoutEditor = (): JSX.Element | null => {
         svgRef.current?.setPointerCapture(e.pointerId);
         const polygon = outlineInfo?.polygons.find(p => p.id === handle.polygon)?.handles ?? [];
         const index = polygon.indexOf(handle);
-        const neighbors = index < 0 || polygon.length < 2 ? [] : [
-            polygon[(index - 1 + polygon.length) % polygon.length].at,
-            polygon[(index + 1) % polygon.length].at,
-        ];
+        const neighbors = (index < 0 || polygon.length < 2 ? [] : [
+            polygon[(index - 1 + polygon.length) % polygon.length],
+            polygon[(index + 1) % polygon.length],
+        ]).map(n => {
+            const written = findShift(configInput, n.path);
+            return {handle: n, raw: typeof written === 'string' ? [undefined, undefined] : written.raw} as HandleDrag['neighbors'][number];
+        });
         drag.current = {kind: 'handle', handle, sourceText: configInput, start: toBoard(e), shift, neighbors};
         setHint(`${handle.label}: shift [${shift.raw.map(v => v ?? '0').join(', ')}]`);
     };
@@ -737,19 +951,20 @@ const LayoutEditor = (): JSX.Element | null => {
         // line up with a neighbouring point when within a few pixels of it
         const snap = 6 / (boardRef.current?.getScreenCTM()?.a || 1);
         const guides: [Vec, Vec][] = [];
-        let snapped = {x: false, y: false};
+        const snappedTo: { x?: HandleDrag['neighbors'][number], y?: HandleDrag['neighbors'][number] } = {};
         for (const n of d.neighbors) {
-            if (!snapped.x && Math.abs(wanted.x - n.x) < snap) {
-                wanted.x = n.x;
-                snapped.x = true;
-                guides.push([n, wanted]);
+            if (!snappedTo.x && Math.abs(wanted.x - n.handle.at.x) < snap) {
+                wanted.x = n.handle.at.x;
+                snappedTo.x = n;
+                guides.push([n.handle.at, wanted]);
             }
-            if (!snapped.y && Math.abs(wanted.y - n.y) < snap) {
-                wanted.y = n.y;
-                snapped.y = true;
-                guides.push([n, wanted]);
+            if (!snappedTo.y && Math.abs(wanted.y - n.handle.at.y) < snap) {
+                wanted.y = n.handle.at.y;
+                snappedTo.y = n;
+                guides.push([n.handle.at, wanted]);
             }
         }
+        const snapped = {x: !!snappedTo.x, y: !!snappedTo.y};
         // from the board to the frame the shift is in; a mirrored anchor shifts x the other way
         const local = rotate({x: wanted.x - at.x, y: wanted.y - at.y}, -frame);
         if (at.mirrored) local.x = -local.x;
@@ -758,8 +973,13 @@ const LayoutEditor = (): JSX.Element | null => {
         const exact = turned && (snapped.x || snapped.y) ? {x: true, y: true} : snapped;
         if (!exact.x) local.x = round(local.x, 0.1);
         if (!exact.y) local.y = round(local.y, 0.1);
-        const x = nudge(d.shift.raw[0], local.x, units, exact.x);
-        const y = nudge(d.shift.raw[1], local.y, units, exact.y);
+        // Lined up with a point on the same, unturned key: write the same text it has ("1ky + 3"),
+        // so the edge is exactly straight and stays so when the keys move
+        const copies = (n: HandleDrag['neighbors'][number] | undefined, axis: 0 | 1) =>
+            !!n && n.handle.ref !== undefined && n.handle.ref === d.handle.ref && n.raw[axis] !== undefined
+            && Math.abs(frame % 360) < 1e-9 && Math.abs(n.handle.frame % 360) < 1e-9;
+        const x = copies(snappedTo.x, 0) ? snappedTo.x!.raw[0]! : nudge(d.shift.raw[0], local.x, units, exact.x);
+        const y = copies(snappedTo.y, 1) ? snappedTo.y!.raw[1]! : nudge(d.shift.raw[1], local.y, units, exact.y);
         d.text = applyEdits(d.sourceText, d.shift.edits(x, y));
         const moved = rotate({x: at.mirrored ? -local.x : local.x, y: local.y}, frame);
         setHandleAt({key: d.handle.key, at: {x: at.x + moved.x, y: at.y + moved.y}, guides: guides.map(([n]) => [n, wanted])});
@@ -782,6 +1002,97 @@ const LayoutEditor = (): JSX.Element | null => {
             setTransform(null);
             setHandleAt(null);
         }
+    };
+
+    const outlineNames = Object.keys(lastConfig.current?.outlines ?? {});
+    const nameProblem = (name: string) =>
+        !/^[A-Za-z_][\w-]*$/.test(name) ? 'Use letters, digits, _ or -, starting with a letter'
+            : outlineNames.includes(name) ? `There already is an outline called ${name}` : null;
+
+    const startDrawing = () => {
+        const name = (newName ?? '').trim();
+        const problem = nameProblem(name);
+        if (problem) return setHint(problem);
+        setNewName(null);
+        setSelected(null);
+        setDrawing({name, points: []});
+        setHint(null);
+    };
+
+    // The point a click would add: snapped level with the last or first point when close to it,
+    // then written as a shift from the nearest key, in that key's frame
+    const pointAt = (e: React.PointerEvent, d: Drawing): Cursor | null => {
+        if (!points) return null;
+        const pxPerMm = boardRef.current?.getScreenCTM()?.a || 1;
+        const wanted = toBoard(e);
+        const first = d.points[0];
+        if (first && d.points.length >= 3 && Math.hypot(wanted.x - first.at.x, wanted.y - first.at.y) < 8 / pxPerMm) {
+            return {point: first, guides: [], closes: true};
+        }
+        const guides: [Vec, Vec][] = [];
+        const snapped = {x: false, y: false};
+        for (const n of [d.points[d.points.length - 1], first].filter(Boolean) as DrawnPoint[]) {
+            if (!snapped.x && Math.abs(wanted.x - n.at.x) < 6 / pxPerMm) {
+                wanted.x = n.at.x;
+                snapped.x = true;
+                guides.push([n.at, wanted]);
+            }
+            if (!snapped.y && Math.abs(wanted.y - n.at.y) < 6 / pxPerMm) {
+                wanted.y = n.at.y;
+                snapped.y = true;
+                guides.push([n.at, wanted]);
+            }
+        }
+        let ref = '', best = Infinity;
+        for (const [name, p] of Object.entries(points)) {
+            const distance = Math.hypot(p.x - wanted.x, p.y - wanted.y);
+            if (distance < best) [ref, best] = [name, distance];
+        }
+        const key = points[ref];
+        const sign = signOf(key);
+        const local = rotate({x: wanted.x - key.x, y: wanted.y - key.y}, -key.r);
+        // snapped points keep the precision that lines them up
+        const exact = snapped.x || snapped.y;
+        const shift: [number, number] = exact ? [sign * local.x, local.y] : [round(sign * local.x, 0.1), round(local.y, 0.1)];
+        const moved = rotate({x: sign * shift[0], y: shift[1]}, key.r);
+        const at = {x: key.x + moved.x, y: key.y + moved.y};
+        return {point: {ref, shift, at}, guides: guides.map(([n]) => [n, at]), closes: false};
+    };
+
+    const finishDrawing = (d: Drawing) => {
+        if (d.points.length < 3) return setHint('An outline needs at least 3 points');
+        try {
+            const exact = (v: number) => String(Number(v.toFixed(6)));
+            const text = addOutline(configInput, d.name, d.points.map(p => ({ref: p.ref, shift: [exact(p.shift[0]), exact(p.shift[1])]})));
+            configContext.setConfigInput(text);
+            setOutline(d.name);
+            setHint(`Added outline ${d.name}; drag its points to adjust them`);
+        } catch (e: unknown) {
+            setError(String(e));
+        }
+        setDrawing(null);
+        setCursor(null);
+    };
+
+    const drawClick = (e: React.PointerEvent) => {
+        e.stopPropagation();
+        if (!drawing || e.button !== 0) return;
+        const next = pointAt(e, drawing);
+        if (!next) return;
+        if (next.closes) return finishDrawing(drawing);
+        setDrawing({...drawing, points: [...drawing.points, next.point]});
+    };
+
+    onDrawingKey.current = e => {
+        if (!drawing || (e.target as HTMLElement)?.closest?.('input, textarea, .monaco-editor')) return;
+        if (e.key === 'Enter') finishDrawing(drawing);
+        else if (e.key === 'Backspace') setDrawing({...drawing, points: drawing.points.slice(0, -1)});
+        else if (e.key === 'Escape') {
+            setDrawing(null);
+            setCursor(null);
+            setHint('Drawing cancelled');
+        } else return;
+        e.preventDefault();
     };
 
     // a dragged handle shows where it is going; its polygon follows it
@@ -853,6 +1164,25 @@ const LayoutEditor = (): JSX.Element | null => {
                             : <CenterHandle key={h.key} cx={v.x} cy={v.y} r={1.5}
                                             onPointerDown={e => startHandleDrag(e, h)}>{title}</CenterHandle>;
                     })}
+                    {drawing && (() => {
+                        const line = [...drawing.points.map(p => p.at), ...(cursor && !cursor.closes ? [cursor.point.at] : [])];
+                        return (
+                            <g pointerEvents="none">
+                                <polyline points={line.map(v => `${v.x},${v.y}`).join(' ')} fill="none" stroke="#ff9f1c" strokeWidth={0.5}/>
+                                {line.length >= 3 && (
+                                    <line x1={line[line.length - 1].x} y1={line[line.length - 1].y} x2={line[0].x} y2={line[0].y}
+                                          stroke="#ff9f1c" strokeWidth={0.4} strokeDasharray="1.5 1"/>
+                                )}
+                                {drawing.points.map((p, i) => (
+                                    <rect key={i} x={p.at.x - 1.2} y={p.at.y - 1.2} width={2.4} height={2.4} fill="#ff9f1c"
+                                          stroke={i === 0 && cursor?.closes ? '#ffffff' : 'none'} strokeWidth={0.6}/>
+                                ))}
+                                {cursor?.guides.map(([a, b], i) => (
+                                    <line key={i} x1={a.x} y1={a.y} x2={b.x} y2={b.y} stroke="#4dabf7" strokeWidth={0.4} strokeDasharray="1 1"/>
+                                ))}
+                            </g>
+                        );
+                    })()}
                     {handles.map(({side, pivot, handle}) => (
                         <g key={side}>
                             <line x1={pivot.x} y1={pivot.y} x2={handle.x} y2={handle.y}
@@ -864,7 +1194,18 @@ const LayoutEditor = (): JSX.Element | null => {
                         </g>
                     ))}
                 </g>
+                {drawing && view && (
+                    // takes every click while drawing, so the keys under it don't start drags
+                    <rect x={view.x} y={view.y} width={view.w} height={view.h} fill="transparent" style={{cursor: 'crosshair'}}
+                          onPointerDown={drawClick}
+                          onPointerMove={e => setCursor(pointAt(e, drawing))}
+                          onPointerLeave={() => setCursor(null)}/>
+                )}
             </Canvas>
+
+            {!selected && outline && !drawing && (
+                <OutlinePanel outline={outline} text={configInput} onCommit={commit}/>
+            )}
 
             {selected && (
                 <ColumnPanel
@@ -878,10 +1219,27 @@ const LayoutEditor = (): JSX.Element | null => {
             )}
 
             <OutlineBar onPointerDown={e => e.stopPropagation()}>
-                <select value={outline} onChange={e => setOutline(e.target.value)}>
+                <select value={newName !== null ? NEW_OUTLINE : outline} disabled={!!drawing}
+                        onChange={e => e.target.value === NEW_OUTLINE ? setNewName('') : (setNewName(null), setOutline(e.target.value))}>
                     <option value="">Outline: none</option>
-                    {Object.keys(lastConfig.current?.outlines ?? {}).map(name => <option key={name} value={name}>{name}</option>)}
+                    {outlineNames.map(name => <option key={name} value={name}>{name}</option>)}
+                    <option value={NEW_OUTLINE}>+ New outline…</option>
                 </select>
+                {newName !== null && (
+                    <div className="row">
+                        <input autoFocus placeholder="name" value={newName}
+                               onChange={e => setNewName(e.target.value)}
+                               onKeyDown={e => e.key === 'Enter' ? startDrawing() : e.key === 'Escape' && setNewName(null)}/>
+                        <button onClick={startDrawing}>Draw</button>
+                        <button className="secondary" onClick={() => setNewName(null)}>Cancel</button>
+                    </div>
+                )}
+                {drawing && (
+                    <div className="row">
+                        <button onClick={() => finishDrawing(drawing)} disabled={drawing.points.length < 3}>Finish</button>
+                        <button className="secondary" onClick={() => { setDrawing(null); setCursor(null); }}>Cancel</button>
+                    </div>
+                )}
                 {outlineInfo && outlineInfo.misses.length > 0 && (
                     <ErrorText>{outlineInfo.misses.length} edge{outlineInfo.misses.length > 1 ? 's' : ''} almost straight (red)</ErrorText>
                 )}
@@ -892,7 +1250,10 @@ const LayoutEditor = (): JSX.Element | null => {
 
             <StatusBar>
                 <button onClick={() => points && setView(fitView(points))}>Fit</button>
-                {error ? <ErrorText>{error}</ErrorText> : <span>{hint ?? HELP}</span>}
+                {error ? <ErrorText>{error}</ErrorText> : <span>{drawing
+                    ? `Drawing ${drawing.name}: click to add points (each one is a shift from its nearest key), `
+                        + 'click the first point or press Enter to finish, Backspace to undo, Esc to cancel'
+                    : hint ?? HELP}</span>}
             </StatusBar>
         </Container>
     );

@@ -1,5 +1,5 @@
 import {expect, it} from "vitest";
-import {applyEdits, findAnchorShift, findShift, findSite, formatLength, nudge, parseLength, EditSite} from "./layoutEdit";
+import {addOutline, applyEdits, findAnchorShift, findPartSites, findShift, findSite, formatLength, nudge, parseLength, EditSite} from "./layoutEdit";
 
 const config = `points:
   zones:
@@ -151,4 +151,59 @@ it('nudges a coordinate and keeps how it is written', () => {
     expect(nudge('1ky + 2', -3, units)).toBe('1ky - 1');
     expect(nudge(undefined, -2.5, units)).toBe('-2.5');
     expect(nudge('2 * kx', 1, units)).toBe('2 * kx + 1');
+});
+
+it('adds a new polygon outline after the last one', () => {
+    const config = `points:\n  zones: {}\noutlines:\n  board:\n    - what: polygon\n      points:\n        - ref: a\n\npcbs:\n  x: 1\n`;
+    const out = addOutline(config, 'cut', [{ref: 'a', shift: ['1', '2']}, {ref: 'b', shift: ['-3', '4.5']}]);
+    expect(out).toBe(`points:\n  zones: {}\noutlines:\n  board:\n    - what: polygon\n      points:\n        - ref: a\n`
+        + `  cut:\n    - what: polygon\n      points:\n        - ref: a\n          shift: [1, 2]\n        - ref: b\n          shift: [-3, 4.5]\n`
+        + `\npcbs:\n  x: 1\n`);
+    expect(() => addOutline(config, 'board', [])).toThrow(/already/);
+    expect(() => addOutline(config, 'no good', [])).toThrow(/can't be/);
+});
+
+it('starts an outlines section when there is none', () => {
+    expect(addOutline('points: {}', 'cut', [{ref: 'a', shift: ['0', '0']}]))
+        .toBe('points: {}\noutlines:\n  cut:\n    - what: polygon\n      points:\n        - ref: a\n          shift: [0, 0]\n');
+});
+
+it('adds the outline before trailing lines of spaces', () => {
+    const config = `outlines:\n  board:\n    - what: circle\n  \n\npcbs: {}\n`;
+    expect(addOutline(config, 'cut', [{ref: 'a', shift: ['0', '0']}]))
+        .toBe(`outlines:\n  board:\n    - what: circle\n  cut:\n    - what: polygon\n      points:\n        - ref: a\n          shift: [0, 0]\n  \n\npcbs: {}\n`);
+});
+
+it('keeps six decimals for a snapped point', () => {
+    const units = {kx: 19};
+    expect(nudge('3', 0.123456789, units, true)).toBe('3.123457');
+    expect(nudge('1ky + 2', 0.1 + 0.2, {ky: 19}, true)).toBe('1ky + 2.3');
+    expect(nudge('0.8kx', 1 / 3, units, true)).toBe('0.8kx + 0.333333');
+});
+
+const parts = `outlines:
+  board:
+    - what: polygon # outer
+      operation: stack
+      points:
+        - ref: a
+      fillet: 0.9
+  holes:
+    left:
+      what: circle
+      radius: 2
+`;
+
+it('finds the settings of each outline part, or where to add them', () => {
+    const board = findPartSites(parts, 'board');
+    const holes = findPartSites(parts, 'holes');
+    if (typeof board === 'string' || typeof holes === 'string') throw new Error('no parts');
+    expect(board.map(p => [p.key, p.what])).toEqual([[0, 'polygon']]);
+    const {fillet, expand, operation} = board[0].sites as Record<string, EditSite>;
+    expect([fillet.raw, operation.raw, expand.raw]).toEqual(['0.9', 'stack', undefined]);
+    expect(applyEdits(parts, [{site: expand, value: '2'}, {site: fillet, value: '1.5'}]))
+        .toContain('    - what: polygon # outer\n      expand: 2\n      operation: stack\n      points:\n        - ref: a\n      fillet: 1.5\n');
+    expect(holes.map(p => [p.key, p.what])).toEqual([['left', 'circle']]);
+    expect(applyEdits(parts, [{site: holes[0].sites.operation as EditSite, value: 'subtract'}]))
+        .toContain('      what: circle\n      operation: subtract\n      radius: 2');
 });
