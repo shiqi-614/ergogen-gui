@@ -17,6 +17,9 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    permissions:
+      # pushes the cdn-* tags jsDelivr serves the build's files from
+      contents: write
     steps:
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
@@ -32,6 +35,40 @@ jobs:
 
       - name: Checkout code
         uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      # The server sends only index.html; the rest comes from jsDelivr, which serves the files of a tag of this repo.
+      # Every build gets its own tag, so a file's URL never changes.
+      - name: Build the site
+        run: |
+          tag="cdn-$(date -u +%Y%m%d-%H%M%S)-${GITHUB_SHA::7}"
+          export CDN_BASE="https://cdn.jsdelivr.net/gh/${GITHUB_REPOSITORY}@${tag}/"
+          echo "CDN_TAG=${tag}" >> "$GITHUB_ENV"
+          echo "CDN_BASE=${CDN_BASE}" >> "$GITHUB_ENV"
+          command -v yarn > /dev/null || npm install -g yarn@1
+          yarn install
+          yarn run build
+
+      - name: Publish the site's files under the tag
+        env:
+          TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          cd build
+          git init -q
+          git add -A
+          git -c user.name="github-actions[bot]" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+            commit -q -m "ergogen-gui build of ${GITHUB_SHA}"
+          git push -q "https://x-access-token:${TOKEN}@github.com/${GITHUB_REPOSITORY}.git" "HEAD:refs/tags/${CDN_TAG}"
+          rm -rf .git
+          # the new index.html goes out only once jsDelivr has its files
+          entry=$(grep -o 'assets/index-[^"]*\.js' index.html | head -n 1)
+          for file in "$entry" dependencies/ergogen.js; do
+            curl -sSf --retry 10 --retry-delay 6 --retry-all-errors -o /dev/null "${CDN_BASE}${file}"
+          done
 
       - name: Build and push
         uses: docker/build-push-action@v6
@@ -51,4 +88,13 @@ jobs:
             -H "Accept: application/vnd.github.v3+json" \
             https://api.github.com/repos/shiqi-614/ErgogenDocker/dispatches \
             -d '{"event_type": "trigger-event"}'
+
+      - name: Delete old site tags
+        env:
+          TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          remote="https://x-access-token:${TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          # keeps the newest 10: an index.html still open or cached somewhere may need a recent one
+          old=$(git ls-remote --tags --refs "$remote" 'cdn-*' | sed 's#.*refs/tags/##' | sort | head -n -10)
+          if [ -n "$old" ]; then git push -q "$remote" --delete $old; fi
 
