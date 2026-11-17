@@ -55,7 +55,7 @@ const PcbPreview = ({pcb, board, initialView}: Props): JSX.Element => {
         if (!entry) return null;
         const [name, assembly] = entry as [string, any];
         const parts = (assembly.layers || [])
-            .map((l: any) => ({name: l.name, z: l.z, height: l.height, stl: results?.cases?.[l.name]?.stl}))
+            .map((l: any) => ({name: l.name, z: l.z, height: l.height, stl: results?.cases?.[l.name]?.stl, made: results?.cases?.[l.name]?.parts || []}))
             .filter((p: any) => p.stl instanceof Blob);
         const {z, thickness, shift, top, on} = assembly.pcb;
         return {name, pcb: {z, thickness, shift: shift || 0, top: top || null, on: on || null}, parts};

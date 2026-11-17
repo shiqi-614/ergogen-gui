@@ -181,21 +181,35 @@ export type PartSites = { key: string | number, what: string, sites: Record<Part
 
 // Finds the parts of outlines.<name> (a list, or a map of named parts) and where each of their
 // settings is written. A missing setting goes on a new line after the part's "what".
-export const findPartSites = (text: string, outline: string): PartSites[] | string => {
+export const findPartSites = (text: string, outline: string): PartSites[] | string =>
+    findItemSites(text, ['outlines', outline], PART_ATTRS) as PartSites[] | string;
+
+// a value as written, a scalar or a flow list or map like [Dwgs.User]: its site
+const replaceValue = (text: string, node: unknown): EditSite | string => {
+    if (node instanceof Scalar) return replaceScalar(text, node);
+    const range = (node instanceof YAMLSeq || node instanceof YAMLMap) && node.type?.startsWith('FLOW') ? node.cstNode?.valueRange : null;
+    if (!range) return 'it is not written on one line';
+    return {start: range.start, end: range.end, raw: text.slice(range.start, range.end), render: v => v};
+};
+
+// The items of a list (or map) at path and where each of the given keys is written in them; a
+// missing key goes on a new line after the item's "what"
+export const findItemSites = <K extends string>(text: string, path: (string | number)[], attrs: K[]):
+    { key: string | number, what: string, sites: Record<K, EditSite | string> }[] | string => {
     const doc = parseDocument(text, {keepCstNodes: true});
     if (doc.errors.length) return 'the config has YAML errors';
-    const node = doc.getIn(['outlines', outline], true);
+    const node = doc.getIn(path, true);
     let parts: [string | number, unknown][];
     if (node instanceof YAMLSeq) parts = node.items.map((item, i) => [i, item]);
     else if (isBlockMap(node)) parts = (node.items as Pair[]).map(pair => [String((pair.key as Scalar)?.value), pair.value]);
-    else return `outlines.${outline} is not a list or a map of parts`;
+    else return `${path.join('.')} is not a list or a map of parts`;
 
     return parts.map(([key, part]) => {
         const what = isBlockMap(part) ? findPair(part, 'what') : undefined;
-        const sites = Object.fromEntries(PART_ATTRS.map(attr => {
+        const sites = Object.fromEntries(attrs.map(attr => {
             if (!isBlockMap(part)) return [attr, 'the part is not a plain map'];
             const pair = findPair(part, attr);
-            if (pair) return [attr, replaceScalar(text, pair.value)];
+            if (pair) return [attr, replaceValue(text, pair.value)];
             const whatKey = what?.key instanceof Scalar ? what.key.range : null;
             if (what && whatKey) {
                 const at = endOfLine(text, whatKey[0]);
@@ -203,10 +217,64 @@ export const findPartSites = (text: string, outline: string): PartSites[] | stri
                 return [attr, {start: at, end: at, render: (v: string) => `\n${indent}${attr}: ${v}`} as EditSite];
             }
             return [attr, insertInto(text, part, attr)];
-        })) as Record<PartAttr, EditSite | string>;
+        })) as Record<K, EditSite | string>;
         const whatValue = what?.value instanceof Scalar ? String(what.value.value) : 'outline';
         return {key, what: whatValue, sites};
     });
+};
+
+// The lines of each item of the list at path: from the comment lines right above it (they are about it)
+// to where the next one's start
+const listBlocks = (text: string, path: (string | number)[]): { list: YAMLSeq, blocks: Range[] } => {
+    const doc = parseDocument(text, {keepCstNodes: true});
+    if (doc.errors.length) throw new Error('the config has YAML errors');
+    const list = doc.getIn(path, true);
+    if (!(list instanceof YAMLSeq) || list.type !== 'SEQ') throw new Error(`${path.join('.')} is not a list`);
+    const starts = list.items.map(item => {
+        let start = lineStartOf(text, (item as YAMLMap).range?.[0] ?? 0);
+        for (;;) {
+            const above = lineStartOf(text, start - 1);
+            if (start === 0 || !/^[ \t]*#/.test(text.slice(above, start))) break;
+            start = above;
+        }
+        return start;
+    });
+    const blocks = starts.map((start, i) => ({start, end: i + 1 < starts.length ? starts[i + 1] : afterNode(text, list.items[i] as YAMLMap)}));
+    return {list, blocks};
+};
+
+// Moves item index of the list at path by delta places (-1: up, 1: down), its comment with it
+export const moveListItem = (text: string, path: (string | number)[], index: number, delta: number): string => {
+    const {blocks} = listBlocks(text, path);
+    const other = index + delta;
+    if (!blocks[index] || !blocks[other]) return text;
+    const [a, b] = index < other ? [blocks[index], blocks[other]] : [blocks[other], blocks[index]];
+    // the last item's block may lack a line break at the end of the text
+    const piece = (r: Range) => { const t = text.slice(r.start, r.end); return t.endsWith('\n') ? t : t + '\n'; };
+    const joined = piece(b) + text.slice(a.end, b.start) + piece(a);
+    const end = text.slice(b.start, b.end).endsWith('\n') ? joined : joined.slice(0, -1);
+    return text.slice(0, a.start) + end + text.slice(b.end);
+};
+
+// Deletes item index of the list at path, with the comment lines above it
+export const deleteListItem = (text: string, path: (string | number)[], index: number): string => {
+    const {blocks} = listBlocks(text, path);
+    if (!blocks[index]) throw new Error(`${path.join('.')} has no item ${index}`);
+    const shared = anchorsUsedElsewhere(text, blocks[index]);
+    if (shared.length) throw new Error(`it defines ${shared.map(a => `&${a}`).join(', ')}, which other parts of the config still use`);
+    return removeRanges(text, [blocks[index]]);
+};
+
+// Adds an item (lines relative to its "- ") at the end of the list at path, lined up with the others
+export const appendListItem = (text: string, path: (string | number)[], lines: string[]): string => {
+    const {list, blocks} = listBlocks(text, path);
+    const firstKey = ((list.items[0] as YAMLMap)?.items?.[0] as Pair | undefined)?.key;
+    const column = firstKey instanceof Scalar && firstKey.range ? columnOf(text, firstKey.range[0]) : undefined;
+    if (column === undefined || column < 2) throw new Error(`${path.join('.')} has no item to line the new one up with`);
+    const dash = ' '.repeat(column - 2);
+    const body = lines.map((line, i) => (i === 0 ? `${dash}- ` : `${dash}  `) + line).join('\n') + '\n';
+    const at = blocks[blocks.length - 1].end;
+    return text.slice(0, at) + (at > 0 && text[at - 1] !== '\n' ? '\n' : '') + body + text.slice(at);
 };
 
 export type NewPoint = { ref: string, shift: [string, string] };

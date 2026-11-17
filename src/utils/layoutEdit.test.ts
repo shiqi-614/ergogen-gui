@@ -1,5 +1,5 @@
 import {expect, it} from "vitest";
-import {addOutline, addPcbOutline, appendEntry, appendOutline, applyEdits, deleteEntry, deleteOutline, deleteOutlinePart, findAnchorShift, findChildShift, findChildValue, findPartSites, findShift, findSite, findValue, findWhereList, formatLength, insertPolygonPoint, nudge, outlineReferences, parseLength, partLines, pcbOutlines, plateLines, removePolygonPoint, EditSite} from "./layoutEdit";
+import {addOutline, addPcbOutline, appendEntry, appendListItem, appendOutline, applyEdits, deleteEntry, deleteListItem, deleteOutline, deleteOutlinePart, findAnchorShift, findChildShift, findChildValue, findItemSites, findPartSites, findShift, findSite, findValue, findWhereList, formatLength, insertPolygonPoint, moveListItem, nudge, outlineReferences, parseLength, partLines, pcbOutlines, plateLines, removePolygonPoint, EditSite} from "./layoutEdit";
 
 const config = `points:
   zones:
@@ -424,4 +424,69 @@ it('reads, adds and removes the outlines of a pcb', () => {
     expect(addPcbOutline(boards, 'bare', 'board')).toContain('  bare:\n    outlines:\n      board:\n        outline: board\n    footprints:');
     expect(addPcbOutline(boards, 'empty', 'board')).toContain('  empty:\n    outlines:\n      board:\n        outline: board\n    footprints: {}');
     expect(deleteEntry(boards, ['pcbs', 'right', 'outlines'], 'main')).toContain('    outlines:\n    footprints:');
+});
+
+const caseConfig = `cases:
+  top:
+    - what: outline
+      name: expand
+      extrude: 3
+    # the keys' holes
+    - what: pcb
+      name: /footprints.keys/
+      extrude: 3
+      operation: subtract
+      layers: [Dwgs.User]
+    - what: outline
+      name: cut
+      operation: subtract
+  middle:
+    - what: outline
+      name: combo
+`;
+const top = ['cases', 'top'];
+
+it('finds the settings of case parts, lists included', () => {
+    const parts = findItemSites(caseConfig, top, ['name', 'extrude', 'layers', 'operation'] as const);
+    if (typeof parts === 'string') throw new Error(parts);
+    expect(parts.map(p => [p.key, p.what, (p.sites.name as EditSite).raw])).toEqual([[0, 'outline', 'expand'], [1, 'pcb', '/footprints.keys/'], [2, 'outline', 'cut']]);
+    expect((parts[1].sites.layers as EditSite).raw).toBe('[Dwgs.User]');
+    expect(applyEdits(caseConfig, [{site: parts[2].sites.extrude as EditSite, value: '5'}])).toContain('    - what: outline\n      extrude: 5\n      name: cut');
+});
+
+it('moves a case part up or down, its comment with it', () => {
+    const up = moveListItem(caseConfig, top, 1, -1);
+    expect(up).toContain(`  top:
+    # the keys' holes
+    - what: pcb
+      name: /footprints.keys/
+      extrude: 3
+      operation: subtract
+      layers: [Dwgs.User]
+    - what: outline
+      name: expand
+      extrude: 3
+    - what: outline
+      name: cut`);
+    const down = moveListItem(caseConfig, top, 1, 1);
+    expect(down).toContain(`      extrude: 3
+    - what: outline
+      name: cut
+      operation: subtract
+    # the keys' holes
+    - what: pcb
+      name: /footprints.keys/
+      extrude: 3
+      operation: subtract
+      layers: [Dwgs.User]
+  middle:`);
+    expect(moveListItem(caseConfig, top, 0, -1)).toBe(caseConfig);
+    expect(moveListItem(moveListItem(caseConfig, top, 1, 1), top, 2, -1)).toBe(caseConfig);
+});
+
+it('deletes a case part with its comment, and adds one at the end', () => {
+    expect(deleteListItem(caseConfig, top, 1)).toContain('      extrude: 3\n    - what: outline\n      name: cut');
+    expect(deleteListItem(caseConfig, top, 1)).not.toContain('keys');
+    expect(appendListItem(caseConfig, top, ['what: outline', 'name: board', 'extrude: 2', 'operation: subtract']))
+        .toContain('      operation: subtract\n    - what: outline\n      name: board\n      extrude: 2\n      operation: subtract\n  middle:');
 });

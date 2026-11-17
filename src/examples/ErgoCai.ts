@@ -580,7 +580,7 @@ cases:
       operation: subtract
       layers: [Dwgs.User]
     - what: pcb
-      name: /ootprints.stab/
+      name: /footprints.stab/
       extrude: 5
       operation: subtract
       layers: [Dwgs.User]
