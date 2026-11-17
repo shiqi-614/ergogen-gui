@@ -124,6 +124,40 @@ export const outlineHandles = (
     return {handles, polygons, skipped};
 };
 
+// The corners of every key that the convex hull of the keys passes through, each as a shift from
+// its key in that key's frame, so an outline made of them follows the keys. A split board's outline
+// covers one half (the config mirrors it for the other), a unibody's covers both, mirrored keys too.
+export const keyHull = (
+    points: Record<string, PointLike & { meta?: { mirrored?: boolean, width?: number, height?: number } }>,
+    bothHalves = false,
+) => {
+    const corners: { ref: string, shift: [number, number], x: number, y: number }[] = [];
+    for (const [ref, p] of Object.entries(points)) {
+        if (p.meta?.mirrored && !bothHalves) continue;
+        // a mirrored key shifts x the other way
+        const sign = p.meta?.mirrored ? -1 : 1;
+        const w = (p.meta?.width ?? 0) / 2, h = (p.meta?.height ?? 0) / 2;
+        for (const [sx, sy] of [[-w, -h], [w, -h], [w, h], [-w, h]] as [number, number][]) {
+            const [dx, dy] = rotate(sign * sx, sy, p.r);
+            corners.push({ref, shift: [sx, sy], x: p.x + dx, y: p.y + dy});
+        }
+    }
+    // Andrew's monotone chain; dropping points on a straight run keeps only real corners
+    const sorted = [...corners].sort((a, b) => a.x - b.x || a.y - b.y);
+    const cross = (o: typeof sorted[0], a: typeof sorted[0], b: typeof sorted[0]) =>
+        (a.x - o.x) * (b.y - o.y) - (a.y - o.y) * (b.x - o.x);
+    const half = (list: typeof sorted) => {
+        const out: typeof sorted = [];
+        for (const c of list) {
+            while (out.length >= 2 && cross(out[out.length - 2], out[out.length - 1], c) <= 1e-9) out.pop();
+            out.push(c);
+        }
+        out.pop();
+        return out;
+    };
+    return sorted.length < 3 ? [] : [...half(sorted), ...half([...sorted].reverse())];
+};
+
 // Edges that are within a few degrees of horizontal or vertical without being exactly so:
 // usually a typo in the numbers rather than a design choice. Below 0.0001° (0.0001 mm over 50 mm)
 // is float noise, not a typo.

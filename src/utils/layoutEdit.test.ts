@@ -1,5 +1,5 @@
 import {expect, it} from "vitest";
-import {addOutline, applyEdits, findAnchorShift, findPartSites, findShift, findSite, formatLength, nudge, parseLength, EditSite} from "./layoutEdit";
+import {addOutline, appendOutline, applyEdits, deleteOutline, deleteOutlinePart, findAnchorShift, findPartSites, findShift, findSite, formatLength, insertPolygonPoint, nudge, outlineReferences, parseLength, plateLines, removePolygonPoint, EditSite} from "./layoutEdit";
 
 const config = `points:
   zones:
@@ -206,4 +206,110 @@ it('finds the settings of each outline part, or where to add them', () => {
     expect(holes.map(p => [p.key, p.what])).toEqual([['left', 'circle']]);
     expect(applyEdits(parts, [{site: holes[0].sites.operation as EditSite, value: 'subtract'}]))
         .toContain('      what: circle\n      operation: subtract\n      radius: 2');
+});
+
+const polygon = `outlines:
+  board:
+    - what: polygon
+      points:
+        - ref: a
+          shift: [0, 1]
+        - ref: b # second
+          shift: [2, 3]
+      fillet: 1
+`;
+
+it('inserts and removes polygon points as whole list items', () => {
+    const path = ['outlines', 'board', 0, 'points'];
+    expect(insertPolygonPoint(polygon, path, 1, {ref: 'c', shift: ['4', '5']}))
+        .toContain('          shift: [0, 1]\n        - ref: c\n          shift: [4, 5]\n        - ref: b # second\n');
+    expect(insertPolygonPoint(polygon, path, 2, {ref: 'c', shift: ['4', '5']}))
+        .toContain('          shift: [2, 3]\n        - ref: c\n          shift: [4, 5]\n      fillet: 1\n');
+    expect(removePolygonPoint(polygon, path, 0)).toContain('      points:\n        - ref: b # second\n          shift: [2, 3]\n      fillet: 1\n');
+    expect(removePolygonPoint(polygon, path, 1)).toContain('          shift: [0, 1]\n      fillet: 1\n');
+});
+
+it('writes a plate template for one half of a split board', () => {
+    expect(appendOutline('points: {}\n', 'plate', plateLines(14, false))).toContain("      where: '/^(?!mirror_)/'\n      size: [1kx, 1ky]");
+});
+
+it('writes a plate template', () => {
+    expect(appendOutline('points: {}\n', 'plate', plateLines(14))).toBe('points: {}\noutlines:\n  plate:\n'
+        + '    - what: rectangle\n      where: true\n      size: [1kx, 1ky]\n      bound: true\n'
+        + '    - what: rectangle\n      where: true\n      size: 14\n      operation: subtract\n');
+});
+
+const used = `outlines:
+  cut:
+    - what: polygon
+      points:
+        - ref: a
+  holes:
+    a:
+      what: circle
+      where: &pos1
+        ref: a
+    b:
+      what: circle
+      where: *pos1
+  board:
+    - what: outline
+      name: cut
+      operation: subtract
+    - what: rectangle
+      size: 2
+pcbs:
+  main:
+    outlines:
+      edge:
+        outline: cut
+      other:
+        outline: board
+cases:
+  top:
+    - what: outline
+      name: board
+    - what: outline
+      name: cut
+      operation: subtract
+`;
+
+it('finds where an outline is used', () => {
+    expect(outlineReferences(used, 'cut').map(r => r.label)).toEqual(['outlines.board.0', 'pcbs.main.outlines.edge', 'cases.top.1']);
+});
+
+it('deletes an outline, with or without what uses it', () => {
+    const alone = deleteOutline(used, 'cut', false);
+    expect(alone).not.toContain('  cut:\n');
+    expect(alone).toContain('      name: cut\n');
+    const all = deleteOutline(used, 'cut', true);
+    expect(all).toBe(`outlines:
+  holes:
+    a:
+      what: circle
+      where: &pos1
+        ref: a
+    b:
+      what: circle
+      where: *pos1
+  board:
+    - what: rectangle
+      size: 2
+pcbs:
+  main:
+    outlines:
+      other:
+        outline: board
+cases:
+  top:
+    - what: outline
+      name: board
+`);
+});
+
+it('deletes a part, but not one whose anchor is still used', () => {
+    expect(deleteOutlinePart(used, 'board', 1)).toContain('      operation: subtract\npcbs:');
+    expect(deleteOutlinePart(used, 'holes', 'b')).toContain('        ref: a\n  board:');
+    expect(() => deleteOutlinePart(used, 'holes', 'a')).toThrow(/&pos1/);
+    expect(() => deleteOutline(used, 'holes', true)).not.toThrow();
 });

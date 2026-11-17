@@ -4,10 +4,11 @@ import yaml from "js-yaml";
 import {useConfigContext} from "../context/ConfigContext";
 import {
     ATTRS, AnchorShift, Attr, Edit, EditSite, Length,
-    PartAttr, addOutline, applyEdits, findAnchorShift, findPartSites, findShift, findSite, formatLength, isPlainNumber,
-    nudge, parseLength,
+    PartAttr, addOutline, appendOutline, applyEdits, deleteOutline, deleteOutlinePart, findAnchorShift, findPartSites,
+    findShift, findSite, formatLength, outlineReferences,
+    insertPolygonPoint, isPlainNumber, nudge, parseLength, plateLines, removePolygonPoint,
 } from "../utils/layoutEdit";
-import {OutlineHandle, nearMisses, outlineHandles} from "../utils/outlineGeometry";
+import {OutlineHandle, Polygon, keyHull, nearMisses, outlineHandles} from "../utils/outlineGeometry";
 
 type Meta = {
     name: string,
@@ -114,6 +115,18 @@ type Cursor = { point: DrawnPoint, guides: [Vec, Vec][], closes: boolean };
 
 const NEW_OUTLINE = '__new__';
 
+// how a new outline starts: drawn point by point, or from a template
+type Template = 'draw' | 'hull' | 'plate-mx' | 'plate-choc';
+const TEMPLATES: [Template, string][] = [
+    ['draw', 'draw its points'],
+    ['hull', 'around all keys'],
+    ['plate-mx', 'plate, MX cutouts'],
+    ['plate-choc', 'plate, Choc cutouts'],
+];
+
+// six decimals: enough for a snapped point to stay exactly in line, and short for round ones
+const exactText = (v: number) => String(Number(v.toFixed(6)));
+
 const Container = styled.div`
   position: relative;
   height: calc(100vh - 6rem);
@@ -219,6 +232,37 @@ const Panel = styled.div`
     color: #8a8a8a;
     font-size: 0.8rem;
   }
+
+  .title {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+  }
+
+  .title button {
+    border: none;
+    border-radius: 0.2rem;
+    color: #ffffff;
+    font: inherit;
+    cursor: pointer;
+  }
+
+  .title button.danger {
+    padding: 0.15rem 0.5rem;
+    background: #a33a3a;
+    font-size: 0.8rem;
+  }
+
+  .title button.remove {
+    padding: 0 0.4rem;
+    background: transparent;
+    color: #bdbdbd;
+    font-size: 1.1rem;
+  }
+
+  .title button.remove:hover {
+    color: #ff6d6d;
+  }
 `;
 
 const StatusBar = styled.div`
@@ -249,13 +293,17 @@ const OutlineBar = styled.div`
   left: 0.75rem;
   display: flex;
   flex-direction: column;
+  /* each control keeps its own width, rather than stretching to the widest row */
+  align-items: flex-start;
   gap: 0.3rem;
   font-size: 0.85rem;
   color: #bdbdbd;
 
   .row {
     display: flex;
+    flex-wrap: wrap;
     gap: 0.3rem;
+    max-width: 22rem;
   }
 
   input {
@@ -292,11 +340,22 @@ const OutlineBar = styled.div`
   }
 `;
 
-const VertexHandle = styled.rect`
-  fill: #ff9f1c;
-  stroke: #ffffff;
-  stroke-width: 0.3;
+const VertexHandle = styled.rect<{ chosen: boolean }>`
+  fill: ${p => p.chosen ? '#ffffff' : '#ff9f1c'};
+  stroke: ${p => p.chosen ? '#ff9f1c' : '#ffffff'};
+  stroke-width: ${p => p.chosen ? 0.8 : 0.3};
   cursor: move;
+`;
+
+// an invisible, wide line over an outline edge: clicking it adds a point there
+const EdgeTarget = styled.line`
+  stroke: transparent;
+  stroke-width: 2.5;
+  cursor: copy;
+
+  &:hover {
+    stroke: rgba(255, 159, 28, 0.35);
+  }
 `;
 
 const CenterHandle = styled.circle`
@@ -521,11 +580,11 @@ const JOINTS = ['round', 'pointy', 'beveled'];
 // "3]" is ergogen's shorthand for expand 3 with beveled joints
 const JOINT_SUFFIXES = [')', '>', ']'];
 
-type OutlinePanelProps = { outline: string, text: string, onCommit: (text: string) => void };
+type OutlinePanelProps = { outline: string, text: string, onCommit: (text: string) => void, onDeleted: (name: string) => void };
 
 // The settings of each part of an outline: how it joins the parts before it, and the expand and
 // fillet ergogen applies to everything up to and including it
-const OutlinePanel = ({outline, text, onCommit}: OutlinePanelProps) => {
+const OutlinePanel = ({outline, text, onCommit, onDeleted}: OutlinePanelProps) => {
     const parts = useMemo(() => findPartSites(text, outline), [text, outline]);
     const [drafts, setDrafts] = useState<Record<string, string | undefined>>({});
     useEffect(() => setDrafts({}), [text, outline]);
@@ -538,6 +597,32 @@ const OutlinePanel = ({outline, text, onCommit}: OutlinePanelProps) => {
     useEffect(() => () => window.clearTimeout(timer.current), []);
 
     if (typeof parts === 'string') return <Panel><h4>{outline}</h4><span className="note">{parts}</span></Panel>;
+
+    // Deleting asks first, and names what uses the outline: those go too, so the config stays valid.
+    // The editor's undo (Ctrl+Z / Cmd+Z) brings it all back.
+    const removeOutline = () => {
+        const users = outlineReferences(text, outline);
+        const question = users.length
+            ? `Delete outline ${outline}? It is used by:\n${users.map(u => `  ${u.label}`).join('\n')}\nThose will be deleted too.`
+            : `Delete outline ${outline}?`;
+        if (!window.confirm(question)) return;
+        try {
+            commitText(deleteOutline(flush(latest.current), outline, true));
+            onDeleted(outline);
+        } catch (e: unknown) {
+            window.alert(`Can't delete ${outline}: ${e instanceof Error ? e.message : String(e)}`);
+        }
+    };
+
+    const removePart = (key: string | number, what: string) => {
+        if (parts.length === 1) return removeOutline();
+        if (!window.confirm(`Delete part ${typeof key === 'number' ? `#${key}` : key} (${what}) of ${outline}?`)) return;
+        try {
+            commitText(deleteOutlinePart(flush(latest.current), outline, key));
+        } catch (e: unknown) {
+            window.alert(`Can't delete that part: ${e instanceof Error ? e.message : String(e)}`);
+        }
+    };
 
     const applyTo = (base: string, key: string | number, attr: PartAttr, value: string) => {
         const site = (() => { const now = findPartSites(base, outline); return typeof now === 'string' ? undefined : now.find(p => p.key === key)?.sites[attr]; })();
@@ -604,7 +689,10 @@ const OutlinePanel = ({outline, text, onCommit}: OutlinePanelProps) => {
 
     return (
         <Panel onPointerDown={e => e.stopPropagation()}>
-            <h4>{outline}</h4>
+            <div className="title">
+                <h4>{outline}</h4>
+                <button className="danger" onClick={removeOutline}>Delete outline</button>
+            </div>
             {parts.map(part => {
                 const id = String(part.key);
                 const {operation, expand, joints, fillet} = part.sites;
@@ -617,7 +705,10 @@ const OutlinePanel = ({outline, text, onCommit}: OutlinePanelProps) => {
                 const field = (attr: PartAttr) => `${id}.${attr}`;
                 return (
                     <div className="part" key={id}>
-                        <h4>{typeof part.key === 'number' ? `#${part.key}` : part.key} {part.what}</h4>
+                        <div className="title">
+                            <h4>{typeof part.key === 'number' ? `#${part.key}` : part.key} {part.what}</h4>
+                            <button className="remove" title="Delete this part" onClick={() => removePart(part.key, part.what)}>×</button>
+                        </div>
                         <label>
                             <span>operation</span>
                             <select value={rawOf(operation) ?? 'add'} disabled={!!reason(operation)} title={reason(operation)}
@@ -664,6 +755,11 @@ const LayoutEditor = (): JSX.Element | null => {
     const [newName, setNewName] = useState<string | null>(null);
     const [drawing, setDrawing] = useState<Drawing | null>(null);
     const [cursor, setCursor] = useState<Cursor | null>(null);
+    const [template, setTemplate] = useState<Template>('draw');
+    // a template for one half of a split board, or for both halves of a unibody one
+    const [bothHalves, setBothHalves] = useState<boolean | null>(null);
+    // the outline point clicked last, which Delete removes
+    const [chosenPoint, setChosenPoint] = useState<string | null>(null);
     // Enter, Backspace and Escape while drawing; set each render so it sees the current state
     const onDrawingKey = useRef<(e: KeyboardEvent) => void>();
     useEffect(() => {
@@ -941,6 +1037,7 @@ const LayoutEditor = (): JSX.Element | null => {
             return {handle: n, raw: typeof written === 'string' ? [undefined, undefined] : written.raw} as HandleDrag['neighbors'][number];
         });
         drag.current = {kind: 'handle', handle, sourceText: configInput, start: toBoard(e), shift, neighbors};
+        setChosenPoint(handle.kind === 'vertex' ? handle.key : null);
         setHint(`${handle.label}: shift [${shift.raw.map(v => v ?? '0').join(', ')}]`);
     };
 
@@ -1005,6 +1102,11 @@ const LayoutEditor = (): JSX.Element | null => {
     };
 
     const outlineNames = Object.keys(lastConfig.current?.outlines ?? {});
+    // The keys are mirrored: the board is split (each half its own pcb or case, made with
+    // "mirror: from:") or a unibody with both halves on one board
+    const mirrors = Object.values(points ?? {}).some(p => p.meta.mirrored);
+    const looksSplit = ['pcbs', 'cases'].some(section =>
+        Object.values(lastConfig.current?.[section] ?? {}).some((v: any) => v && typeof v === 'object' && v.mirror?.from));
     const nameProblem = (name: string) =>
         !/^[A-Za-z_][\w-]*$/.test(name) ? 'Use letters, digits, _ or -, starting with a letter'
             : outlineNames.includes(name) ? `There already is an outline called ${name}` : null;
@@ -1015,8 +1117,84 @@ const LayoutEditor = (): JSX.Element | null => {
         if (problem) return setHint(problem);
         setNewName(null);
         setSelected(null);
-        setDrawing({name, points: []});
         setHint(null);
+        if (template === 'draw') return setDrawing({name, points: []});
+        const both = mirrors ? bothHalves ?? !looksSplit : true;
+        try {
+            let text: string;
+            if (template === 'hull') {
+                const corners = keyHull(points ?? {}, both);
+                if (corners.length < 3) return setHint('There are no keys to wrap an outline around');
+                text = addOutline(configInput, name, corners.map(c => ({ref: c.ref, shift: [exactText(c.shift[0]), exactText(c.shift[1])]})));
+            } else {
+                text = appendOutline(configInput, name, plateLines(template === 'plate-mx' ? 14 : 13.8, both));
+            }
+            configContext.setConfigInput(text);
+            setOutline(name);
+            setHint(`Added outline ${name}` + (template === 'hull' ? ': click an edge to add a point, select a point and press Delete to remove it' : ''));
+        } catch (e: unknown) {
+            setError(String(e));
+        }
+    };
+
+    // where a point at wanted goes: written as a shift from the nearest key, in that key's frame
+    // (to 0.1 mm, or exactly when it has been lined up with another point)
+    const placeNear = (wanted: Vec, exact: boolean): DrawnPoint | null => {
+        if (!points) return null;
+        let ref = '', best = Infinity;
+        for (const [name, p] of Object.entries(points)) {
+            const distance = Math.hypot(p.x - wanted.x, p.y - wanted.y);
+            if (distance < best) [ref, best] = [name, distance];
+        }
+        const key = points[ref];
+        if (!key) return null;
+        const sign = signOf(key);
+        const local = rotate({x: wanted.x - key.x, y: wanted.y - key.y}, -key.r);
+        const shift: [number, number] = exact ? [sign * local.x, local.y] : [round(sign * local.x, 0.1), round(local.y, 0.1)];
+        const moved = rotate({x: sign * shift[0], y: shift[1]}, key.r);
+        return {ref, shift, at: {x: key.x + moved.x, y: key.y + moved.y}};
+    };
+
+    // A click on an outline edge adds a point there, between the edge's two points
+    const insertOnEdge = (e: React.PointerEvent, polygon: Polygon, index: number) => {
+        e.stopPropagation();
+        if (e.button !== 0) return;
+        const from = polygon.handles[index].at;
+        const to = polygon.handles[(index + 1) % polygon.handles.length].at;
+        const click = toBoard(e);
+        // onto the edge itself, so the new point keeps the line where it was
+        const [dx, dy] = [to.x - from.x, to.y - from.y];
+        const t = Math.min(1, Math.max(0, ((click.x - from.x) * dx + (click.y - from.y) * dy) / (dx * dx + dy * dy || 1)));
+        const point = placeNear({x: from.x + t * dx, y: from.y + t * dy}, false);
+        const first = polygon.handles[0];
+        if (!point || first.kind !== 'vertex') return;
+        const list = first.path.slice(0, -1);
+        try {
+            configContext.setConfigInput(insertPolygonPoint(configInput, list, index + 1,
+                {ref: point.ref, shift: [exactText(point.shift[0]), exactText(point.shift[1])]}));
+            setChosenPoint([...list, index + 1].join('.'));
+            setHint(`Added a point to ${polygon.id}; drag it into place, or press Delete to remove it`);
+        } catch (err: unknown) {
+            setHint(`Can't add a point here: ${err instanceof Error ? err.message : String(err)}`);
+        }
+    };
+
+    const removeChosenPoint = () => {
+        const handle = outlineInfo?.handles.find(h => h.key === chosenPoint);
+        if (!handle || handle.kind !== 'vertex' || handle.index === undefined) return false;
+        const polygon = outlineInfo?.polygons.find(p => p.id === handle.polygon);
+        if (!polygon || polygon.handles.length <= 3) {
+            setHint('A polygon needs at least 3 points');
+            return true;
+        }
+        try {
+            configContext.setConfigInput(removePolygonPoint(configInput, handle.path.slice(0, -1), handle.index));
+            setHint(`Removed ${handle.label}`);
+        } catch (err: unknown) {
+            setHint(`Can't remove ${handle.label}: ${err instanceof Error ? err.message : String(err)}`);
+        }
+        setChosenPoint(null);
+        return true;
     };
 
     // The point a click would add: snapped level with the last or first point when close to it,
@@ -1043,27 +1221,16 @@ const LayoutEditor = (): JSX.Element | null => {
                 guides.push([n.at, wanted]);
             }
         }
-        let ref = '', best = Infinity;
-        for (const [name, p] of Object.entries(points)) {
-            const distance = Math.hypot(p.x - wanted.x, p.y - wanted.y);
-            if (distance < best) [ref, best] = [name, distance];
-        }
-        const key = points[ref];
-        const sign = signOf(key);
-        const local = rotate({x: wanted.x - key.x, y: wanted.y - key.y}, -key.r);
         // snapped points keep the precision that lines them up
-        const exact = snapped.x || snapped.y;
-        const shift: [number, number] = exact ? [sign * local.x, local.y] : [round(sign * local.x, 0.1), round(local.y, 0.1)];
-        const moved = rotate({x: sign * shift[0], y: shift[1]}, key.r);
-        const at = {x: key.x + moved.x, y: key.y + moved.y};
-        return {point: {ref, shift, at}, guides: guides.map(([n]) => [n, at]), closes: false};
+        const point = placeNear(wanted, snapped.x || snapped.y);
+        if (!point) return null;
+        return {point, guides: guides.map(([n]) => [n, point.at]), closes: false};
     };
 
     const finishDrawing = (d: Drawing) => {
         if (d.points.length < 3) return setHint('An outline needs at least 3 points');
         try {
-            const exact = (v: number) => String(Number(v.toFixed(6)));
-            const text = addOutline(configInput, d.name, d.points.map(p => ({ref: p.ref, shift: [exact(p.shift[0]), exact(p.shift[1])]})));
+            const text = addOutline(configInput, d.name, d.points.map(p => ({ref: p.ref, shift: [exactText(p.shift[0]), exactText(p.shift[1])]})));
             configContext.setConfigInput(text);
             setOutline(d.name);
             setHint(`Added outline ${d.name}; drag its points to adjust them`);
@@ -1084,7 +1251,11 @@ const LayoutEditor = (): JSX.Element | null => {
     };
 
     onDrawingKey.current = e => {
-        if (!drawing || (e.target as HTMLElement)?.closest?.('input, textarea, .monaco-editor')) return;
+        if ((e.target as HTMLElement)?.closest?.('input, textarea, select, .monaco-editor')) return;
+        if (!drawing) {
+            if ((e.key === 'Delete' || e.key === 'Backspace') && chosenPoint && removeChosenPoint()) e.preventDefault();
+            return;
+        }
         if (e.key === 'Enter') finishDrawing(drawing);
         else if (e.key === 'Backspace') setDrawing({...drawing, points: drawing.points.slice(0, -1)});
         else if (e.key === 'Escape') {
@@ -1116,7 +1287,7 @@ const LayoutEditor = (): JSX.Element | null => {
                 onPointerMove={moveDrag}
                 onPointerUp={endDrag}
                 onPointerCancel={endDrag}
-                onPointerDown={() => setSelected(null)}
+                onPointerDown={() => { setSelected(null); setChosenPoint(null); }}
             >
                 {outline && paths[outline] && (
                     // ergogen's own result for the outline, already in the view's flipped coordinates
@@ -1155,11 +1326,20 @@ const LayoutEditor = (): JSX.Element | null => {
                     {handleAt?.guides.map(([a, b], i) => (
                         <line key={i} x1={a.x} y1={a.y} x2={b.x} y2={b.y} stroke="#4dabf7" strokeWidth={0.4} strokeDasharray="1 1" pointerEvents="none"/>
                     ))}
+                    {!handleAt && !drawing && outlineInfo?.polygons.map(polygon => polygon.handles.map((h, i) => {
+                        const next = polygon.handles[(i + 1) % polygon.handles.length];
+                        return (
+                            <EdgeTarget key={`edge-${h.key}`} x1={h.at.x} y1={h.at.y} x2={next.at.x} y2={next.at.y}
+                                        onPointerDown={e => insertOnEdge(e, polygon, i)}>
+                                <title>Click to add a point here</title>
+                            </EdgeTarget>
+                        );
+                    }))}
                     {outlineInfo?.handles.map(h => {
                         const v = handlePosition(h);
                         const title = <title>{h.label}</title>;
                         return h.kind === 'vertex'
-                            ? <VertexHandle key={h.key} x={v.x - 1.2} y={v.y - 1.2} width={2.4} height={2.4}
+                            ? <VertexHandle key={h.key} x={v.x - 1.2} y={v.y - 1.2} width={2.4} height={2.4} chosen={h.key === chosenPoint}
                                             onPointerDown={e => startHandleDrag(e, h)}>{title}</VertexHandle>
                             : <CenterHandle key={h.key} cx={v.x} cy={v.y} r={1.5}
                                             onPointerDown={e => startHandleDrag(e, h)}>{title}</CenterHandle>;
@@ -1204,7 +1384,8 @@ const LayoutEditor = (): JSX.Element | null => {
             </Canvas>
 
             {!selected && outline && !drawing && (
-                <OutlinePanel outline={outline} text={configInput} onCommit={commit}/>
+                <OutlinePanel outline={outline} text={configInput} onCommit={commit}
+                              onDeleted={name => { setOutline(''); setHint(`Deleted outline ${name}; undo in the editor brings it back`); }}/>
             )}
 
             {selected && (
@@ -1230,7 +1411,17 @@ const LayoutEditor = (): JSX.Element | null => {
                         <input autoFocus placeholder="name" value={newName}
                                onChange={e => setNewName(e.target.value)}
                                onKeyDown={e => e.key === 'Enter' ? startDrawing() : e.key === 'Escape' && setNewName(null)}/>
-                        <button onClick={startDrawing}>Draw</button>
+                        <select value={template} onChange={e => setTemplate(e.target.value as Template)}>
+                            {TEMPLATES.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+                        </select>
+                        {mirrors && template !== 'draw' && (
+                            <select value={(bothHalves ?? !looksSplit) ? 'both' : 'half'} onChange={e => setBothHalves(e.target.value === 'both')}
+                                    title="A split board's outline covers one half, a unibody's covers both">
+                                <option value="half">one half (split)</option>
+                                <option value="both">both halves (unibody)</option>
+                            </select>
+                        )}
+                        <button onClick={startDrawing}>{template === 'draw' ? 'Draw' : 'Add'}</button>
                         <button className="secondary" onClick={() => setNewName(null)}>Cancel</button>
                     </div>
                 )}

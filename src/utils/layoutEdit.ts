@@ -213,7 +213,9 @@ export type NewPoint = { ref: string, shift: [string, string] };
 
 // Adds a polygon outline at the end of the outlines section (or a new outlines section at the
 // end of the config), in the same ref + shift form as hand-written ones, so it follows its keys
-export const addOutline = (text: string, name: string, points: NewPoint[]): string => {
+// Adds outlines.<name> with the given parts, written as lines relative to the name's indentation,
+// at the end of the outlines section (or in a new outlines section at the end of the config)
+export const appendOutline = (text: string, name: string, lines: string[]): string => {
     const doc = parseDocument(text, {keepCstNodes: true});
     if (doc.errors.length) throw new Error('the config has YAML errors');
     if (!/^[A-Za-z_][\w-]*$/.test(name)) throw new Error(`"${name}" can't be an outline name`);
@@ -224,12 +226,7 @@ export const addOutline = (text: string, name: string, points: NewPoint[]): stri
     const first = isBlockMap(outlines) ? (outlines.items[0] as Pair | undefined)?.key : undefined;
     const indent = first instanceof Scalar && first.range ? columnOf(text, first.range[0]) : 2;
     const pad = (n: number) => ' '.repeat(indent + n);
-    const body = [
-        `${pad(0)}${name}:`,
-        `${pad(2)}- what: polygon`,
-        `${pad(4)}points:`,
-        ...points.flatMap(p => [`${pad(6)}- ref: ${p.ref}`, `${pad(8)}shift: [${p.shift[0]}, ${p.shift[1]}]`]),
-    ].join('\n') + '\n';
+    const body = [`${pad(0)}${name}:`, ...lines.map(line => `${pad(2)}${line}`)].join('\n') + '\n';
 
     if (isBlockMap(outlines) && outlines.range) {
         // after the last outline, but before the blank lines that separate it from what follows
@@ -248,6 +245,165 @@ export const addOutline = (text: string, name: string, points: NewPoint[]): stri
     }
     const ending = text.endsWith('\n') ? '' : '\n';
     return `${text}${ending}outlines:\n${body}`;
+};
+
+// A polygon outline in the same ref + shift form as hand-written ones, so it follows its keys
+export const addOutline = (text: string, name: string, points: NewPoint[]): string => appendOutline(text, name, [
+    '- what: polygon',
+    '  points:',
+    ...points.flatMap(p => [`    - ref: ${p.ref}`, `      shift: [${p.shift[0]}, ${p.shift[1]}]`]),
+]);
+
+// A plate over the keys with a switch cutout in each: 14 mm for MX, 13.8 mm for Choc. On a split
+// board it covers one half, the keys whose name doesn't start with "mirror_"; on a unibody, all keys.
+export const plateLines = (cutout: number, bothHalves = true) => {
+    const where = bothHalves ? 'true' : "'/^(?!mirror_)/'";
+    return [
+    '- what: rectangle',
+    `  where: ${where}`,
+    '  size: [1kx, 1ky]',
+    '  bound: true',
+    '- what: rectangle',
+    `  where: ${where}`,
+    `  size: ${cutout}`,
+    '  operation: subtract',
+    ];
+};
+
+// the start of the line an offset is on
+const lineStartOf = (text: string, offset: number) => text.lastIndexOf('\n', offset - 1) + 1;
+
+// just past the newline that ends a node's last line of content
+const afterNode = (text: string, node: { range?: [number, number] | null }) => {
+    const [start, end] = node.range ?? [0, 0];
+    let last = end;
+    while (last > start && /\s/.test(text[last - 1])) last--;
+    return Math.min(text.length, endOfLine(text, last) + 1);
+};
+
+const pointList = (text: string, path: (string | number)[]): YAMLSeq => {
+    const doc = parseDocument(text, {keepCstNodes: true});
+    if (doc.errors.length) throw new Error('the config has YAML errors');
+    const list = doc.getIn(path, true);
+    if (!(list instanceof YAMLSeq) || list.type !== 'SEQ' || !list.items.every(isBlockMap)) {
+        throw new Error(`${path.join('.')} is not a list of points`);
+    }
+    return list;
+};
+
+// Inserts a polygon point (ref + shift) at index of the points list at path, as its own list item
+export const insertPolygonPoint = (text: string, path: (string | number)[], index: number, point: NewPoint): string => {
+    const list = pointList(text, path);
+    const items = list.items as YAMLMap[];
+    const firstKey = (items[0]?.items[0] as Pair | undefined)?.key;
+    const keyColumn = firstKey instanceof Scalar && firstKey.range ? columnOf(text, firstKey.range[0]) : undefined;
+    if (keyColumn === undefined || keyColumn < 2) throw new Error(`${path.join('.')} has no point to line the new one up with`);
+    const dash = ' '.repeat(keyColumn - 2);
+    const lines = `${dash}- ref: ${point.ref}\n${dash}  shift: [${point.shift[0]}, ${point.shift[1]}]\n`;
+    const at = index < items.length ? lineStartOf(text, items[index].range?.[0] ?? 0) : afterNode(text, items[items.length - 1]);
+    return text.slice(0, at) + lines + text.slice(at);
+};
+
+// Removes the point at index of the points list at path, with all of its lines
+export const removePolygonPoint = (text: string, path: (string | number)[], index: number): string => {
+    const items = pointList(text, path).items as YAMLMap[];
+    if (!items[index]) throw new Error(`${path.join('.')} has no point ${index}`);
+    const start = lineStartOf(text, items[index].range?.[0] ?? 0);
+    const end = index + 1 < items.length ? lineStartOf(text, items[index + 1].range?.[0] ?? 0) : afterNode(text, items[index]);
+    return text.slice(0, start) + text.slice(end);
+};
+
+type Range = { start: number, end: number };
+
+// the lines of a list item, or of a key and its value, up to where the next one starts
+const itemLines = (text: string, node: YAMLMap | YAMLSeq | Pair, next: unknown): Range => {
+    const keyStart = node instanceof Pair ? (node.key as Scalar).range?.[0] : node.range?.[0];
+    const start = lineStartOf(text, keyStart ?? 0);
+    const nextStart = next instanceof Pair ? (next.key as Scalar)?.range?.[0] : (next as YAMLMap | undefined)?.range?.[0];
+    if (nextStart !== undefined) return {start, end: lineStartOf(text, nextStart)};
+    const last = node instanceof Pair ? (node.value ?? node.key) : node;
+    return {start, end: afterNode(text, last as YAMLMap)};
+};
+
+// The places that use outline <name> outside of it: a case or outline part with name: <name>,
+// or a pcb outline with outline: <name>. Each is a whole list item or key, ready to remove.
+export type Reference = { label: string, range: Range };
+
+const findReferences = (text: string, doc: ReturnType<typeof parseDocument>, name: string): Reference[] => {
+    const found: Reference[] = [];
+    const visit = (node: unknown, path: string[], remove: () => Range) => {
+        if (isBlockMap(node) || node instanceof YAMLMap) {
+            if (path[0] === 'outlines' && path[1] === name) return;
+            const uses = (node.items as Pair[]).some(pair =>
+                pair.key instanceof Scalar && ['name', 'outline'].includes(String(pair.key.value))
+                && pair.value instanceof Scalar && String(pair.value.value) === name);
+            if (uses && path.length > 1) found.push({label: path.join('.'), range: remove()});
+            const pairs = node.items as Pair[];
+            pairs.forEach((pair, i) => {
+                const key = pair.key instanceof Scalar ? String(pair.key.value) : '?';
+                visit(pair.value, [...path, key], () => itemLines(text, pair, pairs[i + 1]));
+            });
+        } else if (node instanceof YAMLSeq) {
+            node.items.forEach((item, i) => visit(item, [...path, String(i)], () => itemLines(text, item as YAMLMap, node.items[i + 1])));
+        }
+    };
+    visit(doc.contents, [], () => ({start: 0, end: 0}));
+    return found.filter(ref => ref.range.end > ref.range.start);
+};
+
+const outlinePair = (doc: ReturnType<typeof parseDocument>, name: string) => {
+    const outlines = doc.get('outlines', true);
+    if (!isBlockMap(outlines)) return null;
+    const pairs = outlines.items as Pair[];
+    const index = pairs.findIndex(pair => pair.key instanceof Scalar && String(pair.key.value) === name);
+    return index < 0 ? null : {pair: pairs[index], next: pairs[index + 1]};
+};
+
+// YAML anchors (&name) inside the range that something outside of it still uses (*name)
+const anchorsUsedElsewhere = (text: string, range: Range) => {
+    const inside = text.slice(range.start, range.end);
+    const outside = text.slice(0, range.start) + text.slice(range.end);
+    return Array.from(inside.matchAll(/&([\w-]+)/g), m => m[1]).filter(anchor => new RegExp(`\\*${anchor}\\b`).test(outside));
+};
+
+export const outlineReferences = (text: string, name: string): Reference[] => {
+    const doc = parseDocument(text, {keepCstNodes: true});
+    return doc.errors.length ? [] : findReferences(text, doc, name);
+};
+
+const removeRanges = (text: string, ranges: Range[]) =>
+    [...ranges].sort((a, b) => b.start - a.start).reduce((out, r) => out.slice(0, r.start) + out.slice(r.end), text);
+
+// Deletes outlines.<name>, and with withReferences the parts and pcb outlines that use it too
+export const deleteOutline = (text: string, name: string, withReferences: boolean): string => {
+    const doc = parseDocument(text, {keepCstNodes: true});
+    if (doc.errors.length) throw new Error('the config has YAML errors');
+    const found = outlinePair(doc, name);
+    if (!found) throw new Error(`there is no outline called ${name}`);
+    const own = itemLines(text, found.pair, found.next);
+    const shared = anchorsUsedElsewhere(text, own);
+    if (shared.length) throw new Error(`${name} defines ${shared.map(a => `&${a}`).join(', ')}, which other parts of the config still use`);
+    const references = withReferences ? findReferences(text, doc, name).map(r => r.range) : [];
+    return removeRanges(text, [own, ...references]);
+};
+
+// Deletes one part (a list item, or a named part) of outlines.<name>
+export const deleteOutlinePart = (text: string, name: string, key: string | number): string => {
+    const doc = parseDocument(text, {keepCstNodes: true});
+    if (doc.errors.length) throw new Error('the config has YAML errors');
+    const node = doc.getIn(['outlines', name], true);
+    let range: Range | undefined;
+    if (node instanceof YAMLSeq && typeof key === 'number' && node.items[key]) {
+        range = itemLines(text, node.items[key] as YAMLMap, node.items[key + 1]);
+    } else if (isBlockMap(node)) {
+        const pairs = node.items as Pair[];
+        const index = pairs.findIndex(pair => pair.key instanceof Scalar && String(pair.key.value) === String(key));
+        if (index >= 0) range = itemLines(text, pairs[index], pairs[index + 1]);
+    }
+    if (!range) throw new Error(`outlines.${name} has no part ${key}`);
+    const shared = anchorsUsedElsewhere(text, range);
+    if (shared.length) throw new Error(`the part defines ${shared.map(a => `&${a}`).join(', ')}, which other parts of the config still use`);
+    return removeRanges(text, [range]);
 };
 
 export const applyEdits = (text: string, edits: Edit[]) =>
