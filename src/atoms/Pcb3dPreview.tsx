@@ -10,18 +10,48 @@ import {MeshPart} from "../utils/pcb3d/meshCache";
 import {loadModel, loadSources} from "../utils/pcb3d/models";
 import {modelMatrix} from "../utils/pcb3d/placement";
 import {exportGlb, InstanceNames} from "../utils/pcb3d/exportGlb";
+import {mm, StackEdit} from "../utils/assemblyEdit";
 import DownloadIcon from "./DownloadIcon";
 
 // a case part stacked with the board, as config.assemblies says (z: its bottom's height)
 export type StackedPart = { name: string, z: number, height: number, stl: Blob };
-export type Stack = { name: string, pcbZ: number, parts: StackedPart[] };
+// the board in the stack, and how the config places it: level with a part's top, on a part, or at a height, shifted
+export type StackedPcb = { z: number, thickness: number, shift: number, top: string | null, on: string | null };
+export type Stack = { name: string, pcb: StackedPcb, parts: StackedPart[] };
 
 type Props = {
     pcb: string,
     // what the 3D model downloads as, e.g. ergo_cai_right.glb
     fileName: string,
     // the case parts around the board, if an assembly in the config holds it
-    stack?: Stack | null
+    stack?: Stack | null,
+    // writes moved parts back into the config
+    onSave?: (edit: StackEdit) => void
+};
+
+// where the panel has the board and each case part: their bottoms' heights
+type Positions = { pcb: number, parts: Record<string, number> };
+
+const positionsOf = (stack?: Stack | null): Positions => ({
+    pcb: stack?.pcb.z ?? 0,
+    parts: Object.fromEntries((stack?.parts || []).map(p => [p.name, p.z])),
+});
+
+const moved = (stack: Stack, at: Positions) =>
+    Math.abs(at.pcb - stack.pcb.z) > 1e-6 || stack.parts.some(p => Math.abs(at.parts[p.name] - p.z) > 1e-6);
+
+// The config's terms for where things are: each part's gap to the one below it, and the board's shift from where
+// its placement (level with a part's top, on a part, or at a height) puts it, taken at the parts' new heights.
+const editOf = (stack: Stack, at: Positions): StackEdit => {
+    const parts = stack.parts.map((p, i) => {
+        const below = stack.parts[i - 1];
+        return {name: p.name, gap: at.parts[p.name] - (below ? at.parts[below.name] + below.height : 0)};
+    });
+    const part = (name: string) => stack.parts.find(p => p.name === name);
+    const {top, on, thickness} = stack.pcb;
+    const ref = part(top || on || '');
+    const base = ref ? at.parts[ref.name] + ref.height - (top ? thickness : 0) : stack.pcb.z - stack.pcb.shift;
+    return {parts, pcbShift: at.pcb - base};
 };
 
 // same sizing as the other previews
@@ -130,6 +160,33 @@ const PanelTitle = styled.div`
   color: #ffffff;
 `;
 
+// a part's row: its switch, the height of its bottom, and where its top is then
+const Row = styled.div`
+  display: grid;
+  grid-template-columns: 1fr 4.2rem 3.6rem;
+  align-items: center;
+  gap: 0.35rem;
+
+  input[type=number] {
+    width: 100%;
+    padding: 0 0.2rem;
+    border: 1px solid #666666;
+    border-radius: 0.2rem;
+    background: #2b2b2b;
+    color: #ffffff;
+    font: inherit;
+  }
+
+  .top {
+    color: #999999;
+  }
+`;
+
+const Buttons = styled.div`
+  display: flex;
+  gap: 0.35rem;
+`;
+
 const Check = styled.button`
   margin-top: 0.4rem;
   padding: 0.2rem 0.6rem;
@@ -225,7 +282,7 @@ const PARALLEL = 4;
 
 // A board in 3D: its body, holes and pads, and every footprint's 3D models (from the addresses in ErgoCaiLib's
 // 3dmodels/sources.yaml). Left drag orbits, right drag pans, the wheel zooms.
-const Pcb3dPreview = ({pcb, fileName, stack}: Props): JSX.Element => {
+const Pcb3dPreview = ({pcb, fileName, stack, onSave}: Props): JSX.Element => {
     const container = useRef<HTMLDivElement>(null);
     const view = useRef<Built | null>(null);
     // case parts switched off, by name; a ref too, for parts that load after a switch
@@ -233,6 +290,12 @@ const Pcb3dPreview = ({pcb, fileName, stack}: Props): JSX.Element => {
     const hiddenNow = useRef(hidden);
     hiddenNow.current = hidden;
     const [check, setCheck] = useState<CheckState>({state: 'idle'});
+    // where the panel has moved things to; a ref too, for parts that load after a move
+    const [positions, setPositions] = useState<Positions>(positionsOf(stack));
+    const positionsNow = useRef(positions);
+    positionsNow.current = positions;
+    // bumped to put the height fields back to the positions
+    const [fields, setFields] = useState(0);
     const [built, setBuilt] = useState(false);
     const [exporting, setExporting] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -248,6 +311,9 @@ const Pcb3dPreview = ({pcb, fileName, stack}: Props): JSX.Element => {
         setProgress({done: 0, total: 0});
         setBuilt(false);
         setCheck({state: 'idle'});
+        positionsNow.current = positionsOf(stack);
+        setPositions(positionsNow.current);
+        setFields(n => n + 1);
 
         const renderer = new THREE.WebGLRenderer({antialias: true});
         renderer.setPixelRatio(window.devicePixelRatio);
@@ -263,7 +329,7 @@ const Pcb3dPreview = ({pcb, fileName, stack}: Props): JSX.Element => {
         const root = new THREE.Group();
         scene.add(root);
         const onBoard = new THREE.Group();
-        onBoard.position.z = stack?.pcbZ ?? 0;
+        onBoard.position.z = positionsNow.current.pcb;
         root.add(onBoard);
 
         const camera = new THREE.PerspectiveCamera(40, 1, 0.1, 10000);
@@ -322,7 +388,7 @@ const Pcb3dPreview = ({pcb, fileName, stack}: Props): JSX.Element => {
             ys.push(0);
         }
         const [minX, maxX, minY, maxY] = [Math.min(...xs), Math.max(...xs), Math.min(...ys), Math.max(...ys)];
-        const boardZ = stack?.pcbZ ?? 0;
+        const boardZ = stack?.pcb.z ?? 0;
         const [minZ, maxZ] = [Math.min(boardZ, ...(stack?.parts || []).map(p => p.z)),
             Math.max(boardZ + board.thickness, ...(stack?.parts || []).map(p => p.z + p.height))];
         root.position.set(-(minX + maxX) / 2, -(minY + maxY) / 2, -(minZ + maxZ) / 2);
@@ -378,7 +444,7 @@ const Pcb3dPreview = ({pcb, fileName, stack}: Props): JSX.Element => {
             });
             const mesh = new THREE.Mesh(geometry, material);
             mesh.name = part.name;
-            mesh.position.z = part.z;
+            mesh.position.z = positionsNow.current.parts[part.name] ?? part.z;
             mesh.visible = !hiddenNow.current[part.name];
             root.add(mesh);
             parts[part.name] = {mesh, stl, height: part.height};
@@ -453,6 +519,29 @@ const Pcb3dPreview = ({pcb, fileName, stack}: Props): JSX.Element => {
 
         return cleanup;
     }, [pcb, stack]);
+
+    // the board or a case part moved in the panel; what was checked no longer holds
+    useEffect(() => {
+        const v = view.current;
+        if (!v) return;
+        v.onBoard.position.z = positions.pcb;
+        Object.keys(v.parts).forEach(name => {
+            if (positions.parts[name] !== undefined) v.parts[name].mesh.position.z = positions.parts[name];
+        });
+        mark(v, new Set());
+        setCheck(c => c.state === 'done' ? {state: 'idle'} : c);
+        v.render();
+    }, [positions]);
+
+    const moveTo = (name: string | null, raw: string) => {
+        const z = parseFloat(raw);
+        if (isNaN(z)) return;
+        setPositions(p => name === null ? {...p, pcb: z} : {...p, parts: {...p.parts, [name]: z}});
+    };
+    const reset = () => {
+        setPositions(positionsOf(stack));
+        setFields(n => n + 1);
+    };
 
     // a case part switched on or off; what was checked no longer holds
     useEffect(() => {
@@ -539,14 +628,37 @@ const Pcb3dPreview = ({pcb, fileName, stack}: Props): JSX.Element => {
             </Download>
             {stack && (
                 <Panel>
-                    <PanelTitle>Case ({stack.name}), from the bottom up</PanelTitle>
-                    {stack.parts.map(p => (
-                        <label key={p.name}>
-                            <input type="checkbox" checked={!hidden[p.name]}
-                                   onChange={() => setHidden(h => ({...h, [p.name]: !h[p.name]}))}/>
-                            {p.name} <span style={{color: '#999999'}}>{p.z} – {+(p.z + p.height).toFixed(2)} mm</span>
-                        </label>
-                    ))}
+                    <PanelTitle>Case ({stack.name}), from the bottom up; heights in mm</PanelTitle>
+                    {stack.parts.map(p => {
+                        const z = positions.parts[p.name] ?? p.z;
+                        return (
+                            <Row key={p.name}>
+                                <label>
+                                    <input type="checkbox" checked={!hidden[p.name]}
+                                           onChange={() => setHidden(h => ({...h, [p.name]: !h[p.name]}))}/>
+                                    {p.name}
+                                </label>
+                                <input key={`${p.name}|${fields}`} type="number" step="0.1" defaultValue={mm(z)}
+                                       title={`The height of ${p.name}'s bottom`} onChange={e => moveTo(p.name, e.target.value)}/>
+                                <span className="top">– {mm(z + p.height)}</span>
+                            </Row>
+                        );
+                    })}
+                    <Row>
+                        <span>PCB</span>
+                        <input key={`pcb|${fields}`} type="number" step="0.1" defaultValue={mm(positions.pcb)}
+                               title="The height of the board's bottom" onChange={e => moveTo(null, e.target.value)}/>
+                        <span className="top">– {mm(positions.pcb + stack.pcb.thickness)}</span>
+                    </Row>
+                    {moved(stack, positions) && (
+                        <Buttons>
+                            <Check onClick={() => onSave?.(editOf(stack, positions))} disabled={!onSave}
+                                   title="Write these heights into the config's assemblies, as gaps and the board's shift">
+                                Save to config
+                            </Check>
+                            <Check onClick={reset}>Reset</Check>
+                        </Buttons>
+                    )}
                     <Check onClick={checkCollisions} disabled={!built || loading || check.state === 'running'}
                            title={`Which footprints' models, and the board, reach more than ${TOLERANCE} mm into the case parts shown`}>
                         {check.state === 'running' ? `Checking… ${check.done} of ${check.total}` : 'Check collisions'}

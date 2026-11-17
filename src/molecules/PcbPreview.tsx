@@ -3,6 +3,7 @@ import styled from "styled-components";
 import KicanvasPreview from "../atoms/KicanvasPreview";
 import Pcb3dPreview, {Stack} from "../atoms/Pcb3dPreview";
 import {useConfigContext} from "../context/ConfigContext";
+import {StackEdit, writeStack} from "../utils/assemblyEdit";
 
 type Props = {
     pcb: string,
@@ -46,7 +47,8 @@ let lastView: View = '2d';
 // A board in KiCanvas (2D, the layers as KiCad draws them) or in 3D with the footprints' models.
 const PcbPreview = ({pcb, board, initialView}: Props): JSX.Element => {
     const [view, setView] = useState<View>(initialView || lastView);
-    const results = useConfigContext()?.results as any;
+    const configContext = useConfigContext();
+    const results = configContext?.results as any;
     // the case parts around this board: the first of config.assemblies that holds it
     const stack = useMemo((): Stack | null => {
         const entry = Object.entries(results?.assemblies || {}).find(([, a]: [string, any]) => a?.pcb?.name === board);
@@ -55,8 +57,18 @@ const PcbPreview = ({pcb, board, initialView}: Props): JSX.Element => {
         const parts = (assembly.layers || [])
             .map((l: any) => ({name: l.name, z: l.z, height: l.height, stl: results?.cases?.[l.name]?.stl}))
             .filter((p: any) => p.stl instanceof Blob);
-        return {name, pcbZ: assembly.pcb.z, parts};
+        const {z, thickness, shift, top, on} = assembly.pcb;
+        return {name, pcb: {z, thickness, shift: shift || 0, top: top || null, on: on || null}, parts};
     }, [results, board]);
+    // the panel's moves, into the config's assemblies; the next run brings them back
+    const save = (edit: StackEdit) => {
+        if (!configContext?.configInput || !stack) return;
+        try {
+            configContext.setConfigInput(writeStack(configContext.configInput, stack.name, edit));
+        } catch (e) {
+            window.alert(`Cannot write the stack into the config: ${e instanceof Error ? e.message : e}`);
+        }
+    };
     const choose = (v: View) => {
         lastView = v;
         setView(v);
@@ -69,7 +81,7 @@ const PcbPreview = ({pcb, board, initialView}: Props): JSX.Element => {
             </Switch>
             {view === '2d'
                 ? <KicanvasPreview pcb={pcb} name={`${board}_preview.kicad_pcb`} pcbName={board}/>
-                : <Pcb3dPreview pcb={pcb} fileName={`${board}.glb`} stack={stack}/>}
+                : <Pcb3dPreview pcb={pcb} fileName={`${board}.glb`} stack={stack} onSave={save}/>}
         </Wrapper>
     );
 };
