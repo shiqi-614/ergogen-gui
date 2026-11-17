@@ -358,7 +358,8 @@ pcbs:
             file: "battery/BQ24072_charger/BQ24072_charger.kicad_pcb"
         where:
           ref: [matrix_col0_row0]
-          shift: [-17, 16]
+          # 4 mm toward the keys, clear of the pouch cell connector's pins
+          shift: [-13, 16]
           rotate: -90
         side: back
       battery:
@@ -370,16 +371,18 @@ pcbs:
           ref: [matrix_col0_row0]
           shift: [-24, -31.5]
           rotate: 0
-      # A backup battery connector, left off for now: to fit it, the case has to take its lead to the battery too.
-      # jst-ph-battery-backup:
-      #   what:
-      #     github:
-      #       repo: "shiqi-614/ErgoCai.modules"
-      #       file: "battery/JST_PH_P2.00mm/JST_PH_P2.00mm.kicad_pcb"
-      #   where:
-      #     ref: [matrix_col0_row0]
-      #     shift: [-29, 14.5]
-      #     rotate: 0
+      # A pouch LiPo's connector, for a cell in the battery opening instead of the 18650 (fit one or the other). It
+      # is on the holder's axis, its entry facing the holder's end and its courtyard 0.5 mm past the holder's, so the
+      # cell's plug goes in from the opening, which the connector's cut-out in the switchplate joins.
+      jst-ph-battery-backup:
+        what:
+          github:
+            repo: "shiqi-614/ErgoCai.modules"
+            file: "battery/JST_PH_P2.00mm/JST_PH_P2.00mm.kicad_pcb"
+        where:
+          ref: [matrix_col0_row0]
+          shift: [-24, 11]
+          rotate: 0
       e-paper:
         what: 
           github:
@@ -575,7 +578,7 @@ cases:
       operation: subtract
       expand: 0.1
     - what: pcb
-      name: /modules.(charger|battery)/
+      name: /modules.(charger|battery|jst-ph-battery-backup)/
       extrude: 5
       operation: subtract
       expand: 0.5
