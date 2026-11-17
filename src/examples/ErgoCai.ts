@@ -217,7 +217,9 @@ outlines:
       radius: __radius__
       where: &pcb_pos5
         ref: [thumbs_col0_row5]
-        shift: [0.65kx, 0.75ky]
+        # 3.5 mm further from the e-paper socket than 0.65kx, 0.75ky (in the key's 25 degree frame): the socket's
+        # cable entry faces this hole, and its case cutout (EPM_FPC1 below) reached into the screw hole
+        shift: [0.65kx - 1.48, 0.75ky - 3.17]
   pcb_stud_mounting:
     $extends: outlines._pcb_mounts
     $args: [hexagon, studSize]
@@ -556,7 +558,8 @@ cases:
       name: /modules.e-paper.EPM_FPC1/
       extrude: 5
       operation: subtract
-      expand: 0.5
+      # the FFC comes down beyond the socket's entry and turns into it: about 4 mm past the connector body
+      expand: 1.5
       layers: [Dwgs.User]
 
   right_switchplate:
@@ -617,7 +620,8 @@ cases:
       name: /modules.e-paper.EPM_FPC1/
       extrude: 5
       operation: subtract
-      expand: 0.5
+      # the FFC comes down beyond the socket's entry and turns into it: about 4 mm past the connector body
+      expand: 1.5
       layers: [Dwgs.User]
 
   right_gap: 
