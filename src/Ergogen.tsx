@@ -5,6 +5,7 @@ import Split from "react-split";
 import ConfigEditor from "./molecules/ConfigEditor";
 import Downloads from "./molecules/Dowloads";
 import FilePreview from "./molecules/FilePreview";
+import {OutlineRequest} from "./molecules/NewOutline";
 import LayoutEditor from "./molecules/LayoutEditor";
 
 import {useConfigContext} from "./context/ConfigContext";
@@ -154,6 +155,8 @@ const Ergogen = () => {
     const [isProcessing, setIsProcessing] = useState(false);
     const [mode, setMode] = useState<Mode>('preview');
     const configOnEnteringLayout = useRef<string | undefined>();
+    // a new outline asked for in the Downloads list, made by the layout editor
+    const [outlineRequest, setOutlineRequest] = useState<OutlineRequest | null>(null);
 
     useEffect(()=>{
         if(selectedOption?.value) {
@@ -190,6 +193,11 @@ const Ergogen = () => {
     const showPreview = (key: string) => {
         setPreviewKey(key);
         switchMode('preview');
+    };
+
+    const newOutline = (request: OutlineRequest) => {
+        setOutlineRequest(request);
+        switchMode('layout');
     };
 
     return (
@@ -253,14 +261,14 @@ const Ergogen = () => {
                                 <ModeTab active={mode === 'layout'} onClick={() => switchMode('layout')}>Layout</ModeTab>
                             </ModeBar>
                             {mode === 'layout'
-                                ? <LayoutEditor/>
+                                ? <LayoutEditor request={outlineRequest} onRequestDone={() => setOutlineRequest(null)}/>
                                 // until the first run has results (or an error) there is nothing to preview
                                 : configContext.results || configContext.error
                                     ? <StyledFilePreview key={previewKey} previewKey={previewKey} previewContent={previewContent}/>
                                     : <PreviewLoading text="Generating the preview…"/>}
                         </LeftSplitPane>
                         <RightSplitPane>
-                            <Downloads setPreview={showPreview} label={selectedOptionLabel}
+                            <Downloads setPreview={showPreview} label={selectedOptionLabel} onNewOutline={newOutline}
                                        previewKey={mode === 'preview' ? previewKey : undefined}/>
                         </RightSplitPane>
                     </InnerSplit>

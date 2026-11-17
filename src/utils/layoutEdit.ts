@@ -623,6 +623,121 @@ export const addPcbOutline = (text: string, pcb: string, outline: string): strin
     return text.slice(0, start) + `outlines:\n${entry}\n${pad(0)}` + text.slice(start);
 };
 
+// --- whole cases ---
+
+const casePair = (doc: ReturnType<typeof parseDocument>, name: string) => {
+    const cases = doc.get('cases', true);
+    if (!isBlockMap(cases)) return null;
+    const pairs = cases.items as Pair[];
+    const index = pairs.findIndex(pair => pair.key instanceof Scalar && String(pair.key.value) === name);
+    return index < 0 ? null : {pair: pairs[index], next: pairs[index + 1]};
+};
+
+// The lines of cases.<name>'s value, relative to its name's indentation: its parts, comments and all, to copy
+export const caseLines = (text: string, name: string): string[] => {
+    const doc = parseDocument(text, {keepCstNodes: true});
+    if (doc.errors.length) throw new Error('the config has YAML errors');
+    const found = casePair(doc, name);
+    if (!found) throw new Error(`there is no case called ${name}`);
+    const {start, end} = itemLines(text, found.pair, found.next);
+    const keyColumn = columnOf(text, (found.pair.key as Scalar).range?.[0] ?? start);
+    const lines = text.slice(start, end).split('\n').slice(1);
+    while (lines.length && !lines[lines.length - 1].trim()) lines.pop();
+    return lines.map(line => line.slice(Math.min(keyColumn + 2, line.length - line.trimStart().length)));
+};
+
+// the items of a flow list like [a, {name: b, gap: 2}] as written, and the list's place in the text
+const flowItems = (text: string, node: unknown): { items: string[], names: string[], range: Range } | null => {
+    if (!(node instanceof YAMLSeq) || node.type !== 'FLOW_SEQ' || !node.cstNode?.valueRange) return null;
+    const items = node.items.map(item => {
+        const r = (item as any)?.cstNode?.valueRange ?? (item as any)?.cstNode?.range;
+        return r ? text.slice(r.start, r.end).trim() : '';
+    });
+    const names = node.items.map(item => item instanceof Scalar ? String(item.value)
+        : item instanceof YAMLMap ? String((findPair(item, 'name')?.value as Scalar | undefined)?.value ?? '') : '');
+    const {start, end} = node.cstNode.valueRange;
+    return {items, names, range: {start, end}};
+};
+
+// The assemblies whose stack has cases.<name>, and where
+export const stacksWith = (text: string, name: string): { assembly: string, index: number }[] => {
+    const doc = parseDocument(text, {keepCstNodes: true});
+    const assemblies = doc.get('assemblies', true);
+    if (doc.errors.length || !isBlockMap(assemblies)) return [];
+    return (assemblies.items as Pair[]).flatMap(pair => {
+        const stack = isBlockMap(pair.value) ? findPair(pair.value, 'stack')?.value : undefined;
+        const list = flowItems(text, stack);
+        const index = list?.names.indexOf(name) ?? -1;
+        return index < 0 ? [] : [{assembly: String((pair.key as Scalar).value), index}];
+    });
+};
+
+// Puts cases.<name> into assemblies.<assembly>.stack at index (0: at the bottom)
+export const insertIntoStack = (text: string, assembly: string, name: string, index: number): string => {
+    const doc = parseDocument(text, {keepCstNodes: true});
+    if (doc.errors.length) throw new Error('the config has YAML errors');
+    const list = flowItems(text, doc.getIn(['assemblies', assembly, 'stack'], true));
+    if (!list) throw new Error(`assemblies.${assembly}.stack is not a list written like [a, b]`);
+    const items = [...list.items];
+    items.splice(Math.max(0, Math.min(index, items.length)), 0, name);
+    return text.slice(0, list.range.start) + `[${items.join(', ')}]` + text.slice(list.range.end);
+};
+
+// What uses cases.<name>: the cases mirrored from it, the stacks it is in, and other cases' parts made of it
+export const caseReferences = (text: string, name: string): { mirrors: string[], stacks: string[], parts: string[] } => {
+    const doc = parseDocument(text, {keepCstNodes: true});
+    const cases = doc.get('cases', true);
+    const mirrors: string[] = [], parts: string[] = [];
+    if (!doc.errors.length && isBlockMap(cases)) {
+        for (const pair of cases.items as Pair[]) {
+            const key = String((pair.key as Scalar).value);
+            const value = pair.value;
+            if (isBlockMap(value)) {
+                const mirror = findPair(value, 'mirror')?.value;
+                const from = isBlockMap(mirror) || mirror instanceof YAMLMap ? findPair(mirror as YAMLMap, 'from')?.value : undefined;
+                if (from instanceof Scalar && String(from.value) === name) mirrors.push(key);
+            } else if (value instanceof YAMLSeq) {
+                value.items.forEach((item, i) => {
+                    if (!(item instanceof YAMLMap)) return;
+                    const what = findPair(item, 'what')?.value, used = findPair(item, 'name')?.value;
+                    if (what instanceof Scalar && what.value === 'case' && used instanceof Scalar && String(used.value) === name) parts.push(`${key}.${i}`);
+                });
+            }
+        }
+    }
+    return {mirrors, stacks: stacksWith(text, name).map(s => s.assembly), parts};
+};
+
+// Deletes cases.<name> and what uses it: the other cases' parts made of it, its place in every stack, and
+// with mirrors the cases mirrored from it (and what uses those)
+export const deleteCase = (text: string, name: string, mirrors = true): string => {
+    let out = text;
+    const refs = caseReferences(out, name);
+    if (mirrors) for (const mirror of refs.mirrors) out = deleteCase(out, mirror, true);
+    // the parts made of it, the last first so the indexes stay right
+    for (const ref of [...caseReferences(out, name).parts].reverse()) {
+        const [owner, index] = ref.split('.');
+        out = deleteListItem(out, ['cases', owner], Number(index));
+    }
+    for (const {assembly} of stacksWith(out, name)) {
+        const doc = parseDocument(out, {keepCstNodes: true});
+        const list = flowItems(out, doc.getIn(['assemblies', assembly, 'stack'], true));
+        if (!list) continue;
+        const items = list.items.filter((_, i) => list.names[i] !== name);
+        out = out.slice(0, list.range.start) + `[${items.join(', ')}]` + out.slice(list.range.end);
+    }
+    const doc = parseDocument(out, {keepCstNodes: true});
+    const found = casePair(doc, name);
+    if (!found) throw new Error(`there is no case called ${name}`);
+    const own = itemLines(out, found.pair, found.next);
+    const shared = anchorsUsedElsewhere(out, own);
+    if (shared.length) throw new Error(`${name} defines ${shared.map(a => `&${a}`).join(', ')}, which other parts of the config still use`);
+    return removeRanges(out, [own]);
+};
+
+// A case mirrored from another (for the other half of a split board)
+export const mirrorCaseLines = (from: string) => ['mirror:', `  from: ${from}`];
+
 export const applyEdits = (text: string, edits: Edit[]) =>
     [...edits]
         .sort((a, b) => b.site.start - a.site.start)

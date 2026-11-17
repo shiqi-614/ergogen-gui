@@ -17,6 +17,7 @@ import {
 import {fromFrame, nearestKey, shiftFrom, toFrame} from "../utils/keyFrame";
 import ColumnPanel from "./layout/ColumnPanel";
 import OutlinePanel from "./layout/OutlinePanel";
+import {OutlineRequest} from "./NewOutline";
 
 type ColumnDrag = {
     kind: 'column',
@@ -88,17 +89,6 @@ type DrawnPoint = { ref: string, shift: [number, number], at: Vec };
 type Drawing = { name: string, points: DrawnPoint[] };
 type Cursor = { point: DrawnPoint, guides: [Vec, Vec][], closes: boolean };
 
-const NEW_OUTLINE = '__new__';
-
-// how a new outline starts: drawn point by point, or from a template
-type Template = 'draw' | 'hull' | 'plate-mx' | 'plate-choc';
-const TEMPLATES: [Template, string][] = [
-    ['draw', 'draw its points'],
-    ['hull', 'around all keys'],
-    ['plate-mx', 'plate, MX cutouts'],
-    ['plate-choc', 'plate, Choc cutouts'],
-];
-
 // six decimals: enough for a snapped point to stay exactly in line, and short for round ones
 const exactText = (v: number) => String(Number(v.toFixed(6)));
 
@@ -106,7 +96,13 @@ const HELP = 'Click a key to select its column. Drag it up/down for stagger, sid
     + '(Shift: with the columns after it), the green handle for splay, Alt-drag to move the zone. '
     + 'Pick an outline at the top left to drag its points.';
 
-const LayoutEditor = (): JSX.Element | null => {
+type Props = {
+    // a new outline to make (from the Downloads list), once the keys are known; onRequestDone when it is
+    request?: OutlineRequest | null,
+    onRequestDone?: () => void,
+};
+
+const LayoutEditor = ({request, onRequestDone}: Props): JSX.Element | null => {
     const configContext = useConfigContext();
     const configInput = configContext?.configInput ?? '';
 
@@ -122,12 +118,8 @@ const LayoutEditor = (): JSX.Element | null => {
     const [outline, setOutline] = useState<string>('');
     const [paths, setPaths] = useState<Record<string, string>>({});
     const [handleAt, setHandleAt] = useState<HandleAt | null>(null);
-    const [newName, setNewName] = useState<string | null>(null);
     const [drawing, setDrawing] = useState<Drawing | null>(null);
     const [cursor, setCursor] = useState<Cursor | null>(null);
-    const [template, setTemplate] = useState<Template>('draw');
-    // a template for one half of a split board, or for both halves of a unibody one
-    const [bothHalves, setBothHalves] = useState<boolean | null>(null);
     // the outline point clicked last, which Delete removes
     const [chosenPoint, setChosenPoint] = useState<string | null>(null);
     // Enter, Backspace and Escape while drawing; set each render so it sees the current state
@@ -209,6 +201,14 @@ const LayoutEditor = (): JSX.Element | null => {
             next: nextKey ? {col: nextCol, effective: effectiveOf(nextKey)} : undefined,
         };
     }, [points, selected]);
+
+    // a requested outline is made once the keys (and the outlines there are) have been worked out
+    const createOutline = useRef<(request: OutlineRequest) => void>();
+    useEffect(() => {
+        if (!request || !points) return;
+        createOutline.current?.(request);
+        onRequestDone?.();
+    }, [request, points]); // eslint-disable-line react-hooks/exhaustive-deps
 
     if (!configContext) return null;
 
@@ -471,24 +471,17 @@ const LayoutEditor = (): JSX.Element | null => {
     };
 
     const outlineNames = Object.keys(lastConfig.current?.outlines ?? {});
-    // The keys are mirrored: the board is split (each half its own pcb or case, made with
-    // "mirror: from:") or a unibody with both halves on one board
-    const mirrors = Object.values(points ?? {}).some(p => p.meta.mirrored);
-    const looksSplit = ['pcbs', 'cases'].some(section =>
-        Object.values(lastConfig.current?.[section] ?? {}).some((v: any) => v && typeof v === 'object' && v.mirror?.from));
     const nameProblem = (name: string) =>
         !/^[A-Za-z_][\w-]*$/.test(name) ? 'Use letters, digits, _ or -, starting with a letter'
             : outlineNames.includes(name) ? `There already is an outline called ${name}` : null;
 
-    const startDrawing = () => {
-        const name = (newName ?? '').trim();
+    // a new outline: drawn point by point, or written from a template and opened
+    const create = ({name, template, both}: OutlineRequest) => {
         const problem = nameProblem(name);
         if (problem) return setHint(problem);
-        setNewName(null);
         setSelected(null);
         setHint(null);
         if (template === 'draw') return setDrawing({name, points: []});
-        const both = mirrors ? bothHalves ?? !looksSplit : true;
         try {
             let text: string;
             if (template === 'hull') {
@@ -505,6 +498,7 @@ const LayoutEditor = (): JSX.Element | null => {
             setError(String(e));
         }
     };
+    createOutline.current = create;
 
     // where a point at wanted goes: written as a shift from the nearest key, in that key's frame
     // (to 0.1 mm, or exactly when it has been lined up with another point)
@@ -762,31 +756,11 @@ const LayoutEditor = (): JSX.Element | null => {
             )}
 
             <OutlineBar onPointerDown={e => e.stopPropagation()}>
-                <select value={newName !== null ? NEW_OUTLINE : outline} disabled={!!drawing}
-                        onChange={e => e.target.value === NEW_OUTLINE ? setNewName('') : (setNewName(null), setOutline(e.target.value))}>
+                <select value={outline} disabled={!!drawing} onChange={e => setOutline(e.target.value)}
+                        title="New outlines: the + on the Downloads list's Outlines">
                     <option value="">Outline: none</option>
                     {outlineNames.map(name => <option key={name} value={name}>{name}</option>)}
-                    <option value={NEW_OUTLINE}>+ New outline…</option>
                 </select>
-                {newName !== null && (
-                    <div className="row">
-                        <input autoFocus placeholder="name" value={newName}
-                               onChange={e => setNewName(e.target.value)}
-                               onKeyDown={e => e.key === 'Enter' ? startDrawing() : e.key === 'Escape' && setNewName(null)}/>
-                        <select value={template} onChange={e => setTemplate(e.target.value as Template)}>
-                            {TEMPLATES.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
-                        </select>
-                        {mirrors && template !== 'draw' && (
-                            <select value={(bothHalves ?? !looksSplit) ? 'both' : 'half'} onChange={e => setBothHalves(e.target.value === 'both')}
-                                    title="A split board's outline covers one half, a unibody's covers both">
-                                <option value="half">one half (split)</option>
-                                <option value="both">both halves (unibody)</option>
-                            </select>
-                        )}
-                        <button onClick={startDrawing}>{template === 'draw' ? 'Draw' : 'Add'}</button>
-                        <button className="secondary" onClick={() => setNewName(null)}>Cancel</button>
-                    </div>
-                )}
                 {drawing && (
                     <div className="row">
                         <button onClick={() => finishDrawing(drawing)} disabled={drawing.points.length < 3}>Finish</button>

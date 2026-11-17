@@ -1,3 +1,5 @@
+import NewCase from "./NewCase";
+import NewOutline, {OutlineRequest} from "./NewOutline";
 import DownloadRow from "../atoms/DownloadRow";
 import Loading, {Spinner} from "../atoms/Loading";
 import yaml from 'js-yaml';
@@ -25,23 +27,48 @@ const SectionContainer = styled.div`
   margin-bottom: 0.5em;
 `;
 
-const SectionHeader = styled.button`
+// the title opens and closes the section; Outlines and Cases also have a "+" for a new one
+const SectionHeader = styled.div`
   display: flex;
-  justify-content: space-between;
-  width: 100%;
+  align-items: center;
+  gap: 0.5rem;
   margin-bottom: 0.5em;
-  padding: 0.5rem 1rem;
-  border: none;
+  padding: 0 0.5rem 0 0;
   border-radius: 0.25rem;
   background: #595959;
-  color: #ffffff;
-  font: inherit;
-  text-align: left;
-  cursor: pointer;
   transition: background-color 150ms ease-in-out;
 
   &:hover {
     background: #525252;
+  }
+
+  button {
+    border: none;
+    color: #ffffff;
+    font: inherit;
+    cursor: pointer;
+  }
+
+  button.toggle {
+    display: flex;
+    justify-content: space-between;
+    flex-grow: 1;
+    padding: 0.5rem 0 0.5rem 1rem;
+    background: transparent;
+    text-align: left;
+  }
+
+  button.new {
+    width: 1.4rem;
+    height: 1.4rem;
+    padding: 0;
+    border-radius: 0.2rem;
+    background: #6f6f6f;
+    line-height: 1;
+  }
+
+  button.new:hover, button.new[aria-pressed="true"] {
+    background: #28a745;
   }
 `;
 
@@ -49,7 +76,9 @@ type Props = {
     setPreview: (key: string) => void,
     label: string | undefined,
     // what the preview pane shows, marked in the list
-    previewKey?: string
+    previewKey?: string,
+    // a new outline, for the layout editor to make
+    onNewOutline: (request: OutlineRequest) => void,
 };
 
 type DownloadObj = {
@@ -68,11 +97,13 @@ type DownloadSection = {
     items: DownloadArr
 };
 
-const Downloads = ({setPreview, label, previewKey}: Props) => {
+const Downloads = ({setPreview, label, previewKey, onNewOutline}: Props) => {
     const configContext = useConfigContext();
     const tabContext = useContext(TabContext);
     // sections start closed, a click on the title opens one
     const [open, setOpen] = useState<Record<string, boolean>>({});
+    // the section whose new-item form is open
+    const [adding, setAdding] = useState<string | null>(null);
     if(!configContext) return null;
 
     const {configInput, results, error, running} = configContext;
@@ -109,9 +140,9 @@ const Downloads = ({setPreview, label, previewKey}: Props) => {
             });
     }
 
-    if (results?.outlines) {
+    if (results) {
         const outlines = section('Outlines');
-        for (const [name, outline] of Object.entries(results.outlines)) {
+        for (const [name, outline] of Object.entries(results.outlines ?? {})) {
             outlines.push(
                 {
                     fileName: name,
@@ -147,9 +178,9 @@ const Downloads = ({setPreview, label, previewKey}: Props) => {
     }
 
 
-    if (results?.cases) {
+    if (results) {
         const cases = section('Cases');
-        for (const [name, caseObj] of Object.entries(results.cases)) {
+        for (const [name, caseObj] of Object.entries(results.cases ?? {})) {
             cases.push(
                 {
                     fileName: name,
@@ -211,15 +242,27 @@ const Downloads = ({setPreview, label, previewKey}: Props) => {
           {
               sections.map(({title, items}) => {
                   const shown = items.filter(download => !download.fileName.startsWith("_"));
-                  if (!shown.length) return null;
+                  const addable = title === 'Outlines' || title === 'Cases';
+                  if (!shown.length && !addable) return null;
                   const isOpen = !!open[title];
+                  const what = title === 'Outlines' ? 'outline' : 'case';
 
                   return (
                       <SectionContainer key={title}>
-                          <SectionHeader aria-expanded={isOpen} onClick={() => setOpen({...open, [title]: !isOpen})}>
-                              <span>{isOpen ? '▾' : '▸'} {title}</span>
-                              <span>{shown.length}</span>
+                          <SectionHeader>
+                              <button className="toggle" aria-expanded={isOpen} onClick={() => setOpen({...open, [title]: !isOpen})}>
+                                  <span>{isOpen ? '▾' : '▸'} {title}</span>
+                                  <span>{shown.length}</span>
+                              </button>
+                              {addable && (
+                                  <button className="new" title={`A new ${what}`} aria-pressed={adding === title}
+                                          onClick={() => { setAdding(title); setOpen({...open, [title]: true}); }}>+</button>
+                              )}
                           </SectionHeader>
+                          {adding === title && title === 'Outlines' &&
+                              <NewOutline onCancel={() => setAdding(null)} onCreate={request => { setAdding(null); onNewOutline(request); }}/>}
+                          {adding === title && title === 'Cases' &&
+                              <NewCase onCancel={() => setAdding(null)} onCreated={key => { setAdding(null); setPreview(key); }}/>}
                           {isOpen && shown.map((download, i) =>
                               <DownloadRow key={i} {...download} setPreview={setPreview} setTabIndex={tabContext?.setTabIndex}
                                            active={!!download.preview && download.preview === previewKey}/>

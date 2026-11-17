@@ -1,5 +1,5 @@
 // Outlines in the layout editor
-import {assert, config, freshApp, openLayout, outlineMenu, parsed} from '../app.mjs';
+import {assert, config, freshApp, openLayout, outlineMenu, parsed, pressNew} from '../app.mjs';
 
 const pick = (page, name) => page.choose(outlineMenu, name);
 const redEdges = `document.querySelectorAll('svg line[stroke="#ff4d4d"]').length`;
@@ -53,13 +53,15 @@ export const tests = [
         name: 'outlines: a hull from a template, then a point added and deleted',
         async run(page, {url}) {
             await freshApp(page, url);
-            await openLayout(page);
-            await pick(page, '__new__');
-            await page.ev(`document.querySelector('input[placeholder="name"]').focus()`);
+            // from the + on the Downloads list's Outlines, into the layout editor
+            await page.until(`!!document.querySelector('button[title="A new outline"]')`, 60, 'the Outlines section');
+            await pressNew(page, 'outline');
+            await page.ev(`document.querySelector('input[placeholder="outline name"]').focus()`);
             await page.type('e2e_hull');
-            await page.choose(`document.querySelector('input[placeholder="name"]').parentElement.querySelector('select')`, 'hull');
+            await page.choose(`document.querySelector('select[title="how it starts"]')`, 'hull');
             await page.press('Add');
             await page.until(`!!jsyaml.load(${config}).outlines.e2e_hull`, 30, 'the hull outline');
+            await page.until(`${outlineMenu}?.value === 'e2e_hull'`, 60, 'the layout editor to open the new outline');
             const count = (await points(page, 'e2e_hull')).length;
             assert(count >= 4, `the hull should have a few corners, has ${count}`);
             await page.until(`[...document.querySelectorAll('svg title')].filter(t => t.textContent === 'Click to add a point here').length === ${count}`, 60, 'its edges');
@@ -70,6 +72,21 @@ export const tests = [
             await page.until(`jsyaml.load(${config}).outlines.e2e_hull[0].points.length === ${count + 1}`, 30, 'a point to be added');
             await page.key('Delete', 'Delete', 46);
             await page.until(`jsyaml.load(${config}).outlines.e2e_hull[0].points.length === ${count}`, 30, 'the point to be deleted');
+        },
+    },
+    {
+        name: 'outlines: a new drawn outline starts drawing in the layout editor',
+        async run(page, {url}) {
+            await freshApp(page, url);
+            await page.until(`!!document.querySelector('button[title="A new outline"]')`, 60, 'the Outlines section');
+            await pressNew(page, 'outline');
+            await page.ev(`document.querySelector('input[placeholder="outline name"]').focus()`);
+            await page.type('e2e_drawn');
+            await page.press('Draw');
+            await page.until(`[...document.querySelectorAll('button')].some(b => b.textContent === 'Finish' && b.disabled)`, 60, 'drawing to start');
+            assert(await page.ev(`${outlineMenu}.disabled`), 'the outline menu should wait while drawing');
+            await page.press('Cancel');
+            assert(!(await parsed(page)).outlines.e2e_drawn, 'nothing should be written until it is finished');
         },
     },
     {

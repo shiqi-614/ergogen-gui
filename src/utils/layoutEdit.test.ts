@@ -1,5 +1,5 @@
 import {expect, it} from "vitest";
-import {addOutline, addPcbOutline, appendEntry, appendListItem, appendOutline, applyEdits, deleteEntry, deleteListItem, deleteOutline, deleteOutlinePart, findAnchorShift, findChildShift, findChildValue, findItemSites, findPartSites, findShift, findSite, findValue, findWhereList, formatLength, insertPolygonPoint, moveListItem, nudge, outlineReferences, parseLength, partLines, pcbOutlines, plateLines, removePolygonPoint, EditSite} from "./layoutEdit";
+import {addOutline, caseLines, caseReferences, deleteCase, insertIntoStack, mirrorCaseLines, stacksWith, addPcbOutline, appendEntry, appendListItem, appendOutline, applyEdits, deleteEntry, deleteListItem, deleteOutline, deleteOutlinePart, findAnchorShift, findChildShift, findChildValue, findItemSites, findPartSites, findShift, findSite, findValue, findWhereList, formatLength, insertPolygonPoint, moveListItem, nudge, outlineReferences, parseLength, partLines, pcbOutlines, plateLines, removePolygonPoint, EditSite} from "./layoutEdit";
 
 const config = `points:
   zones:
@@ -489,4 +489,62 @@ it('deletes a case part with its comment, and adds one at the end', () => {
     expect(deleteListItem(caseConfig, top, 1)).not.toContain('keys');
     expect(appendListItem(caseConfig, top, ['what: outline', 'name: board', 'extrude: 2', 'operation: subtract']))
         .toContain('      operation: subtract\n    - what: outline\n      name: board\n      extrude: 2\n      operation: subtract\n  middle:');
+});
+
+const cases = `cases:
+  right_top:
+    - what: outline
+      name: expand
+      extrude: 3
+    # the keys' holes
+    - what: pcb
+      name: /footprints.keys/
+      operation: subtract
+  right_lid:
+    - what: case
+      name: right_top
+    - what: outline
+      name: cut
+      operation: subtract
+  left_top:
+    mirror:
+      from: right_top
+
+assemblies:
+  right:
+    stack: [right_bottom, {name: right_top, gap: 1}, right_lid]
+  left:
+    stack: [left_bottom, left_top]
+`;
+
+it("copies a case's parts, comments and all", () => {
+    expect(caseLines(cases, 'right_top')).toEqual(['- what: outline', '  name: expand', '  extrude: 3', "# the keys' holes",
+        '- what: pcb', '  name: /footprints.keys/', '  operation: subtract']);
+    const added = appendEntry(cases, ['cases'], 'right_copy', caseLines(cases, 'right_top'));
+    expect(added).toContain("  right_copy:\n    - what: outline\n      name: expand\n      extrude: 3\n    # the keys' holes\n    - what: pcb");
+    expect(appendEntry(cases, ['cases'], 'left_copy', mirrorCaseLines('right_copy'))).toContain('  left_copy:\n    mirror:\n      from: right_copy\n');
+});
+
+it('finds and changes the stacks a case is in', () => {
+    expect(stacksWith(cases, 'right_top')).toEqual([{assembly: 'right', index: 1}]);
+    expect(insertIntoStack(cases, 'right', 'right_mid', 2)).toContain('stack: [right_bottom, {name: right_top, gap: 1}, right_mid, right_lid]');
+    expect(insertIntoStack(cases, 'left', 'left_mid', 9)).toContain('stack: [left_bottom, left_top, left_mid]');
+});
+
+it('says what uses a case, and deletes it with them', () => {
+    expect(caseReferences(cases, 'right_top')).toEqual({mirrors: ['left_top'], stacks: ['right'], parts: ['right_lid.0']});
+    const out = deleteCase(cases, 'right_top');
+    expect(out).toBe(`cases:
+  right_lid:
+    - what: outline
+      name: cut
+      operation: subtract
+
+assemblies:
+  right:
+    stack: [right_bottom, right_lid]
+  left:
+    stack: [left_bottom]
+`);
+    expect(deleteCase(cases, 'right_top', false)).toContain('  left_top:\n    mirror:\n      from: right_top');
 });

@@ -1,5 +1,5 @@
 // A case's parts, in its own preview (Downloads → Cases), and which 3D board view shows the case
-import {assert, config, freshApp, openPcb, parsed} from '../app.mjs';
+import {assert, config, freshApp, openPcb, parsed, pressNew} from '../app.mjs';
 
 const openCase = async (page, name) => {
     await page.ev(`[...document.querySelectorAll('button')].find(b => b.textContent.startsWith('▸ Cases'))?.click()`);
@@ -71,6 +71,35 @@ export const tests = [
             await page.ev(`[...document.querySelectorAll('button')].find(b => b.textContent.trim() === 'ergocai_right')?.click()`);
             await page.until(`document.body.textContent.includes('Case (ergocai_right)')`, 120, 'the assembly with its case');
             assert(!(await page.ev(`[...document.querySelectorAll('button')].some(b => b.title?.startsWith('The parts '))`)), 'the assembly should not edit parts');
+        },
+    },
+    {
+        name: 'cases: a new case is copied, mirrored and stacked, and deleted with what uses it',
+        async run(page, {url}) {
+            await freshApp(page, url);
+            await page.until(`!!document.querySelector('button[title="A new case"]')`, 60, 'the Cases section');
+            await pressNew(page, 'case');
+            await page.ev(`document.querySelector('input[placeholder="case name"]').focus()`);
+            await page.type('right_lid');
+            const top = (await caseParts(page, 'right_top')).length;
+            // a copy of the first case (right_top), mirrored as left_lid, at the top of ergocai_right
+            assert(await page.ev(`document.querySelector('select[title="the case whose parts it starts with"]').value`) === 'right_top', 'it should start as a copy of right_top');
+            await page.press('Add');
+            await page.until(`!!jsyaml.load(${config}).cases.right_lid`, 30, 'the new case');
+            const c = await parsed(page);
+            assert(c.cases.right_lid.length === top, `right_lid should have right_top's ${top} parts, has ${c.cases.right_lid.length}`);
+            assert(c.cases.left_lid?.mirror?.from === 'right_lid', 'left_lid should mirror right_lid');
+            assert(c.assemblies.ergocai_right.stack.at(-1) === 'right_lid', `right_lid should top ergocai_right: ${c.assemblies.ergocai_right.stack}`);
+            assert(c.assemblies.ergocai_left.stack.at(-1) === 'left_lid', `left_lid should top ergocai_left: ${c.assemblies.ergocai_left.stack}`);
+            // it opens, once it is made
+            await page.until(`[...document.querySelectorAll('span')].some(s => s.textContent.startsWith('right_lid: ${top} parts'))`, 120, "right_lid's parts");
+
+            await page.press('Delete case');
+            await page.until(`!jsyaml.load(${config}).cases.right_lid`, 30, 'right_lid to go');
+            const after = await parsed(page);
+            assert(!after.cases.left_lid, 'left_lid should go with it');
+            assert(!after.assemblies.ergocai_right.stack.includes('right_lid') && !after.assemblies.ergocai_left.stack.includes('left_lid'), 'the stacks should no longer have them');
+            assert(page.dialogs?.some(d => d.includes('the mirrored case left_lid')), 'the confirmation should name the mirrored case');
         },
     },
 ];

@@ -55,4 +55,8 @@ export const near = (a, b, tolerance, message) =>
 export const parsed = page => page.ev(`jsyaml.load(${config})`);
 
 // the outline menu at the top left of the layout
-export const outlineMenu = `[...document.querySelectorAll('select')].find(s => [...s.options].some(o => o.value === '__new__'))`;
+export const outlineMenu = `[...document.querySelectorAll('select')].find(s => [...s.options].some(o => o.textContent === 'Outline: none'))`;
+
+// the "+" on a Downloads section's header, which opens its new-item form
+export const pressNew = (page, section) =>
+    page.ev(`[...document.querySelectorAll('button[title="A new ${section}"]')][0].click()`);
