@@ -1,47 +1,22 @@
 import React, {useCallback, useEffect, useMemo, useRef, useState} from "react";
-import styled from "styled-components";
-import yaml from "js-yaml";
 import {useConfigContext} from "../context/ConfigContext";
 import {
     ATTRS, AnchorShift, Attr, Edit, EditSite, Length,
-    PartAttr, addOutline, appendOutline, applyEdits, deleteOutline, deleteOutlinePart, findAnchorShift, findPartSites,
-    findShift, findSite, formatLength, outlineReferences,
+    addOutline, appendOutline, applyEdits, findAnchorShift, findShift, findSite, formatLength,
     insertPolygonPoint, isPlainNumber, nudge, parseLength, plateLines, removePolygonPoint,
 } from "../utils/layoutEdit";
 import {OutlineHandle, Polygon, keyHull, nearMisses, outlineHandles} from "../utils/outlineGeometry";
-
-type Meta = {
-    name: string,
-    width: number,
-    height: number,
-    orient: number,
-    rotate: number,
-    shift: [number, number],
-    padding: number,
-    stagger: number,
-    spread: number,
-    splay: number,
-    mirrored?: boolean,
-    row: string,
-    zone: { name: string },
-    col: { name: string },
-};
-type Point = { x: number, y: number, r: number, meta: Meta };
-type Points = Record<string, Point>;
-type Units = Record<string, number>;
-type Column = { zone: string, col: string };
-type View = { x: number, y: number, w: number, h: number };
-type Vec = { x: number, y: number };
-type Side = 'source' | 'mirror';
-type Site = EditSite | string;
-
-// What a drag has done to keys that ergogen hasn't recomputed yet: rotate them around
-// their side's pivot, then move them, in board millimetres. Mirrored keys do the mirror image.
-// mirrorDx moves every mirrored key, for when the drag moves the mirror axis itself.
-type Transform = { names: Set<string>, dx: number, dy: number, angle: number, pivots: Partial<Record<Side, Vec>>, mirrorDx?: number };
-
-// where ergogen anchors a column: the pivot of its splay, and the direction its rows go (degrees)
-type Frame = { pivot: Vec, theta: number, top: number };
+import {
+    Column, Frame, Point, Points, Side, Site, Transform, Units, Vec, View,
+    columnFrame, columnOrder, computePoints, editableLength, evaluator, fitView, format, place, radians, rotate,
+    round, rowOrder, sameColumn, sideOf, signOf,
+} from "./layout/geometry";
+import {
+    Canvas, CenterHandle, Container, EdgeTarget, ErrorText, Key, OutlineBar, RotateHandle, StatusBar, VertexHandle,
+} from "./layout/styles";
+import {fromFrame, nearestKey, shiftFrom, toFrame} from "../utils/keyFrame";
+import ColumnPanel from "./layout/ColumnPanel";
+import OutlinePanel from "./layout/OutlinePanel";
 
 type ColumnDrag = {
     kind: 'column',
@@ -127,616 +102,9 @@ const TEMPLATES: [Template, string][] = [
 // six decimals: enough for a snapped point to stay exactly in line, and short for round ones
 const exactText = (v: number) => String(Number(v.toFixed(6)));
 
-const Container = styled.div`
-  position: relative;
-  height: calc(100vh - 6rem);
-  min-height: 20rem;
-  background: #1e1e1e;
-  border-radius: 0.25rem;
-  overflow: hidden;
-  user-select: none;
-`;
-
-const Canvas = styled.svg`
-  width: 100%;
-  height: 100%;
-  touch-action: none;
-`;
-
-const Key = styled.rect<{ selected: boolean }>`
-  fill: ${p => p.selected ? 'rgba(40, 167, 69, 0.35)' : 'rgba(255, 255, 255, 0.04)'};
-  stroke: ${p => p.selected ? '#28a745' : '#bdbdbd'};
-  stroke-width: 0.4;
-  cursor: grab;
-
-  &:hover {
-    stroke: #ffffff;
-  }
-`;
-
-const RotateHandle = styled.circle`
-  fill: #28a745;
-  stroke: #ffffff;
-  stroke-width: 0.4;
-  cursor: grab;
-`;
-
-const Panel = styled.div`
-  position: absolute;
-  top: 0.75rem;
-  right: 0.75rem;
-  width: 15rem;
-  max-height: calc(100% - 4.5rem);
-  overflow-y: auto;
-  padding: 0.75rem;
-  border-radius: 0.25rem;
-  background: rgba(45, 45, 45, 0.95);
-  font-size: 0.9rem;
-
-  h4 {
-    margin: 0 0 0.5rem 0;
-  }
-
-  h4:not(:first-child) {
-    margin-top: 0.8rem;
-  }
-
-  label {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 0.4rem;
-  }
-
-  input {
-    width: 6rem;
-    padding: 0.2rem 0.4rem;
-    border: 1px solid #595959;
-    border-radius: 0.2rem;
-    background: #1e1e1e;
-    color: #ffffff;
-    font: inherit;
-  }
-
-  input:disabled {
-    color: #8a8a8a;
-  }
-
-  select {
-    width: 6rem;
-    padding: 0.2rem 0.4rem;
-    border: 1px solid #595959;
-    border-radius: 0.2rem;
-    background: #1e1e1e;
-    color: #ffffff;
-    font: inherit;
-  }
-
-  input[type=range] {
-    width: 100%;
-    padding: 0;
-    border: none;
-    accent-color: #ff9f1c;
-  }
-
-  .part {
-    padding: 0.5rem 0;
-    border-top: 1px solid #444444;
-  }
-
-  .part:first-of-type {
-    border-top: none;
-  }
-
-  .note {
-    color: #8a8a8a;
-    font-size: 0.8rem;
-  }
-
-  .title {
-    display: flex;
-    justify-content: space-between;
-    align-items: baseline;
-  }
-
-  .title button {
-    border: none;
-    border-radius: 0.2rem;
-    color: #ffffff;
-    font: inherit;
-    cursor: pointer;
-  }
-
-  .title button.danger {
-    padding: 0.15rem 0.5rem;
-    background: #a33a3a;
-    font-size: 0.8rem;
-  }
-
-  .title button.remove {
-    padding: 0 0.4rem;
-    background: transparent;
-    color: #bdbdbd;
-    font-size: 1.1rem;
-  }
-
-  .title button.remove:hover {
-    color: #ff6d6d;
-  }
-`;
-
-const StatusBar = styled.div`
-  position: absolute;
-  left: 0.75rem;
-  bottom: 0.75rem;
-  right: 0.75rem;
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  font-size: 0.85rem;
-  color: #bdbdbd;
-
-  button {
-    padding: 0.2rem 0.6rem;
-    border: none;
-    border-radius: 0.2rem;
-    background: #595959;
-    color: #ffffff;
-    font: inherit;
-    cursor: pointer;
-  }
-`;
-
-const OutlineBar = styled.div`
-  position: absolute;
-  top: 0.75rem;
-  left: 0.75rem;
-  display: flex;
-  flex-direction: column;
-  /* each control keeps its own width, rather than stretching to the widest row */
-  align-items: flex-start;
-  gap: 0.3rem;
-  font-size: 0.85rem;
-  color: #bdbdbd;
-
-  .row {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.3rem;
-    max-width: 22rem;
-  }
-
-  input {
-    width: 9rem;
-    padding: 0.2rem 0.4rem;
-    border: 1px solid #595959;
-    border-radius: 0.2rem;
-    background: #1e1e1e;
-    color: #ffffff;
-    font: inherit;
-  }
-
-  button {
-    padding: 0.2rem 0.6rem;
-    border: none;
-    border-radius: 0.2rem;
-    background: #28a745;
-    color: #ffffff;
-    font: inherit;
-    cursor: pointer;
-  }
-
-  button.secondary {
-    background: #595959;
-  }
-
-  select {
-    padding: 0.2rem 0.4rem;
-    border: 1px solid #595959;
-    border-radius: 0.2rem;
-    background: #2d2d2d;
-    color: #ffffff;
-    font: inherit;
-  }
-`;
-
-const VertexHandle = styled.rect<{ chosen: boolean }>`
-  fill: ${p => p.chosen ? '#ffffff' : '#ff9f1c'};
-  stroke: ${p => p.chosen ? '#ff9f1c' : '#ffffff'};
-  stroke-width: ${p => p.chosen ? 0.8 : 0.3};
-  cursor: move;
-`;
-
-// an invisible, wide line over an outline edge: clicking it adds a point there
-const EdgeTarget = styled.line`
-  stroke: transparent;
-  stroke-width: 2.5;
-  cursor: copy;
-
-  &:hover {
-    stroke: rgba(255, 159, 28, 0.35);
-  }
-`;
-
-const CenterHandle = styled.circle`
-  fill: #ff9f1c;
-  stroke: #ffffff;
-  stroke-width: 0.3;
-  cursor: move;
-`;
-
-const ErrorText = styled.span`
-  color: #ff6d6d;
-`;
-
-const UNITS: Record<Attr, string> = {stagger: 'mm', spread: 'mm', splay: '°'};
 const HELP = 'Click a key to select its column. Drag it up/down for stagger, sideways for spread '
     + '(Shift: with the columns after it), the green handle for splay, Alt-drag to move the zone. '
     + 'Pick an outline at the top left to drag its points.';
-
-const round = (value: number, step: number) => Math.round(value / step) * step;
-const format = (value: number) => String(Number(value.toFixed(2)));
-const radians = (degrees: number) => degrees * Math.PI / 180;
-
-const rotate = (v: Vec, degrees: number): Vec => {
-    const a = radians(degrees);
-    return {x: v.x * Math.cos(a) - v.y * Math.sin(a), y: v.x * Math.sin(a) + v.y * Math.cos(a)};
-};
-
-const rotateAround = (v: Vec, pivot: Vec, degrees: number): Vec => {
-    const turned = rotate({x: v.x - pivot.x, y: v.y - pivot.y}, degrees);
-    return {x: pivot.x + turned.x, y: pivot.y + turned.y};
-};
-
-type Computed = { points: Points, units: Units, config: any, paths: Record<string, string>, outlineError?: string };
-
-// Only the points (and the outlines, when one is shown) are needed to draw the layout. That still
-// takes ergogen a few hundred milliseconds, so a drag moves things itself and ergogen runs on release.
-const computePoints = async (text: string, withOutlines: boolean): Promise<Computed> => {
-    const config: any = yaml.load(text);
-    if (!config || typeof config !== 'object') throw new Error('The config is empty');
-    // ergogen changes the config it is given (it deletes each zone's anchor, for one), and the drags
-    // read the config afterwards, so it gets a copy
-    const copy = (value: unknown) => value === undefined ? {} : JSON.parse(JSON.stringify(value));
-    const input = (outlines: unknown) => ({
-        points: copy(config.points), units: copy(config.units), variables: copy(config.variables), outlines, pcbs: {},
-    });
-    if (withOutlines && config.outlines) {
-        try {
-            const results = await window.ergogen.processBasic(input(copy(config.outlines)), true, () => {});
-            const paths: Record<string, string> = {};
-            for (const [name, outline] of Object.entries(results.outlines ?? {}) as [string, any][]) {
-                // origin [0, 0] keeps ergogen's coordinates, with y flipped like the view
-                paths[name] = String((window as any).makerjs.exporter.toSVGPathData(outline.raw, {origin: [0, 0]}));
-            }
-            return {points: results.points, units: results.units ?? {}, config, paths};
-        } catch (e: unknown) {
-            // a broken outline shouldn't hide the keys
-            const results = await window.ergogen.processBasic(input({}), true, () => {});
-            return {points: results.points, units: results.units ?? {}, config, paths: {}, outlineError: String(e)};
-        }
-    }
-    const results = await window.ergogen.processBasic(input({}), true, () => {});
-    return {points: results.points, units: results.units ?? {}, config, paths: {}};
-};
-
-const evaluator = (units: Units) => (expr: string): number => (window as any).math.evaluate(expr, {...units});
-
-const fitView = (points: Points): View | null => {
-    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-    for (const p of Object.values(points)) {
-        const reach = Math.hypot(p.meta.width, p.meta.height) / 2;
-        minX = Math.min(minX, p.x - reach);
-        maxX = Math.max(maxX, p.x + reach);
-        minY = Math.min(minY, p.y - reach);
-        maxY = Math.max(maxY, p.y + reach);
-    }
-    if (minX === Infinity) return null;
-    const margin = 20;
-    // the drawing is flipped (ergogen's y points up), so the view's y range is flipped too
-    return {x: minX - margin, y: -maxY - margin, w: maxX - minX + 2 * margin, h: maxY - minY + 2 * margin};
-};
-
-const sameColumn = (p: Point, column: Column | null) =>
-    !!column && p.meta.zone.name === column.zone && p.meta.col.name === column.col;
-
-const sideOf = (p: Point): Side => p.meta.mirrored ? 'mirror' : 'source';
-const signOf = (p: Point) => p.meta.mirrored ? -1 : 1;
-
-const place = (name: string, p: Point, t: Transform | null): { x: number, y: number, r: number } => {
-    const axis = t?.mirrorDx && p.meta.mirrored ? t.mirrorDx : 0;
-    if (!t?.names.has(name)) return axis ? {x: p.x + axis, y: p.y, r: p.r} : p;
-    const sign = signOf(p);
-    const pivot = t.pivots[sideOf(p)];
-    const turned = t.angle && pivot ? rotateAround(p, pivot, sign * t.angle) : p;
-    return {x: turned.x + sign * t.dx + axis, y: turned.y + t.dy, r: p.r + sign * t.angle};
-};
-
-// the order of a column's rows, as ergogen combines the zone's rows with the column's own
-const rowOrder = (config: any, column: Column): string[] => {
-    const zone = config?.points?.zones?.[column.zone];
-    const col = zone?.columns?.[column.col];
-    const names = Object.keys(zone?.rows ?? {});
-    for (const row of Object.keys(col?.rows ?? {})) if (!names.includes(row)) names.push(row);
-    return names;
-};
-
-const columnOrder = (config: any, zone: string): string[] =>
-    Object.keys(config?.points?.zones?.[zone]?.columns ?? {});
-
-// Works back from a key to its column's anchor: ergogen stacks the rows from there by their
-// padding, then shifts each key in its own rotation. Mirrored keys are the mirror image of this.
-const columnFrame = (keys: Point[], rows: string[]): Frame | null => {
-    const p = keys[0];
-    if (!p) return null;
-    const sign = signOf(p);
-    const theta = p.r - sign * (p.meta.orient + p.meta.rotate);
-    const [sx, sy] = p.meta.shift ?? [0, 0];
-    const shift = rotate({x: sign * sx, y: sy}, p.r - sign * p.meta.rotate);
-    const up = rotate({x: 0, y: Math.max(rows.indexOf(p.meta.row), 0) * p.meta.padding}, theta);
-    const pivot = {x: p.x - shift.x - up.x, y: p.y - shift.y - up.y};
-    // how far up the column reaches, for the rotate handle
-    const along = rotate({x: 0, y: 1}, theta);
-    const top = Math.max(...keys.map(k => (k.x - pivot.x) * along.x + (k.y - pivot.y) * along.y + k.meta.height / 2));
-    return {pivot, theta, top};
-};
-
-const editableLength = (site: Site | undefined, units: Units): { site: EditSite, like: Length | null } | string => {
-    if (site === undefined) return 'unknown column';
-    if (typeof site === 'string') return site;
-    if (site.raw === undefined) return {site, like: null};
-    const like = parseLength(site.raw, units);
-    return like ? {site, like} : `it is "${site.raw}" in the config, change it in the panel`;
-};
-
-type PanelProps = {
-    column: Column,
-    text: string,
-    units: Units,
-    effective?: Record<Attr, number>,
-    next?: { col: string, effective: Record<Attr, number> },
-    onCommit: (text: string) => void,
-};
-
-const ColumnPanel = ({column, text, units, effective, next, onCommit}: PanelProps) => {
-    const sites = useMemo(
-        () => Object.fromEntries(ATTRS.map(attr => [attr, findSite(text, column.zone, column.col, attr)])) as Record<Attr, Site>,
-        [text, column.zone, column.col]
-    );
-    const nextSites = useMemo(
-        () => next && Object.fromEntries(ATTRS.map(attr => [attr, findSite(text, column.zone, next.col, attr)])) as Record<Attr, Site>,
-        [text, column.zone, next]
-    );
-    const anchor = useMemo(() => findAnchorShift(text, column.zone), [text, column.zone]);
-    const [drafts, setDrafts] = useState<Record<string, string | undefined>>({});
-    useEffect(() => setDrafts({}), [text, column.zone, column.col]);
-
-    const commitAttr = (attr: Attr) => {
-        const draft = drafts[attr]?.trim();
-        const site = sites[attr];
-        if (draft === undefined || typeof site === 'string') return;
-        if (draft === '' || draft === (site.raw ?? '')) {
-            setDrafts({...drafts, [attr]: undefined});
-            return;
-        }
-        const edits: Edit[] = [{site, value: draft}];
-        // like a drag, a new stagger or spread leaves the columns after this one where they are
-        const typed = attr !== 'splay' && parseLength(draft, units);
-        const nextSite = nextSites && editableLength(nextSites[attr], units);
-        if (typed && effective && next && nextSite && typeof nextSite !== 'string') {
-            const change = typed.mm - effective[attr];
-            edits.push({site: nextSite.site, value: formatLength(next.effective[attr] - change, nextSite.like)});
-        }
-        onCommit(applyEdits(text, edits));
-    };
-
-    const commitAnchor = () => {
-        if (typeof anchor === 'string') return;
-        const x = drafts.anchorX?.trim() ?? anchor.raw[0] ?? '0';
-        const y = drafts.anchorY?.trim() ?? anchor.raw[1] ?? '0';
-        if (x === (anchor.raw[0] ?? '0') && y === (anchor.raw[1] ?? '0')) return;
-        onCommit(applyEdits(text, anchor.edits(x || '0', y || '0')));
-    };
-
-    const input = (key: string, value: string, placeholder: string, disabled: string | false, commit: () => void) => (
-        <input
-            value={drafts[key] ?? value}
-            placeholder={placeholder}
-            disabled={!!disabled}
-            title={disabled ? `Can't edit here: ${disabled}` : undefined}
-            onChange={e => setDrafts({...drafts, [key]: e.target.value})}
-            onKeyDown={e => e.key === 'Enter' && commit()}
-            onBlur={commit}
-        />
-    );
-
-    return (
-        <Panel onPointerDown={e => e.stopPropagation()}>
-            <h4>{column.zone} / {column.col}</h4>
-            {ATTRS.map(attr => {
-                const site = sites[attr];
-                const disabled = typeof site === 'string' && site;
-                return (
-                    <label key={attr}>
-                        <span>{attr} ({UNITS[attr]})</span>
-                        {input(attr, typeof site === 'string' ? '' : site.raw ?? '', effective ? format(effective[attr]) : '', disabled, () => commitAttr(attr))}
-                    </label>
-                );
-            })}
-            <h4>zone {column.zone} anchor shift</h4>
-            {(['x', 'y'] as const).map((axis, i) => (
-                <label key={axis}>
-                    <span>{axis}</span>
-                    {input(`anchor${axis.toUpperCase()}`, typeof anchor === 'string' ? '' : anchor.raw[i] ?? '', '0',
-                        typeof anchor === 'string' && anchor, commitAnchor)}
-                </label>
-            ))}
-        </Panel>
-    );
-};
-
-const OPERATIONS = ['add', 'subtract', 'intersect', 'stack'];
-const JOINTS = ['round', 'pointy', 'beveled'];
-// "3]" is ergogen's shorthand for expand 3 with beveled joints
-const JOINT_SUFFIXES = [')', '>', ']'];
-
-type OutlinePanelProps = { outline: string, text: string, onCommit: (text: string) => void, onDeleted: (name: string) => void };
-
-// The settings of each part of an outline: how it joins the parts before it, and the expand and
-// fillet ergogen applies to everything up to and including it
-const OutlinePanel = ({outline, text, onCommit, onDeleted}: OutlinePanelProps) => {
-    const parts = useMemo(() => findPartSites(text, outline), [text, outline]);
-    const [drafts, setDrafts] = useState<Record<string, string | undefined>>({});
-    useEffect(() => setDrafts({}), [text, outline]);
-    // A slider writes once it rests, so a drag is one edit (and one undo), not dozens. Every write
-    // goes onto the newest text, the waiting slider value first, so neither undoes the other.
-    const latest = useRef(text);
-    useEffect(() => { latest.current = text; }, [text]);
-    const timer = useRef<number>();
-    const pending = useRef<{ key: string | number, attr: PartAttr, value: string } | null>(null);
-    useEffect(() => () => window.clearTimeout(timer.current), []);
-
-    if (typeof parts === 'string') return <Panel><h4>{outline}</h4><span className="note">{parts}</span></Panel>;
-
-    // Deleting asks first, and names what uses the outline: those go too, so the config stays valid.
-    // The editor's undo (Ctrl+Z / Cmd+Z) brings it all back.
-    const removeOutline = () => {
-        const users = outlineReferences(text, outline);
-        const question = users.length
-            ? `Delete outline ${outline}? It is used by:\n${users.map(u => `  ${u.label}`).join('\n')}\nThose will be deleted too.`
-            : `Delete outline ${outline}?`;
-        if (!window.confirm(question)) return;
-        try {
-            commitText(deleteOutline(flush(latest.current), outline, true));
-            onDeleted(outline);
-        } catch (e: unknown) {
-            window.alert(`Can't delete ${outline}: ${e instanceof Error ? e.message : String(e)}`);
-        }
-    };
-
-    const removePart = (key: string | number, what: string) => {
-        if (parts.length === 1) return removeOutline();
-        if (!window.confirm(`Delete part ${typeof key === 'number' ? `#${key}` : key} (${what}) of ${outline}?`)) return;
-        try {
-            commitText(deleteOutlinePart(flush(latest.current), outline, key));
-        } catch (e: unknown) {
-            window.alert(`Can't delete that part: ${e instanceof Error ? e.message : String(e)}`);
-        }
-    };
-
-    const applyTo = (base: string, key: string | number, attr: PartAttr, value: string) => {
-        const site = (() => { const now = findPartSites(base, outline); return typeof now === 'string' ? undefined : now.find(p => p.key === key)?.sites[attr]; })();
-        return site && typeof site !== 'string' ? applyEdits(base, [{site, value}]) : base;
-    };
-    const flush = (base: string) => {
-        window.clearTimeout(timer.current);
-        const waiting = pending.current;
-        pending.current = null;
-        return waiting ? applyTo(base, waiting.key, waiting.attr, waiting.value) : base;
-    };
-    const commitText = (next: string) => {
-        if (next === latest.current) return;
-        latest.current = next;
-        onCommit(next);
-    };
-    const write = (key: string | number, attr: PartAttr, site: EditSite | string, value: string, delay = 0) => {
-        if (typeof site === 'string') return;
-        const other = pending.current && (pending.current.key !== key || pending.current.attr !== attr);
-        if (delay && !other) {
-            pending.current = {key, attr, value};
-            window.clearTimeout(timer.current);
-            timer.current = window.setTimeout(() => commitText(flush(latest.current)), delay);
-            return;
-        }
-        const base = flush(latest.current);
-        if (delay) {
-            commitText(base);
-            pending.current = {key, attr, value};
-            timer.current = window.setTimeout(() => commitText(flush(latest.current)), delay);
-            return;
-        }
-        commitText(applyTo(base, key, attr, value));
-    };
-    const rawOf = (site: EditSite | string) => typeof site === 'string' ? undefined : site.raw;
-    const reason = (site: EditSite | string) => typeof site === 'string' ? `Can't edit here: ${site}` : undefined;
-
-    // a number with a slider; expressions ("studSize") are typed in the box and leave the slider alone
-    const numberField = (id: string, raw: string | undefined, max: number, min: number, disabled: string | undefined,
-                         toText: (value: string) => string, site: EditSite | string, key: string | number, attr: PartAttr) => {
-        const shown = drafts[id] ?? raw ?? '';
-        const value = shown === '' ? 0 : isPlainNumber(shown) ? Number(shown) : NaN;
-        const commitTyped = () => {
-            const typed = drafts[id]?.trim();
-            if (typed === undefined || typed === (raw ?? '') || typed === '') return;
-            write(key, attr, site, toText(typed));
-        };
-        return (
-            <>
-                <input value={shown} placeholder="0" disabled={!!disabled} title={disabled}
-                       onChange={e => setDrafts({...drafts, [id]: e.target.value})}
-                       onKeyDown={e => e.key === 'Enter' && commitTyped()} onBlur={commitTyped}/>
-                <input type="range" min={min} max={max} step={0.1} value={Number.isNaN(value) ? 0 : value}
-                       disabled={!!disabled || Number.isNaN(value)}
-                       title={Number.isNaN(value) ? `"${shown}" is an expression: change it in the box` : undefined}
-                       onChange={e => {
-                           setDrafts({...drafts, [id]: e.target.value});
-                           // nothing to write while it stays at the default
-                           if (raw !== undefined || Number(e.target.value) !== 0) write(key, attr, site, toText(e.target.value), 250);
-                       }}/>
-            </>
-        );
-    };
-
-    return (
-        <Panel onPointerDown={e => e.stopPropagation()}>
-            <div className="title">
-                <h4>{outline}</h4>
-                <button className="danger" onClick={removeOutline}>Delete outline</button>
-            </div>
-            {parts.map(part => {
-                const id = String(part.key);
-                const {operation, expand, joints, fillet} = part.sites;
-                const expandRaw = rawOf(expand);
-                const shorthand = expandRaw ? /^(.*?)\s*([)>\]])$/.exec(expandRaw.trim()) : null;
-                const suffix = shorthand?.[2];
-                const jointsRaw = rawOf(joints);
-                const joint = suffix ? JOINTS[JOINT_SUFFIXES.indexOf(suffix)]
-                    : jointsRaw === undefined ? 'round' : JOINTS[Number(jointsRaw)] ?? jointsRaw;
-                const field = (attr: PartAttr) => `${id}.${attr}`;
-                return (
-                    <div className="part" key={id}>
-                        <div className="title">
-                            <h4>{typeof part.key === 'number' ? `#${part.key}` : part.key} {part.what}</h4>
-                            <button className="remove" title="Delete this part" onClick={() => removePart(part.key, part.what)}>×</button>
-                        </div>
-                        <label>
-                            <span>operation</span>
-                            <select value={rawOf(operation) ?? 'add'} disabled={!!reason(operation)} title={reason(operation)}
-                                    onChange={e => write(part.key, 'operation', operation, e.target.value)}>
-                                {OPERATIONS.map(op => <option key={op} value={op}>{op}</option>)}
-                            </select>
-                        </label>
-                        <label><span>expand (mm)</span></label>
-                        {numberField(field('expand'), shorthand ? shorthand[1] : expandRaw, 10, -10, reason(expand),
-                            value => `${value}${suffix ?? ''}`, expand, part.key, 'expand')}
-                        <label>
-                            <span>joints</span>
-                            <select value={joint} disabled={!!reason(suffix ? expand : joints)}
-                                    onChange={e => suffix && shorthand
-                                        ? write(part.key, 'expand', expand, `${shorthand[1]}${JOINT_SUFFIXES[JOINTS.indexOf(e.target.value)]}`)
-                                        : write(part.key, 'joints', joints, e.target.value)}>
-                                {JOINTS.map(j => <option key={j} value={j}>{j}</option>)}
-                            </select>
-                        </label>
-                        <label><span>fillet (mm)</span></label>
-                        {numberField(field('fillet'), rawOf(fillet), 10, 0, reason(fillet), value => value, fillet, part.key, 'fillet')}
-                    </div>
-                );
-            })}
-            <span className="note">expand and fillet apply to the outline up to and including their part</span>
-        </Panel>
-    );
-};
 
 const LayoutEditor = (): JSX.Element | null => {
     const configContext = useConfigContext();
@@ -749,6 +117,8 @@ const LayoutEditor = (): JSX.Element | null => {
     const [selected, setSelected] = useState<Column | null>(null);
     const [view, setView] = useState<View | null>(null);
     const [transform, setTransform] = useState<Transform | null>(null);
+    // the panel at the top right, folded down to its title (it can cover points near the board's top)
+    const [panelFolded, setPanelFolded] = useState(false);
     const [outline, setOutline] = useState<string>('');
     const [paths, setPaths] = useState<Record<string, string>>({});
     const [handleAt, setHandleAt] = useState<HandleAt | null>(null);
@@ -1063,8 +433,7 @@ const LayoutEditor = (): JSX.Element | null => {
         }
         const snapped = {x: !!snappedTo.x, y: !!snappedTo.y};
         // from the board to the frame the shift is in; a mirrored anchor shifts x the other way
-        const local = rotate({x: wanted.x - at.x, y: wanted.y - at.y}, -frame);
-        if (at.mirrored) local.x = -local.x;
+        const local = toFrame({x: wanted.x - at.x, y: wanted.y - at.y}, {r: frame, mirrored: at.mirrored});
         // in a turned frame a snapped board axis mixes both shift values, so both stay exact
         const turned = Math.abs(((frame % 90) + 90) % 90) > 1e-9;
         const exact = turned && (snapped.x || snapped.y) ? {x: true, y: true} : snapped;
@@ -1078,7 +447,7 @@ const LayoutEditor = (): JSX.Element | null => {
         const x = copies(snappedTo.x, 0) ? snappedTo.x!.raw[0]! : nudge(d.shift.raw[0], local.x, units, exact.x);
         const y = copies(snappedTo.y, 1) ? snappedTo.y!.raw[1]! : nudge(d.shift.raw[1], local.y, units, exact.y);
         d.text = applyEdits(d.sourceText, d.shift.edits(x, y));
-        const moved = rotate({x: at.mirrored ? -local.x : local.x, y: local.y}, frame);
+        const moved = fromFrame(local, {r: frame, mirrored: at.mirrored});
         setHandleAt({key: d.handle.key, at: {x: at.x + moved.x, y: at.y + moved.y}, guides: guides.map(([n]) => [n, wanted])});
         setHint(`${d.handle.label}: shift [${x}, ${y}]` + (guides.length ? ', lined up with the next point' : ''));
     };
@@ -1141,18 +510,9 @@ const LayoutEditor = (): JSX.Element | null => {
     // (to 0.1 mm, or exactly when it has been lined up with another point)
     const placeNear = (wanted: Vec, exact: boolean): DrawnPoint | null => {
         if (!points) return null;
-        let ref = '', best = Infinity;
-        for (const [name, p] of Object.entries(points)) {
-            const distance = Math.hypot(p.x - wanted.x, p.y - wanted.y);
-            if (distance < best) [ref, best] = [name, distance];
-        }
-        const key = points[ref];
-        if (!key) return null;
-        const sign = signOf(key);
-        const local = rotate({x: wanted.x - key.x, y: wanted.y - key.y}, -key.r);
-        const shift: [number, number] = exact ? [sign * local.x, local.y] : [round(sign * local.x, 0.1), round(local.y, 0.1)];
-        const moved = rotate({x: sign * shift[0], y: shift[1]}, key.r);
-        return {ref, shift, at: {x: key.x + moved.x, y: key.y + moved.y}};
+        const ref = nearestKey(points, wanted);
+        if (!ref) return null;
+        return {ref, ...shiftFrom(points[ref], wanted, exact ? undefined : 0.1)};
     };
 
     // A click on an outline edge adds a point there, between the edge's two points
@@ -1384,7 +744,7 @@ const LayoutEditor = (): JSX.Element | null => {
             </Canvas>
 
             {!selected && outline && !drawing && (
-                <OutlinePanel outline={outline} text={configInput} onCommit={commit}
+                <OutlinePanel outline={outline} text={configInput} onCommit={commit} folded={panelFolded} onFold={setPanelFolded}
                               onDeleted={name => { setOutline(''); setHint(`Deleted outline ${name}; undo in the editor brings it back`); }}/>
             )}
 
@@ -1396,6 +756,8 @@ const LayoutEditor = (): JSX.Element | null => {
                     effective={columnInfo?.effective}
                     next={columnInfo?.next}
                     onCommit={commit}
+                    folded={panelFolded}
+                    onFold={setPanelFolded}
                 />
             )}
 

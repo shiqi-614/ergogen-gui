@@ -3,10 +3,12 @@ import styled from "styled-components";
 import yaml from "js-yaml";
 import {useConfigContext} from "../context/ConfigContext";
 import {
-    AnchorShift, addPcbOutline, appendEntry, pcbOutlines, applyEdits, deleteEntry, findChildShift, findChildValue, findShift, findValue,
+    AnchorShift, EditSite, addPcbOutline, appendEntry, pcbOutlines, applyEdits, deleteEntry, findChildShift, findChildValue, findShift, findValue,
     findWhereList, isPlainNumber, keyFootprintLines, nudge, partLines,
 } from "../utils/layoutEdit";
 import {pcbPartHandles} from "../utils/outlineGeometry";
+import {Instance, Shape, footprintInstances, moduleBoxes} from "../utils/pcbGeometry";
+import {frameOf, fromFrame, nearestKey, shiftFrom, toFrame} from "../utils/keyFrame";
 
 // Edits a pcb's parts on its KiCanvas preview. Modules are boxed around their footprints: drag one to
 // move it (its where.shift), × deletes it, a new one is placed with a click. Footprints are picked by
@@ -17,15 +19,10 @@ import {pcbPartHandles} from "../utils/outlineGeometry";
 // the preview regenerates.
 
 type Vec = { x: number, y: number };
-// a footprint's (or module's) outline in KiCad's board coordinates (y down): the corners of its
-// box in its own frame, so a turned part has a turned box
-type Shape = { corners: Vec[], center: Vec };
 type Tab = 'modules' | 'footprints' | 'outline';
 type Half = 'source' | 'mirror';
 type Points = Record<string, { x: number, y: number, r: number, meta?: { mirrored?: boolean, index?: number, name?: string } }>;
 
-// one footprint on the board: which config entry it is, and the key it is on (or relative to)
-type Instance = { key: string, name: string, point: { x: number, y: number, r: number }, keyName?: string, box: Shape };
 
 // a drag: of a module, a footprint (all of its entry's instances follow), or a turn of a footprint
 type Moving =
@@ -61,6 +58,13 @@ const Layer = styled.svg<{ active: boolean }>`
     stroke-width: 1;
     stroke-dasharray: 4 3;
     cursor: move;
+  }
+
+  polygon.module.chosen {
+    fill: rgba(77, 171, 247, 0.2);
+    stroke: #ffffff;
+    stroke-width: 2;
+    stroke-dasharray: none;
   }
 
   polygon.module:hover {
@@ -170,6 +174,16 @@ const OutlineList = styled.div`
     color: #ffffff;
   }
 
+  /* folds the list down to its title, out of the way of the board */
+  button.fold {
+    padding: 0;
+    border: none;
+    background: transparent;
+    color: #bdbdbd;
+    font: inherit;
+    cursor: pointer;
+  }
+
   .note {
     max-width: 16rem;
     margin-top: 0.4rem;
@@ -242,83 +256,26 @@ const Toolbar = styled.div`
     width: 8rem;
   }
 
+  input.number {
+    width: 5.5rem;
+  }
+
+  label.field {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.15rem 0.4rem;
+    border-radius: 0.2rem;
+    background: rgba(30, 30, 30, 0.85);
+  }
+
   select {
     max-width: 14rem;
   }
 `;
 
-const rotate = (v: Vec, degrees: number): Vec => {
-    const a = degrees * Math.PI / 180;
-    return {x: v.x * Math.cos(a) - v.y * Math.sin(a), y: v.x * Math.sin(a) + v.y * Math.cos(a)};
-};
-
 const round = (value: number, step: number) => Math.round(value / step) * step;
 const short = (value: number) => String(Number(value.toFixed(2)));
-
-// KiCanvas' footprint at an ergogen point: the preview board puts ergogen's (x, y) at KiCad's (x, -y)
-const boardFootprint = (footprints: any[], reference: string, point: Vec) => footprints.find(f => f.reference === reference
-    && Math.abs(f.at.position.x - point.x) < 1e-3 && Math.abs(f.at.position.y + point.y) < 1e-3);
-
-// KiCad turns a footprint's local coordinates by its angle, counter-clockwise on a board whose y is down
-const toBoard = (at: Vec, angle: number, local: Vec): Vec => {
-    const a = angle * Math.PI / 180;
-    return {x: at.x + local.x * Math.cos(a) + local.y * Math.sin(a), y: at.y - local.x * Math.sin(a) + local.y * Math.cos(a)};
-};
-const toLocalFrame = (at: Vec, angle: number, board: Vec): Vec => {
-    const a = angle * Math.PI / 180, dx = board.x - at.x, dy = board.y - at.y;
-    return {x: dx * Math.cos(a) - dy * Math.sin(a), y: dx * Math.sin(a) + dy * Math.cos(a)};
-};
-
-// the box around local points, turned onto the board
-const shapeOf = (at: Vec, angle: number, local: Vec[]): Shape | null => {
-    if (!local.length) return null;
-    const xs = local.map(p => p.x), ys = local.map(p => p.y);
-    const [x0, x1, y0, y1] = [Math.min(...xs), Math.max(...xs), Math.min(...ys), Math.max(...ys)];
-    const corners = [{x: x0, y: y0}, {x: x1, y: y0}, {x: x1, y: y1}, {x: x0, y: y1}].map(c => toBoard(at, angle, c));
-    return {corners, center: toBoard(at, angle, {x: (x0 + x1) / 2, y: (y0 + y1) / 2})};
-};
-
-const layerName = (layer: any) => String(typeof layer === 'string' ? layer : layer?.name ?? '');
-
-// A KiCanvas footprint's outline, from its items in its own coordinates: the courtyard when it has
-// one (the area it needs), its pads and drawings when it doesn't
-const footprintShape = (f: any): Shape | null => {
-    const drawingPoints = (d: any): Vec[] => {
-        const out: Vec[] = [];
-        for (const k of ['start', 'mid', 'end']) if (d?.[k] && typeof d[k].x === 'number') out.push({x: d[k].x, y: d[k].y});
-        if (d?.center && d?.end) {
-            const r = Math.hypot(d.end.x - d.center.x, d.end.y - d.center.y);
-            out.push({x: d.center.x - r, y: d.center.y - r}, {x: d.center.x + r, y: d.center.y + r});
-        }
-        for (const list of [d?.pts, d?.polyline?.pts, d?.points]) {
-            if (Array.isArray(list)) for (const p of list) if (p && typeof p.x === 'number') out.push({x: p.x, y: p.y});
-        }
-        return out;
-    };
-    const drawings: any[] = f.drawings ?? [];
-    const courtyard = drawings.filter(d => layerName(d.layer).includes('CrtYd')).flatMap(drawingPoints);
-    let local = courtyard;
-    if (!local.length) {
-        local = drawings.flatMap(drawingPoints);
-        for (const pad of f.pads ?? []) {
-            const w = (pad.size?.x ?? 0) / 2, h = (pad.size?.y ?? 0) / 2;
-            // a pad's angle is stored absolute in a board file: its own turn is the difference
-            const own = (pad.at?.rotation ?? 0) - (f.at?.rotation ?? 0);
-            const c = {x: pad.at?.position?.x ?? 0, y: pad.at?.position?.y ?? 0};
-            for (const corner of [{x: -w, y: -h}, {x: w, y: -h}, {x: w, y: h}, {x: -w, y: h}]) local.push(toBoard(c, own, corner));
-        }
-    }
-    return shapeOf({x: f.at.position.x, y: f.at.position.y}, f.at.rotation ?? 0, local);
-};
-
-// A module's outline: its footprints' corners taken into the module's own frame, boxed there
-const moduleShape = (at: Vec, angle: number, shapes: Shape[]): Shape | null =>
-    shapeOf(at, angle, shapes.flatMap(s => s.corners.map(c => toLocalFrame(at, angle, c))));
-
-// The references ergogen's preview board gives footprints (src/kicad/preview_pcb.js): a footprint
-// whose name starts with "key" is SW<key index>, "diode" D<key index>, others keep their name. Of
-// several key (or diode) footprints on one key only the last is on the board.
-const ROLES: [string, string][] = [['key', 'SW'], ['diode', 'D']];
 
 const PcbEditor = ({viewer, pcb}: Props): JSX.Element | null => {
     const configContext = useConfigContext();
@@ -330,8 +287,21 @@ const PcbEditor = ({viewer, pcb}: Props): JSX.Element | null => {
     // the footprint entry picked last, and whether its keys are being chosen
     const [chosen, setChosen] = useState<string | null>(null);
     const [choosingKeys, setChoosingKeys] = useState(false);
+    // the module picked last, and the footprint picked last (its frame is the one keys and typing use)
+    const [chosenModule, setChosenModule] = useState<string | null>(null);
+    const [chosenInstance, setChosenInstance] = useState<string | null>(null);
+    // what is typed into the x / y / rotate boxes and not yet written
+    const [fields, setFields] = useState<{ x?: string, y?: string, rotate?: string }>({});
+    // arrow keys and [ ] while a part is picked; set each render so it sees the current state
+    const onKey = useRef<((e: KeyboardEvent) => void) | undefined>();
+    useEffect(() => {
+        const listener = (e: KeyboardEvent) => onKey.current?.(e);
+        window.addEventListener('keydown', listener);
+        return () => window.removeEventListener('keydown', listener);
+    }, []);
     // the outline under the pointer in the board outline list, drawn on the board
     const [hoverOutline, setHoverOutline] = useState<string | null>(null);
+    const [listFolded, setListFolded] = useState(false);
     // bumped whenever KiCanvas' camera moves, so the boxes follow a pan or zoom
     const [, setFrame] = useState(0);
     const layer = useRef<SVGSVGElement>(null);
@@ -342,41 +312,11 @@ const PcbEditor = ({viewer, pcb}: Props): JSX.Element | null => {
     const half: Half = source === pcb ? 'source' : 'mirror';
     const points: Points = results?.points ?? {};
 
-    const modules = useMemo(() => {
-        const footprints: any[] = viewer?.board?.footprints ?? [];
-        return Object.entries((pcbResults?.modules ?? {}) as Record<string, { point?: { x: number, y: number, r: number }, footprints?: Record<string, { point: Vec }> }>).flatMap(([module, data]) => {
-            const shapes = Object.entries(data.footprints ?? {})
-                .map(([reference, fp]) => boardFootprint(footprints, reference, fp.point))
-                .filter(Boolean).map(footprintShape).filter(Boolean) as Shape[];
-            // the module's own point: KiCad's (x, -y), and its angle as is
-            const at = data.point ? {x: data.point.x, y: -data.point.y} : shapes[0]?.center;
-            const box = at && moduleShape(at, data.point?.r ?? 0, shapes);
-            return box ? [{module, box}] : [];
-        });
-    }, [viewer, pcbResults]);
+    const modules = useMemo(() => moduleBoxes(viewer?.board?.footprints ?? [], pcbResults?.modules ?? {}), [viewer, pcbResults]);
 
-    const instances = useMemo((): Instance[] => {
-        const footprints: any[] = viewer?.board?.footprints ?? [];
-        const entries = Object.entries((pcbResults?.footprints ?? {}) as Record<string, { point: any, config: any }>);
-        const configs = Object.entries(results?.config?.pcbs?.[source]?.footprints ?? {});
-        const nameOf = (key: string, config: any) => configs.find(([, c]) => c === config)?.[0] ?? key.replace(/_\d+$/, '');
-        const role = (name: string) => ROLES.find(([prefix]) => name.startsWith(prefix));
-        const last: Record<string, string> = {};
-        for (const [key, entry] of entries) {
-            const r = role(nameOf(key, entry.config));
-            if (r) last[`${r[0]}|${entry.point.meta?.name}`] = key;
-        }
-        return entries.flatMap(([key, entry]) => {
-            const name = nameOf(key, entry.config);
-            const r = role(name);
-            if (r && last[`${r[0]}|${entry.point.meta?.name}`] !== key) return [];
-            const reference = r ? r[1] + entry.point.meta?.index : key;
-            const board = boardFootprint(footprints, reference, entry.point);
-            const box = board && footprintShape(board);
-            if (!box) return [];
-            return [{key, name, point: {x: entry.point.x, y: entry.point.y, r: entry.point.r}, keyName: entry.point.meta?.name, box}];
-        });
-    }, [viewer, pcbResults, results, source]);
+    const instances = useMemo(
+        () => footprintInstances(viewer?.board?.footprints ?? [], pcbResults?.footprints ?? {}, results?.config?.pcbs?.[source]?.footprints ?? {}),
+        [viewer, pcbResults, results, source]);
 
     // follow KiCanvas' camera: redraw when where a fixed world point lands on screen changes
     useEffect(() => {
@@ -399,7 +339,11 @@ const PcbEditor = ({viewer, pcb}: Props): JSX.Element | null => {
         return () => cancelAnimationFrame(id);
     }, [viewer]);
 
-    if (!configContext || !viewer) return null;
+    if (!configContext || !viewer) {
+        // nothing to nudge while the board regenerates
+        onKey.current = undefined;
+        return null;
+    }
     const camera = viewer.viewport.camera;
 
     // where the canvas is inside this layer: KiCanvas works in canvas pixels
@@ -463,18 +407,14 @@ const PcbEditor = ({viewer, pcb}: Props): JSX.Element | null => {
         return !(where && typeof where === 'object' && !Array.isArray(where));
     };
 
-    // a move on the board (KiCad dx, dy) as a shift in the frame of the key at keyName: ergogen's y is up
-    const keyFrame = (keyName?: string) => {
-        const key = keyName ? points[keyName] : undefined;
-        return {r: key?.r ?? 0, mirrored: !!key?.meta?.mirrored};
-    };
+    // a move on the board (KiCad dx, dy: y down) as a shift in the frame of the key at keyName (y up), and back
+    const keyFrame = (keyName?: string) => frameOf(keyName ? points[keyName] : undefined);
     const toLocal = (delta: Vec, frame: { r: number, mirrored: boolean }) => {
-        const local = rotate({x: delta.x, y: -delta.y}, -frame.r);
-        if (frame.mirrored) local.x = -local.x;
+        const local = toFrame({x: delta.x, y: -delta.y}, frame);
         return {x: round(local.x, 0.1), y: round(local.y, 0.1)};
     };
     const fromLocal = (local: Vec, frame: { r: number, mirrored: boolean }): Vec => {
-        const board = rotate({x: frame.mirrored ? -local.x : local.x, y: local.y}, frame.r);
+        const board = fromFrame(local, frame);
         return {x: board.x, y: -board.y};
     };
 
@@ -483,6 +423,114 @@ const PcbEditor = ({viewer, pcb}: Props): JSX.Element | null => {
         const x = nudge(shift.raw[0], local.x, units);
         const y = nudge(shift.raw[1], local.y, units);
         write(applyEdits(text(), shift.edits(x, y)), `${label}: shift [${x}, ${y}]`);
+    };
+
+    // The part picked for typing and keys: a module, or a footprint entry (in the frame of the instance clicked)
+    type Target = { section: 'modules' | 'footprints', name: string, keyName?: string };
+    const target: Target | null = tab === 'modules' && chosenModule ? {section: 'modules', name: chosenModule}
+        : tab === 'footprints' && chosen && !choosingKeys ? {
+            section: 'footprints', name: chosen,
+            keyName: (instances.find(i => i.key === chosenInstance && i.name === chosen) ?? instances.find(i => i.name === chosen))?.keyName,
+        } : null;
+
+    // where a part's shift and rotate are written, and the frame its shift is in: a part placed by an
+    // anchor has them in its where, a footprint that follows keys in its adjust
+    const placement = (t: Target) => {
+        if (t.section === 'footprints' && followsKeys(t.name)) {
+            const path = entryPath('footprints', t.name);
+            return {shift: findChildShift(text(), path, 'adjust'), rotate: findChildValue(text(), path, 'adjust', 'rotate'), frame: keyFrame(t.keyName), what: 'adjust'};
+        }
+        const handle = anchorHandle(t.section, t.name);
+        if (!handle) return null;
+        return {
+            shift: findShift(text(), handle.path), rotate: findChildValue(text(), entryPath(t.section, t.name), 'where', 'rotate'),
+            frame: {r: handle.frame, mirrored: !!handle.at.mirrored}, what: 'where',
+        };
+    };
+
+    // moves a part by a step on the board (KiCad's dx, dy), written to 0.01 mm in its frame
+    const nudgePart = (t: Target, delta: Vec) => {
+        try {
+            const p = placement(t);
+            if (!p) throw new Error(`${t.section}.${t.name} isn't placed by a ref + shift where`);
+            if (typeof p.shift === 'string') throw new Error(p.shift);
+            const local = toFrame({x: delta.x, y: -delta.y}, p.frame);
+            const x = nudge(p.shift.raw[0], round(local.x, 0.01), units);
+            const y = nudge(p.shift.raw[1], round(local.y, 0.01), units);
+            write(applyEdits(text(), p.shift.edits(x, y)), `${t.name}: ${p.what}.shift [${x}, ${y}]`);
+        } catch (err: unknown) {
+            fail(`move ${t.name}`, err);
+        }
+    };
+
+    // turns a part by degrees that look clockwise on the board (whose y is down): a negative angle,
+    // unless it is on a mirrored key
+    const turnPart = (t: Target, degrees: number) => {
+        try {
+            const p = placement(t);
+            if (!p) throw new Error(`${t.section}.${t.name} isn't placed by a ref + shift where`);
+            if (typeof p.rotate === 'string') throw new Error(p.rotate);
+            if (p.rotate.raw !== undefined && !isPlainNumber(p.rotate.raw)) throw new Error(`its rotate is "${p.rotate.raw}", type a new one`);
+            const value = short((p.rotate.raw === undefined ? 0 : Number(p.rotate.raw)) + (p.frame.mirrored ? 1 : -1) * degrees);
+            write(applyEdits(text(), [{site: p.rotate, value}]), `${t.name}: ${p.what}.rotate ${value}°`);
+        } catch (err: unknown) {
+            fail(`turn ${t.name}`, err);
+        }
+    };
+
+    onKey.current = e => {
+        if (!active || !target || moving || adding) return;
+        if ((e.target as HTMLElement)?.closest?.('input, textarea, select, .monaco-editor')) return;
+        const step = e.shiftKey ? 1 : 0.1;
+        const moves: Record<string, Vec> = {ArrowLeft: {x: -step, y: 0}, ArrowRight: {x: step, y: 0}, ArrowUp: {x: 0, y: -step}, ArrowDown: {x: 0, y: step}};
+        if (moves[e.key]) nudgePart(target, moves[e.key]);
+        else if (e.key === '[' || e.key === ']') turnPart(target, e.key === ']' ? 5 : -5);
+        else return;
+        e.preventDefault();
+    };
+
+    // the x / y / rotate boxes: typed values (numbers or expressions) are written as they are
+    const typedPlacement = target ? (() => {
+        try {
+            return placement(target);
+        } catch (e: unknown) {
+            return null;
+        }
+    })() : null;
+    const commitFields = () => {
+        if (!target || !typedPlacement) return;
+        const {shift, rotate: rotateSite} = typedPlacement;
+        try {
+            let next = text();
+            if (typeof shift !== 'string' && (fields.x !== undefined || fields.y !== undefined)) {
+                const x = (fields.x ?? shift.raw[0] ?? '0').trim() || '0', y = (fields.y ?? shift.raw[1] ?? '0').trim() || '0';
+                if (x !== (shift.raw[0] ?? '0') || y !== (shift.raw[1] ?? '0')) next = applyEdits(next, shift.edits(x, y));
+            }
+            if (typeof rotateSite !== 'string' && fields.rotate !== undefined) {
+                // sites are places in the text, so the rotate is found again after the shift was written
+                const site = findChildValue(next, entryPath(target.section, target.name), typedPlacement.what, 'rotate');
+                if (typeof site !== 'string' && fields.rotate.trim() !== (site.raw ?? '')) next = applyEdits(next, [{site, value: fields.rotate.trim() || '0'}]);
+            }
+            setFields({});
+            if (next !== text()) write(next, `${target.name}: ${typedPlacement.what} set`);
+        } catch (err: unknown) {
+            fail(`set ${target.name}`, err);
+        }
+    };
+    const field = (key: 'x' | 'y' | 'rotate', label: string) => {
+        const p = typedPlacement;
+        const site = key === 'rotate' ? p?.rotate : p?.shift;
+        const raw = !site || typeof site === 'string' ? undefined : key === 'rotate' ? (site as EditSite).raw : (site as AnchorShift).raw[key === 'x' ? 0 : 1];
+        return (
+            <label className="field" key={key}>
+                {label}
+                <input className="number" value={fields[key] ?? raw ?? ''} placeholder="0" disabled={!site || typeof site === 'string'}
+                       title={typeof site === 'string' ? site : undefined}
+                       onChange={e => setFields({...fields, [key]: e.target.value})}
+                       onKeyDown={e => { if (e.key === 'Enter') commitFields(); else if (e.key === 'Escape') setFields({}); }}
+                       onBlur={commitFields}/>
+            </label>
+        );
     };
 
     const start = (e: React.PointerEvent, next: Moving) => {
@@ -524,7 +572,15 @@ const PcbEditor = ({viewer, pcb}: Props): JSX.Element | null => {
             }
             return;
         }
-        if (Math.hypot(done.delta.x, done.delta.y) < 0.05) return;
+        if (Math.hypot(done.delta.x, done.delta.y) < 0.05) {
+            // a click without a drag picks the module
+            if (done.kind === 'module') {
+                setChosenModule(done.module);
+                setFields({});
+                setNote(null);
+            }
+            return;
+        }
         try {
             if (done.kind === 'module') {
                 const handle = anchorHandle('modules', done.module);
@@ -586,17 +642,11 @@ const PcbEditor = ({viewer, pcb}: Props): JSX.Element | null => {
         const click = toWorld(e);
         const at = {x: click.x, y: -click.y};
         try {
-            let ref = '', best = Infinity;
-            for (const [name, p] of Object.entries(points)) {
-                if (!!p.meta?.mirrored !== (half === 'mirror')) continue;
-                const d = Math.hypot(p.x - at.x, p.y - at.y);
-                if (d < best) [ref, best] = [name, d];
-            }
-            const key = points[ref];
-            if (!key) throw new Error('there are no keys on this board to place it from');
-            const local = rotate({x: at.x - key.x, y: at.y - key.y}, -key.r);
-            const sign = key.meta?.mirrored ? -1 : 1;
-            const shift: [string, string] = [short(round(sign * local.x, 0.1)), short(round(local.y, 0.1))];
+            // from a key on this board's half
+            const ref = nearestKey(points, at, (_, p) => !!p.meta?.mirrored === (half === 'mirror'));
+            if (!ref) throw new Error('there are no keys on this board to place it from');
+            const placed = shiftFrom(points[ref], at, 0.1).shift;
+            const shift: [string, string] = [short(placed[0]), short(placed[1])];
             const [repo, file] = adding.file.split('|');
             // the config names the key on the source half
             const name = ref.replace(/^mirror_/, '');
@@ -701,9 +751,9 @@ const PcbEditor = ({viewer, pcb}: Props): JSX.Element | null => {
                     const label = shift ? {x: rect.x + shift.x, y: rect.y + shift.y} : rect;
                     return (
                         <g key={module}>
-                            <polygon className="module target" points={shape.points}
+                            <polygon className={`module target${module === chosenModule ? ' chosen' : ''}`} points={shape.points}
                                      onPointerDown={e => start(e, {kind: 'module', module, start: toWorld(e), delta: {x: 0, y: 0}})}>
-                                <title>{`modules.${module}: drag to move it`}</title>
+                                <title>{`modules.${module}: drag to move it, click to pick it`}</title>
                             </polygon>
                             {shift && <polygon className="ghost" points={shape.points} transform={`translate(${shift.x} ${shift.y})`}/>}
                             <text x={label.x + (moving || adding ? 3 : 15)} y={label.y - 4}>{module}</text>
@@ -726,9 +776,11 @@ const PcbEditor = ({viewer, pcb}: Props): JSX.Element | null => {
                         <g key={instance.key}>
                             <polygon className={`footprint target${isChosen ? ' chosen' : ''}`} points={shape.points}
                                   onPointerDown={e => {
+                                      setChosenInstance(instance.key);
                                       if (!isChosen) {
                                           e.stopPropagation();
                                           setChosen(instance.name);
+                                          setFields({});
                                           setNote(null);
                                           return;
                                       }
@@ -841,11 +893,23 @@ const PcbEditor = ({viewer, pcb}: Props): JSX.Element | null => {
                         <button onClick={() => { setChosen(null); setChoosingKeys(false); }}>Deselect</button>
                     </>
                 )}
+                {active && target && !adding && !moving && (
+                    <>
+                        {tab === 'modules' && <span>{target.name}</span>}
+                        {field('x', 'x')}
+                        {field('y', 'y')}
+                        {field('rotate', '°')}
+                        {tab === 'modules' && <button onClick={() => { setChosenModule(null); setFields({}); }}>Deselect</button>}
+                    </>
+                )}
                 {moving && moving.kind !== 'turn' && (
                     <span>{`${moving.kind === 'module' ? moving.module : moving.name}: ${moving.delta.x.toFixed(1)}, ${(-moving.delta.y).toFixed(1)} mm`}</span>
                 )}
                 {!moving && note && <span>{note}</span>}
-                {!moving && !note && active && !adding && tab === 'modules' && <span>Drag a module's box to move it, × deletes it</span>}
+                {!moving && !note && active && !adding && tab === 'modules' && !chosenModule && <span>Drag a module's box to move it, click to pick it, × deletes it</span>}
+                {!moving && !note && active && !adding && target && (
+                    <span>Arrow keys move it 0.1 mm (Shift: 1 mm), [ and ] turn it 5°; type exact values in the boxes</span>
+                )}
                 {!moving && !note && active && !adding && tab === 'footprints' && !chosen && <span>Click a footprint to pick it and the others like it</span>}
                 {!moving && !note && active && tab === 'footprints' && chosen && !choosingKeys && (
                     <span>{followsKeys(chosen) ? 'Drag one to move them all on their keys, the knob turns them' : 'Drag it to move it, the knob turns it'}</span>
@@ -854,17 +918,20 @@ const PcbEditor = ({viewer, pcb}: Props): JSX.Element | null => {
             </Toolbar>
             {active && tab === 'outline' && (
                 <OutlineList onMouseLeave={() => setHoverOutline(null)}>
-                    {typeof boardOutlines === 'string' ? <span>{boardOutlines}</span> : outlineNames.map(name => (
+                    <button className="fold" title={listFolded ? 'Show the list' : 'Fold the list away'} onClick={() => setListFolded(!listFolded)}>
+                        {listFolded ? '▸' : '▾'} Board edge of {outlineTarget}
+                    </button>
+                    {listFolded ? null : typeof boardOutlines === 'string' ? <span>{boardOutlines}</span> : outlineNames.map(name => (
                         <label key={name} onMouseEnter={() => setHoverOutline(name)}>
                             <input type="checkbox" checked={boardOutlines.some(e => e.outline === name)} onChange={() => toggleOutline(name)}/>
                             {name}
                         </label>
                     ))}
-                    <div className="note">
+                    {!listFolded && <div className="note">
                         {`The board edge of ${outlineTarget} is the checked outlines stacked; a closed shape inside the board becomes a cut-out.`}
                         {outlineTarget !== pcb && ` ${pcb} takes them from ${outlineTarget}, mirrored.`}
                         {half === 'source' ? ' Point at one to see it on the board.' : ''}
-                    </div>
+                    </div>}
                 </OutlineList>
             )}
         </>

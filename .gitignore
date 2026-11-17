@@ -9,6 +9,7 @@
 
 # testing
 /coverage
+/e2e/failures
 
 # production
 /build

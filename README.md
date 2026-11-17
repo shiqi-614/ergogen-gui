@@ -14,6 +14,7 @@ See the live demo at [https://mveerd.github.io/ergogen-gui/](https://mveerd.gith
 #### `yarn start` - starts a development server at [http://localhost:3000](http://localhost:3000)
 #### `yarn build` - type-checks and builds the site into `build/` (with [Vite](https://vite.dev))
 #### `yarn test` - runs the unit tests (with [Vitest](https://vitest.dev))
+#### `yarn e2e` - runs the end-to-end tests in a headless Chrome for Testing (`yarn e2e pcb` runs those whose name has "pcb"); set `CHROME_PATH` to use another Chrome, `E2E_URL` to test an app that already runs. A failing test leaves a screenshot in `e2e/failures`.
 
 
 ### Using an Ergogen branch on github

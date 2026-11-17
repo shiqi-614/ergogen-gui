@@ -36,6 +36,7 @@
     "postbuild": "yarn run build-ergogen",
     "preview": "vite preview",
     "test": "vitest",
+    "e2e": "node e2e/run.mjs",
     "lint": "eslint src --ext .ts,.tsx",
     "predeploy": "yarn run build",
     "deploy": "gh-pages -d build"
