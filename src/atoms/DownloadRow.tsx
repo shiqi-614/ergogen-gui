@@ -1,7 +1,6 @@
 import styled, {css} from "styled-components";
 import {Dispatch, SetStateAction} from "react";
 import DownloadIcon from "./DownloadIcon";
-import PreviewIcon from "./PreviewIcon";
 
 type Props = {
     fileName: string,
@@ -33,21 +32,20 @@ const Row = styled.div<{ $previewable: boolean, $active: boolean }>`
   `}
 `;
 
-// a file that only downloads: dimmer, and in line with the names after a preview icon
+// a file that only downloads: dimmer
 const FileName = styled.div`
     overflow: hidden;
     text-overflow: ellipsis;
-    padding-left: 1.4em;
     color: #a6a6a6;
 `;
 
 // a file with a preview opens it when its name is clicked
 const PreviewLink = styled.button<{ $active: boolean }>`
-    display: flex;
-    align-items: center;
-    gap: 0.4em;
     flex-grow: 1;
     min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
     padding: 0.1rem 0;
     border: none;
     background: none;
@@ -56,18 +54,7 @@ const PreviewLink = styled.button<{ $active: boolean }>`
     text-align: left;
     cursor: pointer;
 
-    svg {
-      flex-shrink: 0;
-      color: #28a745;
-    }
-
-    span {
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-
-    &:hover span {
+    &:hover {
       color: #5fd17a;
       text-decoration: underline;
     }
@@ -102,8 +89,7 @@ const DownloadRow = ({fileName, extension, content, preview, active = false, set
                         setTabIndex?.(0)
                     }}
                 >
-                    <PreviewIcon/>
-                    <span>{fullName}</span>
+                    {fullName}
                 </PreviewLink>
             ) : (
                 <FileName>{fullName}</FileName>
