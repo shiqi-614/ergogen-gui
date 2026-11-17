@@ -10,10 +10,13 @@ units:
   screwSize: 1.05
   studSize: 1.75
   # the funnels through the case wall in front of the power switch and the USB port (usb_and_swith): half width
-  # where they start at the board edge, half width at the far end, and how far out the far end is
+  # where they start, half width at the far end, and how far out the far end is
   funnelNarrow: 5
   funnelWide: 25
   funnelDepth: 10
+  # How far out from the board edge the funnels start, in every case part. The gap part is only a frame around
+  # the board, and this strip of it between the board and the funnels holds the frame together.
+  funnelLip: 2
 points:
   zones:
     matrix:
@@ -102,33 +105,34 @@ points:
     distance: -2kx
 
 outlines:
-  # One funnel shape (units funnelNarrow, funnelWide, funnelDepth), starting at the board edge in front of each part.
-  # The two are added, not stacked: their far ends overlap, and stacked they'd merge into one open line.
+  # One funnel shape (units funnelNarrow, funnelWide, funnelDepth), starting funnelLip out from the board edge in
+  # front of each part. The two are added, not stacked: their far ends overlap, and stacked they'd merge into one
+  # open line.
   usb_and_swith:
     # the power switch, on the board tab that ends at 1ky + 5
     - what: polygon
       operation: add
       points:
         - ref: matrix_col1_row0
-          shift: [-9.5 + funnelWide, 1ky + 5 + funnelDepth]
+          shift: [-9.5 + funnelWide, 1ky + 5 + funnelLip + funnelDepth]
         - ref: matrix_col1_row0
-          shift: [-9.5 + funnelNarrow, 1ky + 5]
+          shift: [-9.5 + funnelNarrow, 1ky + 5 + funnelLip]
         - ref: matrix_col1_row0
-          shift: [-9.5 - funnelNarrow, 1ky + 5]
+          shift: [-9.5 - funnelNarrow, 1ky + 5 + funnelLip]
         - ref: matrix_col1_row0
-          shift: [-9.5 - funnelWide, 1ky + 5 + funnelDepth]
+          shift: [-9.5 - funnelWide, 1ky + 5 + funnelLip + funnelDepth]
     # the USB port, on the board tab that ends at 1ky
     - what: polygon
       operation: add
       points:
         - ref: matrix_col3_row0
-          shift: [funnelWide, 1ky + funnelDepth]
+          shift: [funnelWide, 1ky + funnelLip + funnelDepth]
         - ref: matrix_col3_row0
-          shift: [funnelNarrow, 1ky]
+          shift: [funnelNarrow, 1ky + funnelLip]
         - ref: matrix_col3_row0
-          shift: [-funnelNarrow, 1ky]
+          shift: [-funnelNarrow, 1ky + funnelLip]
         - ref: matrix_col3_row0
-          shift: [-funnelWide, 1ky + funnelDepth]
+          shift: [-funnelWide, 1ky + funnelLip + funnelDepth]
   cut:
     - what: polygon
       operation: stack
@@ -618,12 +622,12 @@ cases:
       extrude: 5
     - what: outline
       name: board
-      extrude: 5 
+      extrude: 5
       operation: subtract
     - what: outline
       name: usb_and_swith
       extrude: 5
-      operation: subtract 
+      operation: subtract
     - what: outline
       name: stud_mounting
       extrude: 5
