@@ -129,6 +129,18 @@ outlines:
           shift: [-funnelNarrow, 1ky]
         - ref: matrix_col3_row0
           shift: [-funnelWide, 1ky + funnelDepth]
+  cut:
+    - what: polygon
+      operation: stack
+      points:
+        - ref: matrix_col6_row0
+          shift: [0.8kx, 1ky + 11]
+        - ref: matrix_col1_row0
+          shift: [-2.7kx, 1ky + 11]
+        - ref: matrix_col1_row0
+          shift: [-2.7kx, 1ky + 15]
+        - ref: matrix_col6_row0
+          shift: [0.8kx, 1ky + 15]
 
   board:
     - what: polygon
@@ -463,7 +475,7 @@ cases:
       extrude: 3
       operation: subtract
     - what: outline
-      name: usb_and_swith
+      name: cut
       extrude: 3
       operation: subtract
     - what: pcb
