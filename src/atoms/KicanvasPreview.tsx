@@ -1,5 +1,7 @@
-import {useEffect, useRef} from "react";
+import {useEffect, useRef, useState} from "react";
 import styled from "styled-components";
+import Loading from "./Loading";
+import Button from "./Button";
 
 type Props = {
     pcb: string,
@@ -11,13 +13,24 @@ type Camera = { x: number, y: number, zoom: number };
 // KiCanvas (https://kicanvas.org, MIT, see public/dependencies/kicanvas.LICENSE.md) defines <kicanvas-embed>;
 // it is loaded the first time a board is shown
 let kicanvasReady: Promise<unknown> | null = null;
+let kicanvasFailures = 0;
 const loadKicanvas = () => {
     if (!kicanvasReady) {
-        const script = document.createElement('script');
-        script.type = 'module';
-        script.src = `${import.meta.env.BASE_URL}dependencies/kicanvas.js`;
-        document.head.appendChild(script);
-        kicanvasReady = window.customElements.whenDefined('kicanvas-embed');
+        kicanvasReady = new Promise((resolve, reject) => {
+            const script = document.createElement('script');
+            script.type = 'module';
+            // a page remembers a module that failed to load under its URL, so a retry asks for another one
+            script.src = `${import.meta.env.BASE_URL}dependencies/kicanvas.js` + (kicanvasFailures ? `?retry=${kicanvasFailures}` : '');
+            // the next attempt loads it again
+            script.onerror = () => {
+                kicanvasReady = null;
+                kicanvasFailures++;
+                script.remove();
+                reject(new Error('kicanvas.js did not load'));
+            };
+            document.head.appendChild(script);
+            window.customElements.whenDefined('kicanvas-embed').then(resolve);
+        });
     }
     return kicanvasReady;
 };
@@ -31,22 +44,51 @@ const boardViewer = (embed: HTMLElement): any =>
 // the preview pane's height follows its content, while the KiCanvas canvas follows its container:
 // give it a fixed height (the viewport below the header) so the two cannot grow each other
 const Container = styled.div`
+  position: relative;
   width: 100%;
   height: calc(100vh - 6rem);
   min-height: 20rem;
   overflow: hidden;
 `;
 
+// where the <kicanvas-embed> goes; the overlay sits next to it, out of KiCanvas' way
+const Board = styled.div`
+  width: 100%;
+  height: 100%;
+`;
+
+// covers the board until KiCanvas has loaded and drawn it
+const Overlay = styled.div`
+  position: absolute;
+  inset: 0;
+  display: flex;
+  background: rgba(45, 45, 45, 0.92);
+`;
+
+const Failed = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.8rem;
+  margin: auto;
+  color: #ff6d6d;
+`;
+
 const KicanvasPreview = ({pcb, name = 'preview.kicad_pcb'}: Props): JSX.Element => {
     const container = useRef<HTMLDivElement>(null);
     // keeps the view while the board is regenerated after an edit
     const camera = useRef<Camera | null>(null);
+    // KiCanvas loads its script once, then parses and draws every board it gets
+    const [status, setStatus] = useState<'loading' | 'shown' | 'failed'>('loading');
+    // bumped by Retry, to load the script again
+    const [attempt, setAttempt] = useState(0);
 
     useEffect(() => {
         const target = container.current;
         if (!target || !pcb) return;
         let embed: HTMLElement | null = null;
         let cancelled = false;
+        setStatus('loading');
 
         loadKicanvas().then(() => {
             if (cancelled) return;
@@ -60,6 +102,7 @@ const KicanvasPreview = ({pcb, name = 'preview.kicad_pcb'}: Props): JSX.Element 
             source.textContent = pcb;
             element.appendChild(source);
             element.addEventListener('kicanvas:load', () => {
+                if (!cancelled) setStatus('shown');
                 const viewer = boardViewer(element);
                 const outline = viewer?.layers.by_name('Edge.Cuts')?.bbox;
                 if (!outline || !(outline.w > 0)) return;
@@ -77,6 +120,8 @@ const KicanvasPreview = ({pcb, name = 'preview.kicad_pcb'}: Props): JSX.Element 
             });
             target.replaceChildren(element);
             embed = element;
+        }, () => {
+            if (!cancelled) setStatus('failed');
         });
 
         return () => {
@@ -88,9 +133,23 @@ const KicanvasPreview = ({pcb, name = 'preview.kicad_pcb'}: Props): JSX.Element 
             }
             embed?.remove();
         };
-    }, [pcb, name]);
+    }, [pcb, name, attempt]);
 
-    return <Container ref={container}/>;
+    return (
+        <Container>
+            <Board ref={container}/>
+            {pcb && status !== 'shown' && (
+                <Overlay>
+                    {status === 'failed'
+                        ? <Failed>
+                            The PCB viewer (KiCanvas) didn't load.
+                            <Button size="small" onClick={() => setAttempt(n => n + 1)}>Retry</Button>
+                        </Failed>
+                        : <Loading text="Loading the PCB preview…"/>}
+                </Overlay>
+            )}
+        </Container>
+    );
 };
 
 export default KicanvasPreview;

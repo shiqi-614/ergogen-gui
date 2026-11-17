@@ -17,6 +17,8 @@ type ContextProps = {
     processInput: DebouncedFunc<(textInput: string | undefined, options?: ProcessOptions) => Promise<void>>,
     error: string | null,
     results: Results | null,
+    // an ergogen run is in progress
+    running: boolean,
     debug: boolean,
     setDebug: Dispatch<SetStateAction<boolean>>,
     autoGen: boolean,
@@ -46,6 +48,8 @@ const ConfigContextProvider = ({initialInput, children}: Props) => {
     const [configInput, setConfigInput] = useLocalStorage<string>(CONFIG_LOCAL_STORAGE_KEY, initialInput);
     const [error, setError] = useState<string|null>(null);
     const [results, setResults] = useState<Results|null>(null);
+    // runs in progress: a new one can start while another still runs
+    const [runs, setRuns] = useState<number>(0);
     const [debug, setDebug] = useState<boolean>(true);
     const [autoGen, setAutoGen] = useState<boolean>(true);
     const [autoGen3D, setAutoGen3D] = useState<boolean>(false);
@@ -99,6 +103,7 @@ const ConfigContextProvider = ({initialInput, children}: Props) => {
             };
 
 
+            setRuns(n => n + 1);
             try {
                 options.setProcessing?.(true);
                 console.log("Current Environment:", import.meta.env.MODE);
@@ -162,6 +167,8 @@ const ConfigContextProvider = ({initialInput, children}: Props) => {
                 console.log(e);
                 options.setProcessing?.(false);
                 return;
+            } finally {
+                setRuns(n => n - 1);
             }
             if (results?.cases) {
                 for (const caseObj of Object.values(results.cases as Record<string, Record<string, any>>)) {
@@ -192,6 +199,7 @@ const ConfigContextProvider = ({initialInput, children}: Props) => {
                 processInput,
                 error,
                 results,
+                running: runs > 0,
                 debug,
                 setDebug,
                 autoGen,

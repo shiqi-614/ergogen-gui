@@ -1,4 +1,5 @@
 import DownloadRow from "../atoms/DownloadRow";
+import Loading, {Spinner} from "../atoms/Loading";
 import yaml from 'js-yaml';
 import styled from "styled-components";
 import {useConfigContext} from "../context/ConfigContext";
@@ -14,6 +15,9 @@ const DownloadsContainer = styled.div`
 `;
 
 const Title = styled.h3`
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
   margin-top: 0;
 `;
 
@@ -43,7 +47,9 @@ const SectionHeader = styled.button`
 
 type Props = {
     setPreview: (key: string) => void,
-    label: string | undefined
+    label: string | undefined,
+    // what the preview pane shows, marked in the list
+    previewKey?: string
 };
 
 type DownloadObj = {
@@ -60,14 +66,14 @@ type DownloadSection = {
     items: DownloadArr
 };
 
-const Downloads = ({setPreview, label}: Props) => {
+const Downloads = ({setPreview, label, previewKey}: Props) => {
     const configContext = useConfigContext();
     const tabContext = useContext(TabContext);
     // sections start closed, a click on the title opens one
     const [open, setOpen] = useState<Record<string, boolean>>({});
     if(!configContext) return null;
 
-    const {configInput, results} = configContext;
+    const {configInput, results, error, running} = configContext;
 
     const sections: Array<DownloadSection> = [];
     const section = (title: string) => {
@@ -184,7 +190,12 @@ const Downloads = ({setPreview, label}: Props) => {
 
     return (
       <DownloadsContainer>
-          <Title>Downloads</Title>
+          <Title>
+              Downloads
+              {/* a run after the first: the files below are about to change */}
+              {running && results && <Spinner $size="0.9rem" title="Generating…" role="status" aria-label="Generating"/>}
+          </Title>
+          {!results && !error && <Loading text="Generating…"/>}
           {
               sections.map(({title, items}) => {
                   const shown = items.filter(download => !download.fileName.startsWith("_"));
@@ -198,7 +209,8 @@ const Downloads = ({setPreview, label}: Props) => {
                               <span>{shown.length}</span>
                           </SectionHeader>
                           {isOpen && shown.map((download, i) =>
-                              <DownloadRow key={i} {...download} setPreview={setPreview} setTabIndex={tabContext?.setTabIndex}/>
+                              <DownloadRow key={i} {...download} setPreview={setPreview} setTabIndex={tabContext?.setTabIndex}
+                                           active={!!download.preview && download.preview === previewKey}/>
                           )}
                       </SectionContainer>
                   );

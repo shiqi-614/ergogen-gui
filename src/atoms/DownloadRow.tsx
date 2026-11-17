@@ -1,42 +1,74 @@
-import styled from "styled-components";
+import styled, {css} from "styled-components";
 import {Dispatch, SetStateAction} from "react";
 import DownloadIcon from "./DownloadIcon";
+import PreviewIcon from "./PreviewIcon";
 
 type Props = {
     fileName: string,
     extension: string,
     content: string,
     preview?: string,
+    // the preview pane shows this file
+    active?: boolean,
     setPreview: (preview: string) => void,
     setTabIndex: Dispatch<SetStateAction<number>> | undefined
 };
 
-const Row = styled.div`
+// a file with a preview shows a hand and lights up under the pointer; the one on show stays marked
+const Row = styled.div<{ $previewable: boolean, $active: boolean }>`
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 0.5em
+  margin-bottom: 0.3em;
+  padding: 0.1rem 0.1rem 0.1rem 0.35rem;
+  border-left: 0.2rem solid ${p => p.$active ? '#28a745' : 'transparent'};
+  border-radius: 0.25rem;
+  background: ${p => p.$active ? 'rgba(40, 167, 69, 0.18)' : 'transparent'};
+  transition: background-color 150ms ease-in-out;
+
+  ${p => p.$previewable && !p.$active && css`
+    &:hover {
+      background: rgba(255, 255, 255, 0.08);
+    }
+  `}
 `;
 
+// a file that only downloads: dimmer, and in line with the names after a preview icon
 const FileName = styled.div`
     overflow: hidden;
     text-overflow: ellipsis;
+    padding-left: 1.4em;
+    color: #a6a6a6;
 `;
 
 // a file with a preview opens it when its name is clicked
-const PreviewLink = styled.button`
-    overflow: hidden;
-    text-overflow: ellipsis;
-    padding: 0;
+const PreviewLink = styled.button<{ $active: boolean }>`
+    display: flex;
+    align-items: center;
+    gap: 0.4em;
+    flex-grow: 1;
+    min-width: 0;
+    padding: 0.1rem 0;
     border: none;
     background: none;
-    color: inherit;
+    color: ${p => p.$active ? '#5fd17a' : '#ffffff'};
     font: inherit;
     text-align: left;
     cursor: pointer;
 
-    &:hover {
+    svg {
+      flex-shrink: 0;
       color: #28a745;
+    }
+
+    span {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    &:hover span {
+      color: #5fd17a;
       text-decoration: underline;
     }
 `;
@@ -56,19 +88,22 @@ const DownloadLink = styled.a`
     }
 `;
 
-const DownloadRow = ({fileName, extension, content, preview, setPreview, setTabIndex}: Props): JSX.Element => {
+const DownloadRow = ({fileName, extension, content, preview, active = false, setPreview, setTabIndex}: Props): JSX.Element => {
     const fullName = `${fileName}.${extension}`;
     return (
-        <Row>
+        <Row $previewable={!!preview} $active={active}>
             {preview ? (
                 <PreviewLink
+                    $active={active}
                     title={`Preview ${fullName}`}
+                    aria-current={active || undefined}
                     onClick={()=>{
                         setPreview(preview);
                         setTabIndex?.(0)
                     }}
                 >
-                    {fullName}
+                    <PreviewIcon/>
+                    <span>{fullName}</span>
                 </PreviewLink>
             ) : (
                 <FileName>{fullName}</FileName>

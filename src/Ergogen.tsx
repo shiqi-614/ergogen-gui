@@ -9,6 +9,7 @@ import LayoutEditor from "./molecules/LayoutEditor";
 
 import {useConfigContext} from "./context/ConfigContext";
 import Button from "./atoms/Button";
+import Loading from "./atoms/Loading";
 import Select from "react-select";
 import DownloadIcon from "./atoms/DownloadIcon";
 import {ConfigOption, exampleOptions } from "./examples";
@@ -40,6 +41,11 @@ const Error = styled.div`
 
 const StyledFilePreview = styled(FilePreview)`
   height: 100%;
+`;
+
+// as tall as the previews (KicanvasPreview), so the spinner sits in the middle of the pane
+const PreviewLoading = styled(Loading)`
+  height: calc(100vh - 6rem);
 `;
 
 const StyledConfigEditor = styled(ConfigEditor)`
@@ -246,12 +252,16 @@ const Ergogen = () => {
                                 <ModeTab active={mode === 'preview'} onClick={() => switchMode('preview')}>Preview</ModeTab>
                                 <ModeTab active={mode === 'layout'} onClick={() => switchMode('layout')}>Layout</ModeTab>
                             </ModeBar>
-                            {mode === 'preview'
-                                ? <StyledFilePreview key={previewKey} previewKey={previewKey} previewContent={previewContent}/>
-                                : <LayoutEditor/>}
+                            {mode === 'layout'
+                                ? <LayoutEditor/>
+                                // until the first run has results (or an error) there is nothing to preview
+                                : configContext.results || configContext.error
+                                    ? <StyledFilePreview key={previewKey} previewKey={previewKey} previewContent={previewContent}/>
+                                    : <PreviewLoading text="Generating the preview…"/>}
                         </LeftSplitPane>
                         <RightSplitPane>
-                            <Downloads setPreview={showPreview} label={selectedOptionLabel}/>
+                            <Downloads setPreview={showPreview} label={selectedOptionLabel}
+                                       previewKey={mode === 'preview' ? previewKey : undefined}/>
                         </RightSplitPane>
                     </InnerSplit>
                 </RightSplitPane>
