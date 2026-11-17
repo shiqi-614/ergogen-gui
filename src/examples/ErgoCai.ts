@@ -102,11 +102,12 @@ points:
     distance: -2kx
 
 outlines:
-  # one funnel shape (units funnelNarrow, funnelWide, funnelDepth), starting at the board edge in front of each part
+  # One funnel shape (units funnelNarrow, funnelWide, funnelDepth), starting at the board edge in front of each part.
+  # The two are added, not stacked: their far ends overlap, and stacked they'd merge into one open line.
   usb_and_swith:
     # the power switch, on the board tab that ends at 1ky + 5
     - what: polygon
-      operation: stack
+      operation: add
       points:
         - ref: matrix_col1_row0
           shift: [-9.5 + funnelWide, 1ky + 5 + funnelDepth]
@@ -118,7 +119,7 @@ outlines:
           shift: [-9.5 - funnelWide, 1ky + 5 + funnelDepth]
     # the USB port, on the board tab that ends at 1ky
     - what: polygon
-      operation: stack
+      operation: add
       points:
         - ref: matrix_col3_row0
           shift: [funnelWide, 1ky + funnelDepth]
