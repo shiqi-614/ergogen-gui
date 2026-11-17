@@ -26,7 +26,7 @@ const FilePreview = ({previewKey, previewContent, width = '100%', height = '100%
                 )
             case 'kicad_pcb':
                 return (
-                    <PcbPreview pcb={text} name={`${previewKey.split(".")[1]}_preview.kicad_pcb`} pcbName={previewKey.split(".")[1]}/>
+                    <PcbPreview pcb={text} board={previewKey.split(".")[1]}/>
                 )
             default:
                 return <></>;

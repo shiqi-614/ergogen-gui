@@ -7,9 +7,13 @@ import {buildBoard} from "../utils/pcb3d/boardMesh";
 import {MeshPart} from "../utils/pcb3d/meshCache";
 import {loadModel, loadSources} from "../utils/pcb3d/models";
 import {modelMatrix} from "../utils/pcb3d/placement";
+import {exportGlb, InstanceNames} from "../utils/pcb3d/exportGlb";
+import DownloadIcon from "./DownloadIcon";
 
 type Props = {
-    pcb: string
+    pcb: string,
+    // what the 3D model downloads as, e.g. ergo_cai_right.glb
+    fileName: string
 };
 
 // same sizing as the other previews
@@ -57,6 +61,35 @@ const Status = styled.div`
   }
 `;
 
+// like the download buttons in the Downloads list, in the pane's top right corner
+const Download = styled.button`
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.3rem 0.6rem;
+  border: none;
+  border-radius: 0.25rem;
+  background-color: #28a745;
+  color: #ffffff;
+  font: inherit;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: background-color .15s ease-in-out;
+
+  &:hover:not(:disabled) {
+    background-color: #218838;
+  }
+
+  &:disabled {
+    background-color: #595959;
+    color: #bbbbbb;
+    cursor: default;
+  }
+`;
+
 // Colours are sRGB, as in the models' files and in KiCad, and the view draws in sRGB: without that, the lighting
 // works on them as if they were linear and shows them much darker than KiCad does.
 const colour = (r: number, g: number, b: number) => new THREE.Color(r, g, b).convertSRGBToLinear();
@@ -72,8 +105,12 @@ const PARALLEL = 4;
 
 // A board in 3D: its body, holes and pads, and every footprint's 3D models (from the addresses in ErgoCaiLib's
 // 3dmodels/sources.yaml). Left drag orbits, right drag pans, the wheel zooms.
-const Pcb3dPreview = ({pcb}: Props): JSX.Element => {
+const Pcb3dPreview = ({pcb, fileName}: Props): JSX.Element => {
     const container = useRef<HTMLDivElement>(null);
+    // the board and its models as shown, for the download
+    const shown = useRef<THREE.Group | null>(null);
+    const [built, setBuilt] = useState(false);
+    const [exporting, setExporting] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [progress, setProgress] = useState<{ done: number, total: number }>({done: 0, total: 0});
     const [missing, setMissing] = useState<Missing[]>([]);
@@ -85,6 +122,7 @@ const Pcb3dPreview = ({pcb}: Props): JSX.Element => {
         setError(null);
         setMissing([]);
         setProgress({done: 0, total: 0});
+        setBuilt(false);
 
         const renderer = new THREE.WebGLRenderer({antialias: true});
         renderer.setPixelRatio(window.devicePixelRatio);
@@ -99,6 +137,7 @@ const Pcb3dPreview = ({pcb}: Props): JSX.Element => {
         scene.add(light);
         const root = new THREE.Group();
         scene.add(root);
+        shown.current = root;
 
         const camera = new THREE.PerspectiveCamera(40, 1, 0.1, 10000);
         camera.up.set(0, 0, 1);
@@ -123,6 +162,7 @@ const Pcb3dPreview = ({pcb}: Props): JSX.Element => {
         const disposables: { dispose: () => void }[] = [];
         const cleanup = () => {
             disposed = true;
+            shown.current = null;
             observer.disconnect();
             controls.dispose();
             disposables.forEach(d => d.dispose());
@@ -169,12 +209,15 @@ const Pcb3dPreview = ({pcb}: Props): JSX.Element => {
             if (disposed) return;
             const body = new THREE.MeshStandardMaterial({vertexColors: true, roughness: 0.6, metalness: 0});
             disposables.push(geometry.body, body);
-            root.add(new THREE.Mesh(geometry.body, body));
-            for (const side of [geometry.front, geometry.back]) {
-                if (!side) continue;
-                disposables.push(side);
-                root.add(new THREE.Mesh(side, COPPER));
-            }
+            const named = (mesh: THREE.Mesh, name: string) => {
+                mesh.name = name;
+                root.add(mesh);
+            };
+            named(new THREE.Mesh(geometry.body, body), 'board');
+            if (geometry.front) named(new THREE.Mesh(geometry.front, COPPER), 'copper, front');
+            if (geometry.back) named(new THREE.Mesh(geometry.back, COPPER), 'copper, back');
+            [geometry.front, geometry.back].forEach(side => side && disposables.push(side));
+            setBuilt(true);
             render();
         }).catch((e: unknown) => {
             if (!disposed) setError(`Cannot build the board: ${e instanceof Error ? e.message : e}`);
@@ -216,6 +259,8 @@ const Pcb3dPreview = ({pcb}: Props): JSX.Element => {
                 });
                 const mesh = new THREE.InstancedMesh(geometry, material, matrices.length);
                 matrices.forEach((m, i) => mesh.setMatrixAt(i, m));
+                mesh.name = where[0].model.path.split('/').pop() || 'model';
+                (mesh.userData as InstanceNames).footprints = where.map(p => p.fp.reference);
                 mesh.instanceMatrix.needsUpdate = true;
                 // three.js would cull the instances by the model's own bounds, at the origin
                 mesh.frustumCulled = false;
@@ -254,8 +299,26 @@ const Pcb3dPreview = ({pcb}: Props): JSX.Element => {
     }, [pcb]);
 
     const loading = progress.done < progress.total;
+    const download = () => {
+        if (!shown.current) return;
+        setExporting(true);
+        exportGlb(shown.current, fileName.replace(/\.glb$/, '')).then(glb => {
+            const url = URL.createObjectURL(new Blob([glb], {type: 'model/gltf-binary'}));
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = fileName;
+            link.click();
+            setTimeout(() => URL.revokeObjectURL(url), 10000);
+        }).catch((e: unknown) => {
+            setError(`Cannot export the 3D model: ${e instanceof Error ? e.message : e}`);
+        }).finally(() => setExporting(false));
+    };
     return (
         <Container ref={container}>
+            <Download onClick={download} disabled={!built || loading || exporting}
+                      title={loading ? 'The models are still loading' : `Download the board with its models as glTF (${fileName}), for Blender and other 3D tools`}>
+                <DownloadIcon/>{exporting ? 'Exporting…' : '.glb'}
+            </Download>
             {error && <Message>{error}</Message>}
             {(loading || missing.length > 0) && (
                 <Status role="status">
