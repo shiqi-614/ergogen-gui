@@ -16,12 +16,13 @@ const FilePreview = ({previewKey, previewContent, width = '100%', height = '100%
     const text = typeof previewContent === 'string' ? previewContent : "";
     const results = useConfigContext()?.results as any;
     // assemblies.<name>: the board it holds, in 3D with its case
-    const assembly = previewKey.startsWith('assemblies.') ? results?.assemblies?.[previewKey.slice('assemblies.'.length)] : null;
+    const assemblyName = previewKey.startsWith('assemblies.') ? previewKey.slice('assemblies.'.length) : null;
+    const assembly = assemblyName ? results?.assemblies?.[assemblyName] : null;
     if (assembly) {
         const board = assembly.pcb?.name;
         return (
             <div className={className}>
-                <PcbPreview pcb={results?.pcbs?.[board]?.preview?.kicad_pcb || ''} board={board} initialView="3d"/>
+                <PcbPreview pcb={results?.pcbs?.[board]?.preview?.kicad_pcb || ''} board={board} initialView="3d" assembly={assemblyName ?? undefined}/>
             </div>
         );
     }
@@ -34,7 +35,10 @@ const FilePreview = ({previewKey, previewContent, width = '100%', height = '100%
                 )
             case 'stl':
                 return (
-                    <StlPreview stl={previewContent instanceof Blob ? previewContent : null}/>
+                    // cases.<name>.stl: the case, with its parts to edit
+                    <StlPreview stl={previewContent instanceof Blob ? previewContent : null}
+                                caseName={previewKey.startsWith('cases.') ? previewKey.split('.')[1] : undefined}
+                                made={previewKey.startsWith('cases.') ? results?.cases?.[previewKey.split('.')[1]]?.parts : undefined}/>
                 )
             case 'kicad_pcb':
                 return (

@@ -1,5 +1,4 @@
-import {Fragment, useEffect, useRef, useState} from "react";
-import CaseParts, {MadePart} from "../molecules/CaseParts";
+import {useEffect, useRef, useState} from "react";
 import styled from "styled-components";
 import * as THREE from "three";
 import {OrbitControls} from "three/examples/jsm/controls/OrbitControls";
@@ -15,8 +14,7 @@ import {mm, StackEdit} from "../utils/assemblyEdit";
 import DownloadIcon from "./DownloadIcon";
 
 // a case part stacked with the board, as config.assemblies says (z: its bottom's height)
-// made: the case's parts as ergogen made them, for the panel's part editor
-export type StackedPart = { name: string, z: number, height: number, stl: Blob, made?: MadePart[] };
+export type StackedPart = { name: string, z: number, height: number, stl: Blob };
 // the board in the stack, and how the config places it: level with a part's top, on a part, or at a height, shifted
 export type StackedPcb = { z: number, thickness: number, shift: number, top: string | null, on: string | null };
 export type Stack = { name: string, pcb: StackedPcb, parts: StackedPart[] };
@@ -184,23 +182,6 @@ const Row = styled.div`
   }
 `;
 
-// opens a case part's list of parts, after its name
-const PartsButton = styled.button`
-  margin-left: 0.2rem;
-  padding: 0 0.35rem;
-  border: none;
-  border-radius: 0.2rem;
-  background: #444444;
-  color: #cccccc;
-  font: inherit;
-  font-size: 0.75rem;
-  cursor: pointer;
-
-  &:hover {
-    background: #5a5a5a;
-  }
-`;
-
 const Buttons = styled.div`
   display: flex;
   gap: 0.35rem;
@@ -320,9 +301,6 @@ const Pcb3dPreview = ({pcb, fileName, stack, onSave}: Props): JSX.Element => {
     const [error, setError] = useState<string | null>(null);
     const [progress, setProgress] = useState<{ done: number, total: number }>({done: 0, total: 0});
     const [missing, setMissing] = useState<Missing[]>([]);
-    // the case whose parts the panel lists, and the part pointed at in it, drawn in the view
-    const [editing, setEditing] = useState<string | null>(null);
-    const [lit, setLit] = useState<{ layer: string, part: string } | null>(null);
 
     useEffect(() => {
         const host = container.current;
@@ -642,42 +620,6 @@ const Pcb3dPreview = ({pcb, fileName, stack, onSave}: Props): JSX.Element => {
             setError(`Cannot export the 3D model: ${e instanceof Error ? e.message : e}`);
         }).finally(() => setExporting(false));
     };
-    // The part pointed at in the panel: the outline it extruded, as lines on its bottom and top, in the colour of
-    // what it does to the case. It sits in the case part's place in the stack, shifted as the part is.
-    useEffect(() => {
-        const v = view.current;
-        const makerjs = (window as any).makerjs;
-        const layer = stack?.parts.find(p => p.name === lit?.layer);
-        const made = layer?.made?.find(m => m.part === lit?.part);
-        if (!v || !built || !layer || !made?.outline || !makerjs) return;
-        const [dx, dy, dz] = [made.shift?.[0] ?? 0, made.shift?.[1] ?? 0, made.shift?.[2] ?? 0];
-        const bottom = (positionsNow.current.parts[layer.name] ?? layer.z) + dz;
-        const top = bottom + (made.extrude ?? layer.height);
-        const colour = made.operation === 'subtract' ? 0xff4d4d : made.operation === 'intersect' ? 0xffd43b : 0x4dabf7;
-        // drawn over the case parts, so a cut inside one still shows
-        const material = new THREE.LineBasicMaterial({color: colour, depthTest: false, transparent: true});
-        const group = new THREE.Group();
-        group.renderOrder = 10;
-        for (const chain of makerjs.model.findChains(made.outline) as any[]) {
-            const points = makerjs.chain.toKeyPoints(chain, 0.5) as number[][];
-            if (points.length < 2) continue;
-            for (const z of [bottom, top]) {
-                const geometry = new THREE.BufferGeometry().setFromPoints(points.map(([x, y]) => new THREE.Vector3(x + dx, y + dy, z)));
-                const line = chain.endless ? new THREE.LineLoop(geometry, material) : new THREE.Line(geometry, material);
-                line.renderOrder = 10;
-                group.add(line);
-            }
-        }
-        v.root.add(group);
-        v.render();
-        return () => {
-            v.root.remove(group);
-            group.children.forEach(c => (c as THREE.Line).geometry.dispose());
-            material.dispose();
-            v.render();
-        };
-    }, [lit, built, stack, positions]);
-
     return (
         <Container ref={container}>
             <Download onClick={download} disabled={!built || loading || exporting}
@@ -690,26 +632,16 @@ const Pcb3dPreview = ({pcb, fileName, stack, onSave}: Props): JSX.Element => {
                     {stack.parts.map(p => {
                         const z = positions.parts[p.name] ?? p.z;
                         return (
-                            <Fragment key={p.name}>
-                            <Row>
+                            <Row key={p.name}>
                                 <label>
                                     <input type="checkbox" checked={!hidden[p.name]}
                                            onChange={() => setHidden(h => ({...h, [p.name]: !h[p.name]}))}/>
                                     {p.name}
-                                    <PartsButton aria-expanded={editing === p.name} title={`The parts ${p.name} is made of`}
-                                                 onClick={e => { e.preventDefault(); setEditing(editing === p.name ? null : p.name); setLit(null); }}>
-                                        {editing === p.name ? '▾ parts' : '▸ parts'}
-                                    </PartsButton>
                                 </label>
                                 <input key={`${p.name}|${fields}`} type="number" step="0.1" defaultValue={mm(z)}
                                        title={`The height of ${p.name}'s bottom`} onChange={e => moveTo(p.name, e.target.value)}/>
                                 <span className="top">– {mm(z + p.height)}</span>
                             </Row>
-                            {editing === p.name && (
-                                <CaseParts caseName={p.name} made={p.made ?? []} lit={lit?.layer === p.name ? lit.part : null}
-                                           onLight={part => setLit(part ? {layer: p.name, part} : null)}/>
-                            )}
-                            </Fragment>
                         );
                     })}
                     <Row>

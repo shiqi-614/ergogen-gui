@@ -1,63 +1,76 @@
-// The parts of the case layers, in the 3D board view of an assembly
-import {assert, config, freshApp, parsed} from '../app.mjs';
+// A case's parts, in its own preview (Downloads → Cases), and which 3D board view shows the case
+import {assert, config, freshApp, openPcb, parsed} from '../app.mjs';
 
-const openAssembly = async (page, name) => {
-    await page.ev(`[...document.querySelectorAll('button')].find(b => b.textContent.startsWith('▸ Assemblies'))?.click()`);
-    await page.ev(`[...document.querySelectorAll('button')].find(b => b.textContent.trim() === ${JSON.stringify(name)})?.click()`);
-    await page.until(`[...document.querySelectorAll('div')].some(d => d.textContent.startsWith('Case (${name})'))`, 120, `the ${name} case in 3D`);
+const openCase = async (page, name) => {
+    await page.ev(`[...document.querySelectorAll('button')].find(b => b.textContent.startsWith('▸ Cases'))?.click()`);
+    await page.ev(`[...document.querySelectorAll('button')].find(b => b.textContent.trim() === ${JSON.stringify(`${name}.stl`)})?.click()`);
+    await page.until(`[...document.querySelectorAll('span')].some(s => s.textContent.startsWith(${JSON.stringify(`${name}: `)}) && s.textContent.includes('in order'))`, 120, `${name}'s parts`);
 };
-const openParts = (page, layer) => page.ev(`[...document.querySelectorAll('button')].find(b => b.title === 'The parts ${layer} is made of').click()`);
-const parts = async (page, name) => (await parsed(page)).cases[name];
-const rows = `document.querySelectorAll('.part').length`;
+const lines = `document.querySelectorAll('.line').length`;
+const line = i => `document.querySelectorAll('.line')[${i}]`;
+const caseParts = async (page, name) => (await parsed(page)).cases[name];
 
 export const tests = [
     {
-        name: 'cases: the parts of a case layer are edited in the 3D view',
+        name: 'cases: a case\'s parts are edited in its own preview',
         async run(page, {url}) {
             await freshApp(page, url);
-            await openAssembly(page, 'ergocai_right');
-            await openParts(page, 'right_top');
-            const before = await parts(page, 'right_top');
-            await page.until(`${rows} === ${before.length}`, 30, 'a row for every part of right_top');
-            assert(await page.ev(`[...document.querySelectorAll('.part')].every(p => /matched|matches nothing|not on this half/.test(p.textContent))`), 'every part should say what it matched');
+            await openCase(page, 'right_top');
+            const before = await caseParts(page, 'right_top');
+            await page.until(`${lines} === ${before.length}`, 30, 'a line for every part');
+            assert(await page.ev(`[...document.querySelectorAll('.line')].every(l => /×\\d+|none|off/.test(l.textContent))`), 'every line should say how many it matched');
+            assert(await page.ev(`!document.querySelector('.settings')`), 'no part should be open yet');
 
-            // pointing at a part lights it
-            await page.cdp.send('Input.dispatchMouseEvent', {type: 'mouseMoved', ...await page.center(`document.querySelectorAll('.part')[1]`).then(([x, y]) => ({x, y}))});
-            await page.until(`document.querySelectorAll('.part.lit').length === 1`, 10, 'the part to light');
-
-            // a thickness typed in
-            const thick = `document.querySelectorAll('.part')[1].querySelector('input[title="extrude"]')`;
+            // open part 1 and type a thickness
+            await page.ev(`${line(1)}.click()`);
+            const thick = `document.querySelector('.settings input[title="extrude"]')`;
+            await page.until(`!!${thick}`, 10, 'its settings');
             await page.ev(`(() => { const i = ${thick}; i.focus(); i.select(); })()`);
             await page.type('4');
             await page.key('Enter', 'Enter', 13);
             await page.until(`jsyaml.load(${config}).cases.right_top[1].extrude === 4`, 30, 'the thickness in the config');
 
-            // moved up a place
-            await page.until(`!!document.querySelectorAll('.part')[2]`, 120, 'the parts again');
-            await page.ev(`document.querySelectorAll('.part')[2].querySelector('button[title="Move it up"]').click()`);
-            await page.until(`jsyaml.load(${config}).cases.right_top[1].name === ${JSON.stringify(before[2].name)}`, 30, 'part 2 to move up');
+            // move it down, and it stays open
+            await page.until(`!!document.querySelector('.settings button[title="Move it down"]')`, 120, 'its settings again');
+            await page.ev(`document.querySelector('.settings button[title="Move it down"]').click()`);
+            await page.until(`jsyaml.load(${config}).cases.right_top[2].name === ${JSON.stringify(before[1].name)}`, 30, 'part 1 to move down');
 
-            // added at the end, then deleted
-            await page.until(`[...document.querySelectorAll('button')].some(b => b.textContent === '+ outline')`, 120, 'the add buttons');
-            await page.press('+ outline');
+            // a part added at the end opens, and is deleted from its settings
+            await page.press('+ outline', 120);
             await page.until(`jsyaml.load(${config}).cases.right_top.length === ${before.length + 1}`, 30, 'a new part');
-            await page.until(`${rows} === ${before.length + 1}`, 120, 'its row');
-            await page.ev(`document.querySelectorAll('.part')[${before.length}].querySelector('button.remove').click()`);
+            await page.until(`${lines} === ${before.length + 1} && !!document.querySelector('.settings button.remove')`, 120, 'it open');
+            await page.ev(`document.querySelector('.settings button.remove').click()`);
             await page.until(`jsyaml.load(${config}).cases.right_top.length === ${before.length}`, 30, 'the new part to go');
         },
     },
     {
-        name: 'cases: a mirrored case layer edits the case it mirrors',
+        name: 'cases: a mirrored case edits the case it mirrors',
         async run(page, {url}) {
             await freshApp(page, url);
-            await openAssembly(page, 'ergocai_left');
-            await openParts(page, 'left_top');
-            const source = await parts(page, 'right_top');
-            await page.until(`${rows} === ${source.length}`, 30, "a row for every part of right_top");
+            await openCase(page, 'left_top');
+            const source = await caseParts(page, 'right_top');
+            await page.until(`${lines} === ${source.length}`, 30, "a line for every part of right_top");
             assert(await page.ev(`document.body.textContent.includes("left_top is right_top mirrored")`), 'it should say whose parts these are');
-            await page.choose(`document.querySelectorAll('.part')[1].querySelector('select[title="how it joins the parts before it"]')`, 'intersect');
+            await page.ev(`${line(1)}.click()`);
+            await page.until(`!!document.querySelector('.settings select[title="how it joins the parts before it"]')`, 10, 'its settings');
+            await page.choose(`document.querySelector('.settings select[title="how it joins the parts before it"]')`, 'intersect');
             await page.until(`jsyaml.load(${config}).cases.right_top[1].operation === 'intersect'`, 30, 'right_top to change');
             assert(!(await parsed(page)).cases.left_top.length, 'left_top should still just mirror right_top');
+        },
+    },
+    {
+        name: 'cases: a board\'s 3D view is the board alone, its assembly\'s has the case',
+        async run(page, {url}) {
+            await freshApp(page, url);
+            await openPcb(page, 'ergo_cai_right');
+            await page.press('3D');
+            await page.until(`!!document.querySelector('canvas') && [...document.querySelectorAll('button')].some(b => b.textContent.includes('.glb'))`, 60, 'the board in 3D');
+            await new Promise(r => setTimeout(r, 1500));
+            assert(!(await page.ev(`document.body.textContent.includes('Case (')`)), "the board's own 3D view should show no case");
+            await page.ev(`[...document.querySelectorAll('button')].find(b => b.textContent.startsWith('▸ Assemblies'))?.click()`);
+            await page.ev(`[...document.querySelectorAll('button')].find(b => b.textContent.trim() === 'ergocai_right')?.click()`);
+            await page.until(`document.body.textContent.includes('Case (ergocai_right)')`, 120, 'the assembly with its case');
+            assert(!(await page.ev(`[...document.querySelectorAll('button')].some(b => b.title?.startsWith('The parts '))`)), 'the assembly should not edit parts');
         },
     },
 ];
