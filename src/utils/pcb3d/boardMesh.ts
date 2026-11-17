@@ -11,7 +11,7 @@ const SOLDER_MASK = [0.08, 0.3, 0.16].map(linear) as [number, number, number];
 const BOARD_EDGE = [0.72, 0.65, 0.45].map(linear) as [number, number, number];
 
 let starting: Promise<any> | null = null;
-const loadManifold = () => starting || (starting = (async () => {
+export const loadManifold = () => starting || (starting = (async () => {
     const url = (window as any).ergogenManifoldUrl;
     if (!url) throw new Error('index.html gives no manifold-3d URL');
     const wasm = await (await import(/* @vite-ignore */ url)).default();
@@ -80,6 +80,27 @@ const toGeometry = (solid: any, colourOf?: (nz: number) => [number, number, numb
 
 export type BoardGeometry = { body: BufferGeometry, front: BufferGeometry | null, back: BufferGeometry | null };
 
+// the board's outline and its holes (null without any) as cross-sections, which the caller deletes
+const sections = (CrossSection: any, board: BoardData) => ({
+    outline: CrossSection.ofPolygons(board.outline.map(toView), 'EvenOdd'),
+    holes: board.holes.length ? CrossSection.ofPolygons(board.holes.map(h => toView(holeOutline(h))), 'Positive') : null,
+});
+
+// the board's section, its outline less its holes, as seen from above (y up), for collision checks; the caller
+// deletes it
+export const boardSection = async (board: BoardData): Promise<any> => {
+    if (!board.outline.length) throw new Error('the board has no closed outline on Edge.Cuts');
+    const {CrossSection} = await loadManifold();
+    const {outline, holes} = sections(CrossSection, board);
+    if (!holes) return outline;
+    try {
+        return outline.subtract(holes);
+    } finally {
+        outline.delete();
+        holes.delete();
+    }
+};
+
 export const buildBoard = async (board: BoardData): Promise<BoardGeometry> => {
     if (!board.outline.length) throw new Error('the board has no closed outline on Edge.Cuts');
     const {CrossSection} = await loadManifold();
@@ -89,8 +110,9 @@ export const buildBoard = async (board: BoardData): Promise<BoardGeometry> => {
         return x;
     };
     try {
-        const outline = keep(CrossSection.ofPolygons(board.outline.map(toView), 'EvenOdd'));
-        const holes = board.holes.length ? keep(CrossSection.ofPolygons(board.holes.map(h => toView(holeOutline(h))), 'Positive')) : null;
+        const {outline, holes} = sections(CrossSection, board);
+        keep(outline);
+        if (holes) keep(holes);
         const body = keep(keep(holes ? outline.subtract(holes) : outline).extrude(board.thickness));
         const copper = (side: 'front' | 'back') => {
             const loops = board.copper.filter(c => c[side]).map(c => toView(c.outline));

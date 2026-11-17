@@ -687,6 +687,20 @@ cases:
   left_buttom:
     mirror:
       from: right_buttom
+
+# How the case parts stack up around each board, from the bottom up, for the 3D board preview: each part sits on
+# the one below it, and the board's top is level with the top of the gap, the frame it lies in.
+assemblies:
+  right:
+    stack: [right_buttom, right_gap, right_switchplate, right_middle, right_top]
+    pcb:
+      name: ergo_cai_right
+      top: right_gap
+  left:
+    stack: [left_buttom, left_gap, left_switchplate, left_middle, left_top]
+    pcb:
+      name: ergo_cai_left
+      top: left_gap
 `
 };
 

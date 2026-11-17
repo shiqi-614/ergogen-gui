@@ -1,7 +1,8 @@
-import {useState} from "react";
+import {useMemo, useState} from "react";
 import styled from "styled-components";
 import KicanvasPreview from "../atoms/KicanvasPreview";
-import Pcb3dPreview from "../atoms/Pcb3dPreview";
+import Pcb3dPreview, {Stack} from "../atoms/Pcb3dPreview";
+import {useConfigContext} from "../context/ConfigContext";
 
 type Props = {
     pcb: string,
@@ -43,6 +44,17 @@ let lastView: View = '2d';
 // A board in KiCanvas (2D, the layers as KiCad draws them) or in 3D with the footprints' models.
 const PcbPreview = ({pcb, board}: Props): JSX.Element => {
     const [view, setView] = useState<View>(lastView);
+    const results = useConfigContext()?.results as any;
+    // the case parts around this board: the first of config.assemblies that holds it
+    const stack = useMemo((): Stack | null => {
+        const entry = Object.entries(results?.assemblies || {}).find(([, a]: [string, any]) => a?.pcb?.name === board);
+        if (!entry) return null;
+        const [name, assembly] = entry as [string, any];
+        const parts = (assembly.layers || [])
+            .map((l: any) => ({name: l.name, z: l.z, height: l.height, stl: results?.cases?.[l.name]?.stl}))
+            .filter((p: any) => p.stl instanceof Blob);
+        return {name, pcbZ: assembly.pcb.z, parts};
+    }, [results, board]);
     const choose = (v: View) => {
         lastView = v;
         setView(v);
@@ -55,7 +67,7 @@ const PcbPreview = ({pcb, board}: Props): JSX.Element => {
             </Switch>
             {view === '2d'
                 ? <KicanvasPreview pcb={pcb} name={`${board}_preview.kicad_pcb`} pcbName={board}/>
-                : <Pcb3dPreview pcb={pcb} fileName={`${board}.glb`}/>}
+                : <Pcb3dPreview pcb={pcb} fileName={`${board}.glb`} stack={stack}/>}
         </Wrapper>
     );
 };

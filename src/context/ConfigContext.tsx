@@ -98,6 +98,7 @@ const ConfigContextProvider = ({initialInput, children}: Props) => {
                 outlines: {...parsedConfig?.outlines},
                 pcbs: {...parsedConfig?.pcbs},
                 cases: {...parsedConfig?.cases},
+                assemblies: {...parsedConfig?.assemblies},
                 is_preview: options.is_preview,
                 raw: textInput
             };
