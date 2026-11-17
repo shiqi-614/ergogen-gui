@@ -9,6 +9,12 @@ assemblies:
     pcb:
       name: ergo_cai_right
       top: right_gap
+    parts:
+      - name: e-paper
+        model: "\${ERGOCAI_MODULES}/e-paper/2.13inch/2.13inch.glb"
+        module: e-paper
+        z: 30
+      - {model: "\${ERGOCAI_LIB}/3dmodels/knob.step"}
   other:
     stack:
       - a
@@ -35,6 +41,16 @@ it('rewrites a block list as a list, and a board given by name as a map', () => 
     const out = writeStack(CONFIG, 'other', {parts: [{name: 'a', gap: 0}, {name: 'b', gap: 0.2}], pcbShift: 2});
     expect(out).toContain('    stack:\n      [a, {name: b, gap: 0.2}]\n    pcb: {name: board, shift: 2}\n');
     expect(out.startsWith(CONFIG.slice(0, CONFIG.indexOf('  other:')))).toBe(true);
+});
+
+it("writes the other parts' z where they have it, adds it where not, and leaves the parts not moved", () => {
+    const out = writeStack(CONFIG, 'ergocai_right', {parts: parts(0, 0, 0), pcbShift: null, models: [{index: 0, z: 28.5}, {index: 1, z: 2}]});
+    expect(out).toBe(CONFIG
+        .replace('        z: 30\n', '        z: 28.5\n')
+        .replace('{model: "${ERGOCAI_LIB}/3dmodels/knob.step"}', '{model: "${ERGOCAI_LIB}/3dmodels/knob.step", z: 2}'));
+    expect(writeStack(CONFIG, 'ergocai_right', {parts: parts(0, 0, 0), pcbShift: null, models: [{index: 0, z: 0}]}))
+        .toBe(CONFIG.replace('        z: 30\n', ''));
+    expect(() => writeStack(CONFIG, 'other', {parts: [], pcbShift: null, models: [{index: 0, z: 1}]})).toThrow(/no list of parts/);
 });
 
 it('says when there is nothing to write into', () => {

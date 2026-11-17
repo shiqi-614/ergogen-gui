@@ -29,7 +29,8 @@ it('reads shapes into triangles in mm, KiCad counting VRML in 0.1 inch', () => {
     expect(parts[0].index).toHaveLength(6);
     expect(Array.from(parts[0].position.slice(6, 9))).toEqual([2.54, 2.54, 0].map(v => Math.fround(v)));
     expect(parts[1].color).toEqual(parts[0].color);
-    expect(parts[0].color).toEqual([0.8, 0.8, 0.78]);
+    // diffuseColor 0.8 0.8 0.78, sRGB, as linear colour
+    expect(parts[0].color!.map(c => +c.toFixed(4))).toEqual([0.6038, 0.6038, 0.5705]);
     // flat normals, out of the counter-clockwise side
     expect(Array.from(parts[0].normal!.slice(0, 3))).toEqual([0, 0, 1]);
 });

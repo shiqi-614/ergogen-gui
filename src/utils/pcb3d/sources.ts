@@ -36,10 +36,12 @@ export const addressOf = (path: string, sources: Source[]): ModelAddress | null 
 };
 
 // the converter a model needs, by its file's extension
-export const formatOf = (path: string): 'step' | 'iges' | 'vrml' | null => {
+export const formatOf = (path: string): 'step' | 'iges' | 'vrml' | 'gltf' | null => {
     const ext = (path.split('?')[0].match(/\.([a-z0-9]+)$/i)?.[1] || '').toLowerCase();
     if (ext === 'step' || ext === 'stp') return 'step';
     if (ext === 'iges' || ext === 'igs') return 'iges';
     if (ext === 'wrl' || ext === 'vrml') return 'vrml';
+    // a whole assembled board, as KiCad exports it with its colours (its STEP colours are lost on the way in)
+    if (ext === 'glb' || ext === 'gltf') return 'gltf';
     return null;
 };

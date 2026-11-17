@@ -5,6 +5,9 @@ import {MeshPart} from "./meshCache";
 
 const UNIT = 2.54;
 
+// VRML colours are sRGB; the parts carry linear ones
+const linear = (c: number) => c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+
 type Node = { type: string, fields: Record<string, Value> };
 type Value = number[] | Node | Node[] | string | boolean | null;
 
@@ -169,7 +172,7 @@ const shapePart = (shape: Node, matrix: Matrix): MeshPart | null => {
         position,
         normal,
         index: Uint32Array.from({length: triangles.length}, (_, k) => k),
-        color: colour.length >= 3 ? [colour[0], colour[1], colour[2]] : null,
+        color: colour.length >= 3 ? [linear(colour[0]), linear(colour[1]), linear(colour[2])] : null,
     };
 };
 

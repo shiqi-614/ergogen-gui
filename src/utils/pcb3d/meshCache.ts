@@ -1,7 +1,8 @@
 // Converted 3D models, kept in IndexedDB so a model is downloaded and converted once: STEP files take OpenCascade
 // up to a few seconds each. Without IndexedDB (some private windows) nothing is kept and nothing fails.
 
-// a model's triangles in mm; parts of one model may share position and normal arrays
+// a model's triangles in mm, and its colour as the renderer takes it: linear, not sRGB (OpenCascade and glTF give
+// linear colours; vrml.ts converts VRML's); parts of one model may share position and normal arrays
 export type MeshPart = {
     position: Float32Array,
     normal: Float32Array | null,

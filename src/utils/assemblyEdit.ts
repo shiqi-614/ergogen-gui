@@ -1,14 +1,16 @@
 // Writes a stack, as the 3D board view's panel moves it, into config.assemblies.<name>: the stack as a list, each
-// part with its gap to the one below it, and the board's shift from where its placement puts it. Everything else
-// in the config text stays as typed.
+// part with its gap to the one below it, the board's shift from where its placement puts it, and the z of the other
+// parts moved. Everything else in the config text stays as typed.
 import {parseDocument} from "yaml";
-import {Pair, Scalar, YAMLMap} from "yaml/types";
+import {Pair, Scalar, YAMLMap, YAMLSeq} from "yaml/types";
 
 export type StackEdit = {
     // from the bottom up; gap: the space between the part's bottom and the top of the one below (z = 0 for the first)
     parts: { name: string, gap: number }[],
     // the board's new shift, or null to leave the board as it is
     pcbShift: number | null,
+    // the other parts moved, by their place in the assembly's parts list, and their new z
+    models?: { index: number, z: number }[],
 };
 
 type Change = { start: number, end: number, text: string };
@@ -30,14 +32,14 @@ const rangeOf = (text: string, node: any): [number, number] => {
 
 const lineStart = (text: string, offset: number) => text.lastIndexOf('\n', offset - 1) + 1;
 
-const shiftChanges = (text: string, pcb: Pair, shift: number): Change[] => {
-    const value: any = pcb.value;
-    const written = mm(shift);
+// a field of a map set to v, or taken out when v is 0; a map given by name (just a scalar) becomes a flow map
+const fieldChanges = (text: string, value: any, key: string, v: number): Change[] => {
+    const written = mm(v);
     if (value instanceof YAMLMap && value.type === 'MAP') {
-        const pair = findPair(value, 'shift');
+        const pair = findPair(value, key);
         if (pair) {
-            // a shift of 0 goes, with its line
-            if (zero(shift)) {
+            // a field of 0 goes, with its line
+            if (zero(v)) {
                 const keyStart = (pair.key as Scalar).range?.[0] ?? 0;
                 const from = lineStart(text, keyStart);
                 const [, end] = rangeOf(text, pair.value);
@@ -47,20 +49,20 @@ const shiftChanges = (text: string, pcb: Pair, shift: number): Change[] => {
             const [start, end] = rangeOf(text, pair.value);
             return [{start, end, text: written}];
         }
-        if (zero(shift)) return [];
+        if (zero(v)) return [];
         // a new line after the map's last one, at its indentation
         const first = (value.items[0] as Pair).key as Scalar;
         const indent = ' '.repeat((first.range?.[0] ?? 0) - lineStart(text, first.range?.[0] ?? 0));
         const [, end] = rangeOf(text, (value.items[value.items.length - 1] as Pair).value);
-        return [{start: end, end, text: `\n${indent}shift: ${written}`}];
+        return [{start: end, end, text: `\n${indent}${key}: ${written}`}];
     }
     // just a name, or a flow map: written again as a flow map
     const [start, end] = rangeOf(text, value);
     const fields = value instanceof YAMLMap
-        ? (value.items as Pair[]).filter(p => String((p.key as Scalar).value) !== 'shift')
+        ? (value.items as Pair[]).filter(p => String((p.key as Scalar).value) !== key)
             .map(p => `${(p.key as Scalar).value}: ${text.slice(...rangeOf(text, p.value))}`)
         : [`name: ${text.slice(start, end)}`];
-    if (!zero(shift)) fields.push(`shift: ${written}`);
+    if (!zero(v)) fields.push(`${key}: ${written}`);
     return [{start, end, text: fields.length === 1 && value instanceof Scalar ? text.slice(start, end) : `{${fields.join(', ')}}`}];
 };
 
@@ -80,7 +82,17 @@ export const writeStack = (text: string, assembly: string, edit: StackEdit): str
     if (edit.pcbShift !== null) {
         const pcb = findPair(node, 'pcb');
         if (!pcb) throw new Error(`assemblies.${assembly} has no pcb`);
-        changes.push(...shiftChanges(text, pcb, edit.pcbShift));
+        changes.push(...fieldChanges(text, pcb.value, 'shift', edit.pcbShift));
+    }
+
+    if (edit.models?.length) {
+        const list = findPair(node, 'parts')?.value;
+        if (!(list instanceof YAMLSeq)) throw new Error(`assemblies.${assembly} has no list of parts`);
+        edit.models.forEach(({index, z}) => {
+            const part = list.items[index];
+            if (!(part instanceof YAMLMap)) throw new Error(`assemblies.${assembly}.parts[${index}] is not a map`);
+            changes.push(...fieldChanges(text, part, 'z', z));
+        });
     }
     return changes.sort((a, b) => b.start - a.start)
         .reduce((out, c) => out.slice(0, c.start) + c.text + out.slice(c.end), text);

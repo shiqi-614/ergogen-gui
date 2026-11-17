@@ -15,9 +15,11 @@ import DownloadIcon from "./DownloadIcon";
 
 // a case part stacked with the board, as config.assemblies says (z: its bottom's height)
 export type StackedPart = { name: string, z: number, height: number, stl: Blob };
+// one of the assembly's other parts, a 3D model (a module board exported from KiCad, say): where its origin is
+export type StackedModel = { name: string, model: string, x: number, y: number, r: number, z: number };
 // the board in the stack, and how the config places it: level with a part's top, on a part, or at a height, shifted
 export type StackedPcb = { z: number, thickness: number, shift: number, top: string | null, on: string | null };
-export type Stack = { name: string, pcb: StackedPcb, parts: StackedPart[] };
+export type Stack = { name: string, pcb: StackedPcb, parts: StackedPart[], models: StackedModel[] };
 
 type Props = {
     pcb: string,
@@ -29,16 +31,22 @@ type Props = {
     onSave?: (edit: StackEdit) => void
 };
 
-// where the panel has the board and each case part: their bottoms' heights
-type Positions = { pcb: number, parts: Record<string, number> };
+// where the panel has the board and each case part (their bottoms' heights), and the other parts (their origins')
+type Positions = { pcb: number, parts: Record<string, number>, models: number[] };
 
 const positionsOf = (stack?: Stack | null): Positions => ({
     pcb: stack?.pcb.z ?? 0,
     parts: Object.fromEntries((stack?.parts || []).map(p => [p.name, p.z])),
+    models: (stack?.models || []).map(m => m.z),
 });
 
-const moved = (stack: Stack, at: Positions) =>
-    Math.abs(at.pcb - stack.pcb.z) > 1e-6 || stack.parts.some(p => Math.abs(at.parts[p.name] - p.z) > 1e-6);
+const differs = (a: number, b: number) => Math.abs(a - b) > 1e-6;
+
+const moved = (stack: Stack, at: Positions) => differs(at.pcb, stack.pcb.z)
+    || stack.parts.some(p => differs(at.parts[p.name], p.z)) || stack.models.some((m, i) => differs(at.models[i], m.z));
+
+// the other parts' switches, apart from the case parts'
+const modelKey = (i: number) => `model ${i}`;
 
 // The config's terms for where things are: each part's gap to the one below it, and the board's shift from where
 // its placement (level with a part's top, on a part, or at a height) puts it, taken at the parts' new heights.
@@ -51,7 +59,8 @@ const editOf = (stack: Stack, at: Positions): StackEdit => {
     const {top, on, thickness} = stack.pcb;
     const ref = part(top || on || '');
     const base = ref ? at.parts[ref.name] + ref.height - (top ? thickness : 0) : stack.pcb.z - stack.pcb.shift;
-    return {parts, pcbShift: at.pcb - base};
+    const models = stack.models.map((m, i) => ({index: i, z: at.models[i]})).filter((m, i) => differs(m.z, stack.models[i].z));
+    return {parts, pcbShift: at.pcb - base, models};
 };
 
 // same sizing as the other previews
@@ -207,8 +216,9 @@ const Check = styled.button`
   }
 `;
 
-// Colours are sRGB, as in the models' files and in KiCad, and the view draws in sRGB: without that, the lighting
-// works on them as if they were linear and shows them much darker than KiCad does.
+// The view lights linear colours and draws in sRGB. The colours here are sRGB, as KiCad gives them, and go in
+// converted; the models' come linear already (meshCache.ts). Lit as if they were linear, sRGB colours show much
+// darker than in KiCad.
 const colour = (r: number, g: number, b: number) => new THREE.Color(r, g, b).convertSRGBToLinear();
 // models without a colour of their own are grey, as in KiCad
 const DEFAULT_COLOUR = colour(0.7, 0.7, 0.7);
@@ -228,8 +238,11 @@ type Built = {
     // the board, its copper and its models, at the board's height in the stack
     onBoard: THREE.Group,
     board: BoardData,
+    // the footprints' models, and the other parts'
     models: THREE.InstancedMesh[],
     parts: Record<string, { mesh: THREE.Mesh, stl: ArrayBuffer, height: number }>,
+    // the other parts, by their place in the stack's list, once loaded
+    stacked: THREE.Group[],
     render: () => void,
 };
 
@@ -281,7 +294,8 @@ const listed = (references: string[]) => {
 const PARALLEL = 4;
 
 // A board in 3D: its body, holes and pads, and every footprint's 3D models (from the addresses in ErgoCaiLib's
-// 3dmodels/sources.yaml). Left drag orbits, right drag pans, the wheel zooms.
+// 3dmodels/sources.yaml); in an assembly, also its case parts and other parts. Left drag orbits, right drag pans,
+// the wheel zooms.
 const Pcb3dPreview = ({pcb, fileName, stack, onSave}: Props): JSX.Element => {
     const container = useRef<HTMLDivElement>(null);
     const view = useRef<Built | null>(null);
@@ -296,6 +310,8 @@ const Pcb3dPreview = ({pcb, fileName, stack, onSave}: Props): JSX.Element => {
     positionsNow.current = positions;
     // bumped to put the height fields back to the positions
     const [fields, setFields] = useState(0);
+    // the other parts' tops, above their origins, once loaded
+    const [tops, setTops] = useState<Record<number, number>>({});
     const [built, setBuilt] = useState(false);
     const [exporting, setExporting] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -311,6 +327,7 @@ const Pcb3dPreview = ({pcb, fileName, stack, onSave}: Props): JSX.Element => {
         setProgress({done: 0, total: 0});
         setBuilt(false);
         setCheck({state: 'idle'});
+        setTops({});
         positionsNow.current = positionsOf(stack);
         setPositions(positionsNow.current);
         setFields(n => n + 1);
@@ -390,7 +407,7 @@ const Pcb3dPreview = ({pcb, fileName, stack, onSave}: Props): JSX.Element => {
         const [minX, maxX, minY, maxY] = [Math.min(...xs), Math.max(...xs), Math.min(...ys), Math.max(...ys)];
         const boardZ = stack?.pcb.z ?? 0;
         const [minZ, maxZ] = [Math.min(boardZ, ...(stack?.parts || []).map(p => p.z)),
-            Math.max(boardZ + board.thickness, ...(stack?.parts || []).map(p => p.z + p.height))];
+            Math.max(boardZ + board.thickness, ...(stack?.parts || []).map(p => p.z + p.height), ...(stack?.models || []).map(m => m.z))];
         root.position.set(-(minX + maxX) / 2, -(minY + maxY) / 2, -(minZ + maxZ) / 2);
         const radius = Math.max(10, Math.hypot(maxX - minX, maxY - minY, maxZ - minZ) / 2);
         const distance = radius / Math.sin(THREE.MathUtils.degToRad(camera.fov / 2)) * 1.1;
@@ -425,13 +442,11 @@ const Pcb3dPreview = ({pcb, fileName, stack, onSave}: Props): JSX.Element => {
             const key = `${model.opacity < 1 ? model.opacity : 1}|${model.path}`;
             (placements[key] = placements[key] || []).push({fp, model});
         }));
-        // the most used first: the switches and keycaps show up early
-        const queue = Object.keys(placements).sort((a, b) => placements[b].length - placements[a].length);
-        setProgress({done: 0, total: queue.length});
 
         const models: THREE.InstancedMesh[] = [];
         const parts: Built['parts'] = {};
-        view.current = {root, onBoard, board, models, parts, render};
+        const stacked: THREE.Group[] = [];
+        view.current = {root, onBoard, board, models, parts, stacked, render};
 
         // the case parts, each at its height in the stack
         (stack?.parts || []).forEach((part, i) => part.stl.arrayBuffer().then(stl => {
@@ -454,9 +469,9 @@ const Pcb3dPreview = ({pcb, fileName, stack, onSave}: Props): JSX.Element => {
             if (!disposed) setMissing(m => m.concat({path: part.name, why: `cannot read its STL: ${e instanceof Error ? e.message : e}`}));
         }));
 
-        const show = (parts: MeshPart[], where: Placement[]) => {
-            const matrices = where.map(p => modelMatrix(p.fp, p.model, board.thickness));
-            const opacity = where[0].model.opacity;
+        // a model's parts, drawn at each of the matrices (in parent's frame), each instance named by its reference
+        const instanced = (parts: MeshPart[], matrices: THREE.Matrix4[], references: string[], opacity: number,
+                           name: string, parent: THREE.Object3D) => {
             // parts of a model can share their vertices
             const shared = new Map<Float32Array, THREE.BufferAttribute>();
             const attribute = (array: Float32Array) => {
@@ -470,7 +485,7 @@ const Pcb3dPreview = ({pcb, fileName, stack, onSave}: Props): JSX.Element => {
                 if (part.normal) geometry.setAttribute('normal', attribute(part.normal));
                 else geometry.computeVertexNormals();
                 const material = new THREE.MeshStandardMaterial({
-                    color: part.color ? colour(part.color[0], part.color[1], part.color[2]) : DEFAULT_COLOUR,
+                    color: part.color ? new THREE.Color(part.color[0], part.color[1], part.color[2]) : DEFAULT_COLOUR,
                     roughness: 0.6,
                     metalness: 0.1,
                     // a model's scale can mirror it, which turns its faces inside out
@@ -480,33 +495,62 @@ const Pcb3dPreview = ({pcb, fileName, stack, onSave}: Props): JSX.Element => {
                 });
                 const mesh = new THREE.InstancedMesh(geometry, material, matrices.length);
                 matrices.forEach((m, i) => mesh.setMatrixAt(i, m));
-                mesh.name = where[0].model.path.split('/').pop() || 'model';
-                (mesh.userData as InstanceNames).footprints = where.map(p => p.fp.reference);
+                mesh.name = name;
+                (mesh.userData as InstanceNames).footprints = references;
                 mesh.instanceMatrix.needsUpdate = true;
                 // three.js would cull the instances by the model's own bounds, at the origin
                 mesh.frustumCulled = false;
-                onBoard.add(mesh);
+                parent.add(mesh);
                 models.push(mesh);
                 disposables.push(geometry, material, mesh);
             }
             render();
         };
 
+        // one of the assembly's other parts, at its place and the panel's height
+        const showStacked = (parts: MeshPart[], m: StackedModel, i: number) => {
+            const group = new THREE.Group();
+            group.name = m.name;
+            group.position.set(m.x, m.y, positionsNow.current.models[i] ?? m.z);
+            group.rotation.z = THREE.MathUtils.degToRad(m.r);
+            group.visible = !hiddenNow.current[modelKey(i)];
+            root.add(group);
+            stacked[i] = group;
+            instanced(parts, [new THREE.Matrix4()], [m.name], 1, m.model.split('/').pop() || m.name, group);
+            let top = -Infinity;
+            parts.forEach(p => {
+                for (let k = 2; k < p.position.length; k += 3) top = Math.max(top, p.position[k]);
+            });
+            setTops(t => ({...t, [i]: top}));
+        };
+
+        // every model to load: the assembly's other parts, then the footprints' models, the most used first (the
+        // switches and keycaps show up early)
+        const jobs: { path: string, show: (parts: MeshPart[]) => void }[] = [
+            ...(stack?.models || []).map((m, i) => ({path: m.model, show: (parts: MeshPart[]) => showStacked(parts, m, i)})),
+            ...Object.values(placements).sort((a, b) => b.length - a.length).map(where => ({
+                path: where[0].model.path,
+                show: (parts: MeshPart[]) => instanced(parts, where.map(p => modelMatrix(p.fp, p.model, board.thickness)),
+                    where.map(p => p.fp.reference), where[0].model.opacity, where[0].model.path.split('/').pop() || 'model', onBoard),
+            })),
+        ];
+        const total = jobs.length;
+        setProgress({done: 0, total});
+
         loadSources().then(sources => {
             let done = 0;
             const next = (): Promise<void> => {
-                const key = queue.shift();
-                if (!key || disposed) return Promise.resolve();
-                const where = placements[key];
-                return loadModel(where[0].model.path, sources)
+                const job = jobs.shift();
+                if (!job || disposed) return Promise.resolve();
+                return loadModel(job.path, sources)
                     .then(parts => {
-                        if (!disposed) show(parts, where);
+                        if (!disposed) job.show(parts);
                     })
                     .catch((e: unknown) => {
-                        if (!disposed) setMissing(m => m.concat({path: where[0].model.path, why: e instanceof Error ? e.message : String(e)}));
+                        if (!disposed) setMissing(m => m.concat({path: job.path, why: e instanceof Error ? e.message : String(e)}));
                     })
                     .then(() => {
-                        if (!disposed) setProgress({done: ++done, total: Object.keys(placements).length});
+                        if (!disposed) setProgress({done: ++done, total});
                         return next();
                     });
             };
@@ -514,7 +558,7 @@ const Pcb3dPreview = ({pcb, fileName, stack, onSave}: Props): JSX.Element => {
         }).catch((e: unknown) => {
             if (disposed) return;
             setMissing([{path: 'every model', why: `cannot read the model addresses: ${e instanceof Error ? e.message : e}`}]);
-            setProgress({done: queue.length, total: queue.length});
+            setProgress({done: total, total});
         });
 
         return cleanup;
@@ -528,6 +572,9 @@ const Pcb3dPreview = ({pcb, fileName, stack, onSave}: Props): JSX.Element => {
         Object.keys(v.parts).forEach(name => {
             if (positions.parts[name] !== undefined) v.parts[name].mesh.position.z = positions.parts[name];
         });
+        v.stacked.forEach((group, i) => {
+            if (positions.models[i] !== undefined) group.position.z = positions.models[i];
+        });
         mark(v, new Set());
         setCheck(c => c.state === 'done' ? {state: 'idle'} : c);
         v.render();
@@ -537,6 +584,11 @@ const Pcb3dPreview = ({pcb, fileName, stack, onSave}: Props): JSX.Element => {
         const z = parseFloat(raw);
         if (isNaN(z)) return;
         setPositions(p => name === null ? {...p, pcb: z} : {...p, parts: {...p.parts, [name]: z}});
+    };
+    const moveModel = (i: number, raw: string) => {
+        const z = parseFloat(raw);
+        if (isNaN(z)) return;
+        setPositions(p => ({...p, models: p.models.map((at, k) => k === i ? z : at)}));
     };
     const reset = () => {
         setPositions(positionsOf(stack));
@@ -549,6 +601,9 @@ const Pcb3dPreview = ({pcb, fileName, stack, onSave}: Props): JSX.Element => {
         if (!v) return;
         Object.keys(v.parts).forEach(name => {
             v.parts[name].mesh.visible = !hidden[name];
+        });
+        v.stacked.forEach((group, i) => {
+            group.visible = !hidden[modelKey(i)];
         });
         mark(v, new Set());
         setCheck(c => c.state === 'done' ? {state: 'idle'} : c);
@@ -577,18 +632,26 @@ const Pcb3dPreview = ({pcb, fileName, stack, onSave}: Props): JSX.Element => {
             const section = await boardSection(v.board);
             made.push(section);
             const z = v.onBoard.position.z;
-            // the board, then every model part of every footprint, with where in the view each one is
+            // the board, then every model part of every footprint and other part shown, with where in the view each is
             const bodies: Body[] = [{reference: 'board', model: '', section, bottom: z, top: z + v.board.thickness}];
             const where: ({ mesh: THREE.InstancedMesh, index: number } | null)[] = [null];
-            const lift = new THREE.Matrix4().makeTranslation(0, 0, v.onBoard.position.z);
+            v.root.updateMatrixWorld(true);
+            const fromWorld = v.root.matrixWorld.clone().invert();
             v.models.forEach(mesh => {
+                let shown = true;
+                mesh.traverseAncestors(a => {
+                    shown = shown && a.visible;
+                });
+                if (!shown) return;
+                // the mesh's frame in the view's: on the board, or where its part is
+                const frame = fromWorld.clone().multiply(mesh.matrixWorld);
                 const names = (mesh.userData as InstanceNames).footprints;
                 const positions = (mesh.geometry.getAttribute('position') as THREE.BufferAttribute).array as Float32Array;
                 const index = (mesh.geometry.getIndex() as THREE.BufferAttribute).array as Uint32Array;
                 for (let i = 0; i < mesh.count; i++) {
                     const m = new THREE.Matrix4();
                     mesh.getMatrixAt(i, m);
-                    bodies.push({reference: names[i], model: mesh.name, positions, index, matrix: lift.clone().multiply(m)});
+                    bodies.push({reference: names[i], model: mesh.name, positions, index, matrix: frame.clone().multiply(m)});
                     where.push({mesh, index: i});
                 }
             });
@@ -650,17 +713,33 @@ const Pcb3dPreview = ({pcb, fileName, stack, onSave}: Props): JSX.Element => {
                                title="The height of the board's bottom" onChange={e => moveTo(null, e.target.value)}/>
                         <span className="top">– {mm(positions.pcb + stack.pcb.thickness)}</span>
                     </Row>
+                    {stack.models.map((m, i) => {
+                        const z = positions.models[i] ?? m.z;
+                        return (
+                            <Row key={`model|${i}`}>
+                                <label>
+                                    <input type="checkbox" checked={!hidden[modelKey(i)]}
+                                           onChange={() => setHidden(h => ({...h, [modelKey(i)]: !h[modelKey(i)]}))}/>
+                                    {m.name}
+                                </label>
+                                <input key={`model|${i}|${fields}`} type="number" step="0.1" defaultValue={mm(z)}
+                                       title={`The height of ${m.name}'s origin; a board exported from KiCad has it at its bottom`}
+                                       onChange={e => moveModel(i, e.target.value)}/>
+                                <span className="top">{tops[i] !== undefined && `– ${mm(z + tops[i])}`}</span>
+                            </Row>
+                        );
+                    })}
                     {moved(stack, positions) && (
                         <Buttons>
                             <Check onClick={() => onSave?.(editOf(stack, positions))} disabled={!onSave}
-                                   title="Write these heights into the config's assemblies, as gaps and the board's shift">
+                                   title="Write these heights into the config's assemblies, as gaps, the board's shift and the other parts' z">
                                 Save to config
                             </Check>
                             <Check onClick={reset}>Reset</Check>
                         </Buttons>
                     )}
                     <Check onClick={checkCollisions} disabled={!built || loading || check.state === 'running'}
-                           title={`Which footprints' models, and the board, reach more than ${TOLERANCE} mm into the case parts shown`}>
+                           title={`Which footprints' models, other parts and the board reach more than ${TOLERANCE} mm into the case parts shown`}>
                         {check.state === 'running' ? `Checking… ${check.done} of ${check.total}` : 'Check collisions'}
                     </Check>
                     {check.state === 'done' && (check.found.length === 0

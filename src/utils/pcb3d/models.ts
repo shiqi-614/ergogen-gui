@@ -1,7 +1,8 @@
 // A footprint's 3D model as triangles in mm: its address (sources.ts), downloaded, converted (STEP and IGES in the
-// worker, VRML by vrml.ts) and kept (meshCache.ts). Files in a GitHub repo are read through ergogen.js, at the
-// commit its footprints come from, and kept under their blob id, so a library commit that leaves a model alone
-// doesn't convert it again.
+// worker, VRML by vrml.ts, glTF by three.js's loader) and kept (meshCache.ts). Files in a GitHub repo are read
+// through ergogen.js, at the commit its footprints come from, and kept under their blob id, so a library commit that
+// leaves a model alone doesn't convert it again.
+import {BufferAttribute, BufferGeometry, Matrix4, Mesh, Object3D} from "three";
 import {cacheGet, cachePut, MeshPart} from "./meshCache";
 import {addressOf, formatOf, ModelAddress, parseSources, Source, SOURCES_FILE} from "./sources";
 import {convertStep} from "./stepWorker";
@@ -13,8 +14,8 @@ type Github = {
     rawUrl: (repo: string, ref: string, path: string) => string,
 };
 
-// bump when the conversion changes, so kept models are converted again
-const CACHE_VERSION = 'v2';
+// bump when the conversion changes, so kept models are converted again (v3: colours linear)
+const CACHE_VERSION = 'v3';
 
 const github = (): Github => {
     const access = window.ergogen?.github;
@@ -31,8 +32,39 @@ export const loadSources = async (): Promise<Source[]> => {
     return parseSources(await response.text());
 };
 
-const convert = async (buffer: ArrayBuffer, format: 'step' | 'iges' | 'vrml') =>
-    mergeByColour(format === 'vrml' ? vrmlParts(new TextDecoder().decode(buffer)) : await convertStep(buffer, format));
+// glTF counts in metres with y up, the view in mm with z up
+const GLTF_TO_VIEW = new Matrix4().makeScale(1000, 1000, 1000).multiply(new Matrix4().makeRotationX(Math.PI / 2));
+
+// every mesh of a glTF file, where its nodes put it; its colours are linear already
+export const gltfParts = async (buffer: ArrayBuffer): Promise<MeshPart[]> => {
+    const {GLTFLoader} = await import("three/examples/jsm/loaders/GLTFLoader");
+    const gltf: any = await new Promise((resolve, reject) => new GLTFLoader().parse(buffer, '', resolve, reject));
+    gltf.scene.updateMatrixWorld(true);
+    const parts: MeshPart[] = [];
+    gltf.scene.traverse((object: Object3D) => {
+        const mesh = object as Mesh;
+        if (!mesh.isMesh) return;
+        const geometry = (mesh.geometry as BufferGeometry).clone();
+        geometry.applyMatrix4(new Matrix4().multiplyMatrices(GLTF_TO_VIEW, mesh.matrixWorld));
+        if (!geometry.getAttribute('normal')) geometry.computeVertexNormals();
+        const position = geometry.getAttribute('position') as BufferAttribute;
+        const index = geometry.getIndex();
+        const material: any = Array.isArray(mesh.material) ? mesh.material[0] : mesh.material;
+        parts.push({
+            position: Float32Array.from(position.array as ArrayLike<number>),
+            normal: Float32Array.from((geometry.getAttribute('normal') as BufferAttribute).array as ArrayLike<number>),
+            index: index ? Uint32Array.from(index.array as ArrayLike<number>) : Uint32Array.from({length: position.count}, (_, i) => i),
+            color: material?.color ? [material.color.r, material.color.g, material.color.b] : null,
+        });
+        geometry.dispose();
+    });
+    return parts;
+};
+
+const convert = async (buffer: ArrayBuffer, format: 'step' | 'iges' | 'vrml' | 'gltf') => mergeByColour(
+    format === 'vrml' ? vrmlParts(new TextDecoder().decode(buffer))
+        : format === 'gltf' ? await gltfParts(buffer)
+            : await convertStep(buffer, format));
 
 const colourKey = (part: MeshPart) => part.color ? part.color.map(c => c.toFixed(3)).join(',') : '';
 
@@ -78,7 +110,7 @@ const locate = async (address: ModelAddress): Promise<{ url: string, key: string
     return {url: gh.rawUrl(address.repo, commit || 'main', address.file), key: blob ? `${CACHE_VERSION}|git:${blob}` : null};
 };
 
-const download = async (url: string, key: string | null, format: 'step' | 'iges' | 'vrml') => {
+const download = async (url: string, key: string | null, format: 'step' | 'iges' | 'vrml' | 'gltf') => {
     const kept = key ? await cacheGet(key) : null;
     if (kept) return kept;
     const response = await fetch(url);
@@ -96,7 +128,7 @@ export const loadModel = async (path: string, sources: Source[]): Promise<MeshPa
     const address = addressOf(path, sources);
     if (!address) throw new Error(`no address for it in ${SOURCES_FILE.file}`);
     const format = formatOf('repo' in address ? address.file : address.url);
-    if (!format) throw new Error('not a STEP, IGES or VRML file');
+    if (!format) throw new Error('not a STEP, IGES, VRML or glTF file');
     const {url, key} = await locate(address);
     const id = key || url;
     if (!loaded.has(id)) {

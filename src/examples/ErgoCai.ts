@@ -700,11 +700,25 @@ assemblies:
     pcb:
       name: ergo_cai_right
       top: right_gap
+    # the e-paper module (ErgoCai.modules e-paper/2.13inch, exported from KiCad with its models) on the e-paper
+    # socket's four holes, over the 18650 cell: its board's bottom at 30 mm, on 22 mm standoffs from the pcb
+    parts:
+      - name: e-paper
+        model: "\${ERGOCAI_MODULES}/e-paper/2.13inch/2.13inch.glb"
+        module: e-paper
+        z: 30
   ergocai_left:
     stack: [left_buttom, left_gap, left_switchplate, left_middle, left_top]
     pcb:
       name: ergo_cai_left
       top: left_gap
+    # the e-paper module (ErgoCai.modules e-paper/2.13inch, exported from KiCad with its models) on the e-paper
+    # socket's four holes, over the 18650 cell: its board's bottom at 30 mm, on 22 mm standoffs from the pcb
+    parts:
+      - name: e-paper
+        model: "\${ERGOCAI_MODULES}/e-paper/2.13inch/2.13inch.glb"
+        module: e-paper
+        z: 30
 `
 };
 

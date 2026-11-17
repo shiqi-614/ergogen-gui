@@ -59,8 +59,9 @@ const PcbPreview = ({pcb, board, initialView, assembly}: Props): JSX.Element => 
         const parts = (found.layers || [])
             .map((l: any) => ({name: l.name, z: l.z, height: l.height, stl: results?.cases?.[l.name]?.stl}))
             .filter((p: any) => p.stl instanceof Blob);
+        const models = (found.parts || []).map((p: any) => ({name: p.name, model: p.model, x: p.x, y: p.y, r: p.r || 0, z: p.z || 0}));
         const {z, thickness, shift, top, on} = found.pcb;
-        return {name, pcb: {z, thickness, shift: shift || 0, top: top || null, on: on || null}, parts};
+        return {name, pcb: {z, thickness, shift: shift || 0, top: top || null, on: on || null}, parts, models};
     }, [results, board, assembly]);
     // the panel's moves, into the config's assemblies; the next run brings them back
     const save = (edit: StackEdit) => {
