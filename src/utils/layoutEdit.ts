@@ -683,17 +683,28 @@ const casePair = (doc: ReturnType<typeof parseDocument>, name: string) => {
     return index < 0 ? null : {pair: pairs[index], next: pairs[index + 1]};
 };
 
-// The lines of cases.<name>'s value, relative to its name's indentation: its parts, comments and all, to copy
-export const caseLines = (text: string, name: string): string[] => {
+// The lines of <section>.<name>'s value, relative to its name's indentation: comments and all, to copy
+export const entryLines = (text: string, section: string, name: string): string[] => {
     const doc = parseDocument(text, {keepCstNodes: true});
     if (doc.errors.length) throw new Error('the config has YAML errors');
-    const found = casePair(doc, name);
-    if (!found) throw new Error(`there is no case called ${name}`);
-    const {start, end} = itemLines(text, found.pair, found.next);
-    const keyColumn = columnOf(text, (found.pair.key as Scalar).range?.[0] ?? start);
+    const map = doc.get(section, true);
+    const pairs = isBlockMap(map) ? map.items as Pair[] : [];
+    const index = pairs.findIndex(pair => pair.key instanceof Scalar && String(pair.key.value) === name);
+    if (index < 0) throw new Error(`there is no ${section}.${name}`);
+    const {start, end} = itemLines(text, pairs[index], pairs[index + 1]);
+    const keyColumn = columnOf(text, (pairs[index].key as Scalar).range?.[0] ?? start);
     const lines = text.slice(start, end).split('\n').slice(1);
     while (lines.length && !lines[lines.length - 1].trim()) lines.pop();
     return lines.map(line => line.slice(Math.min(keyColumn + 2, line.length - line.trimStart().length)));
+};
+
+// The lines of cases.<name>'s value: its parts, to copy
+export const caseLines = (text: string, name: string): string[] => {
+    try {
+        return entryLines(text, 'cases', name);
+    } catch (e: unknown) {
+        throw new Error(String(e instanceof Error ? e.message : e).replace(/^there is no cases\./, 'there is no case called '));
+    }
 };
 
 // the items of a flow list like [a, {name: b, gap: 2}] as written, and the list's place in the text
@@ -784,6 +795,64 @@ export const deleteCase = (text: string, name: string, mirrors = true): string =
     if (shared.length) throw new Error(`${name} defines ${shared.map(a => `&${a}`).join(', ')}, which other parts of the config still use`);
     return removeRanges(out, [own]);
 };
+
+// --- whole pcbs and assemblies ---
+
+// the entries of <section> mirrored from <name> (mirror: from: <name>)
+const mirrorsOf = (doc: ReturnType<typeof parseDocument>, section: string, name: string): string[] => {
+    const map = doc.get(section, true);
+    if (!isBlockMap(map)) return [];
+    return (map.items as Pair[]).filter(pair => {
+        const mirror = isBlockMap(pair.value) ? findPair(pair.value, 'mirror')?.value : undefined;
+        const from = mirror instanceof YAMLMap ? findPair(mirror, 'from')?.value : undefined;
+        return from instanceof Scalar && String(from.value) === name;
+    }).map(pair => String((pair.key as Scalar).value));
+};
+
+// the board of an assembly: pcb: <name>, or pcb: {name: <name>, …}
+const boardOf = (assembly: unknown): string | null => {
+    const pcb = isBlockMap(assembly) ? findPair(assembly, 'pcb')?.value : undefined;
+    if (pcb instanceof Scalar) return String(pcb.value);
+    const name = pcb instanceof YAMLMap ? findPair(pcb, 'name')?.value : undefined;
+    return name instanceof Scalar ? String(name.value) : null;
+};
+
+// What goes with pcbs.<name>: the pcbs mirrored from it, and the assemblies holding it or one of those
+export const pcbReferences = (text: string, name: string): { mirrors: string[], assemblies: string[] } => {
+    const doc = parseDocument(text, {keepCstNodes: true});
+    if (doc.errors.length) return {mirrors: [], assemblies: []};
+    const mirrors = mirrorsOf(doc, 'pcbs', name);
+    const boards = [name, ...mirrors];
+    const map = doc.get('assemblies', true);
+    const assemblies = isBlockMap(map) ? (map.items as Pair[])
+        .filter(pair => boards.includes(boardOf(pair.value) ?? ''))
+        .map(pair => String((pair.key as Scalar).value)) : [];
+    return {mirrors, assemblies};
+};
+
+// Deletes pcbs.<name>, the pcbs mirrored from it and the assemblies holding any of them
+export const deletePcb = (text: string, name: string): string => {
+    const {mirrors, assemblies} = pcbReferences(text, name);
+    let out = text;
+    for (const assembly of assemblies) out = deleteEntry(out, ['assemblies'], assembly);
+    for (const mirror of mirrors) out = deleteEntry(out, ['pcbs'], mirror);
+    return deleteEntry(out, ['pcbs'], name);
+};
+
+// One of an assembly's other 3D models: its model path (or address), at a module of the pcb, its z = 0 at z
+export type AssemblyPart = { name: string, model: string, module?: string, z?: string };
+
+// A new assembly's lines: its stack from the bottom up, its board (its top level with one of the stack's), and
+// its other parts
+export const assemblyLines = (stack: string[], pcb: string, top?: string, parts: AssemblyPart[] = []) => [
+    `stack: [${stack.join(', ')}]`,
+    ...(top ? ['pcb:', `  name: ${pcb}`, `  top: ${top}`] : [`pcb: ${pcb}`]),
+    ...(parts.length ? ['parts:', ...parts.flatMap(part => [
+        ...(part.name ? [`  - name: ${part.name}`, `    model: ${JSON.stringify(part.model)}`] : [`  - model: ${JSON.stringify(part.model)}`]),
+        ...(part.module ? [`    module: ${part.module}`] : []),
+        ...(part.z ? [`    z: ${part.z}`] : []),
+    ])] : []),
+];
 
 // A case mirrored from another (for the other half of a split board)
 export const mirrorCaseLines = (from: string) => ['mirror:', `  from: ${from}`];

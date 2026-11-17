@@ -131,4 +131,27 @@ export const tests = [
             await page.until(`[...document.querySelectorAll('svg title')].some(t => t.textContent === 'matrix_col3_row2')`, 60, 'the key to come back');
         },
     },
+    {
+        name: 'layout: on the Key tab a dragged key moves alone, by its own shift',
+        async run(page, {url}) {
+            await freshApp(page, url);
+            await openLayout(page);
+            const col = `jsyaml.load(window.monaco.editor.getModels()[0].getValue()).points.zones.matrix.columns.col3`;
+            await page.click((await keyCenters(page)).matrix_col3_row2);
+            await page.press('Key');
+            const before = await keyCenters(page);
+            // on the mirrored half, 10 mm (a pixel is less than a mm here) to the left: the source key's shift x grows
+            const key = before.mirror_matrix_col3_row2;
+            await page.drag(key, [key[0] - 30, key[1]]);
+            await page.until(`Array.isArray(${col}['rows.row2.shift'])`, 30, 'the shift to be written');
+            const [x, y] = await page.ev(`${col}['rows.row2.shift']`);
+            assert(x > 3 && Math.abs(y) < 0.5, `the shift should be [x > 3, 0], is [${x}, ${y}]`);
+            await page.until(`(() => { const t = [...document.querySelectorAll('svg title')].find(t => t.textContent === 'matrix_col3_row2'); return t && t.parentElement.getBoundingClientRect().left > ${before.matrix_col3_row2[0] - 9} + 0 })()`, 60, 'the redraw');
+            await new Promise(r => setTimeout(r, 1500));
+            const after = await keyCenters(page);
+            assert(furthest(before, after, ['matrix_col3_row1', 'matrix_col3_row3', 'matrix_col4_row2']) < 1, 'the other keys should stay put');
+            assert(after.matrix_col3_row2[0] - before.matrix_col3_row2[0] > 15, 'the source key should move right, the mirror image of the drag');
+            assert(before.mirror_matrix_col3_row2[0] - after.mirror_matrix_col3_row2[0] > 15, 'the dragged key should move left');
+        },
+    },
 ];

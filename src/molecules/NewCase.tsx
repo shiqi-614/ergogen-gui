@@ -14,9 +14,14 @@ type Props = {
     onCancel: () => void,
 };
 
-// the other half's name for a case: right_x is left_x and the other way round, others get _mirrored
-const mirrorName = (name: string) => /^right_/.test(name) ? name.replace(/^right_/, 'left_')
-    : /^left_/.test(name) ? name.replace(/^left_/, 'right_') : `${name}_mirrored`;
+// the other half's name for a case, a pcb or an assembly: right_x is left_x, x_right is x_left (and the other way
+// round), others get _mirrored
+export const mirrorName = (name: string) => {
+    const swap = (side: string) => side === 'right' ? 'left' : 'right';
+    if (/^(right|left)_/.test(name)) return name.replace(/^(right|left)_/, (_, side) => `${swap(side)}_`);
+    if (/_(right|left)$/.test(name)) return name.replace(/_(right|left)$/, (_, side) => `_${swap(side)}`);
+    return `${name}_mirrored`;
+};
 
 const NewCase = ({onCreated, onCancel}: Props): JSX.Element | null => {
     const configContext = useConfigContext();

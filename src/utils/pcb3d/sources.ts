@@ -26,8 +26,13 @@ export const parseSources = (text: string): Source[] => {
         .sort((a, b) => b.prefix.length - a.prefix.length);
 };
 
+// A model path: one that starts with an entry of the table, or an address of its own, a URL or
+// github:<owner>/<repo>/<file> (read at the commit the footprints come from, like the table's GitHub entries)
 export const addressOf = (path: string, sources: Source[]): ModelAddress | null => {
     const p = normalizePath(path);
+    if (/^https?:\/\//i.test(p)) return {url: p};
+    const github = p.match(/^github:([^/\s]+\/[^/\s]+)\/(.+)$/);
+    if (github) return {repo: github[1], file: github[2]};
     const source = sources.find(s => p === s.prefix || p.startsWith(s.prefix + '/'));
     if (!source) return null;
     const rest = p.slice(source.prefix.length).replace(/^\/+/, '');

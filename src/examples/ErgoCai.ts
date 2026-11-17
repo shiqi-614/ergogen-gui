@@ -690,7 +690,7 @@ assemblies:
     # socket's four holes, over the 18650 cell: its board's bottom at 30 mm, on 22 mm standoffs from the pcb
     parts:
       - name: e-paper
-        model: "\${ERGOCAI_MODULES}/e-paper/2.13inch/2.13inch.glb"
+        model: "github:shiqi-614/ErgoCai.modules/e-paper/2.13inch/2.13inch.glb"
         module: e-paper
         z: 30
   ergocai_left:
@@ -702,7 +702,7 @@ assemblies:
     # socket's four holes, over the 18650 cell: its board's bottom at 30 mm, on 22 mm standoffs from the pcb
     parts:
       - name: e-paper
-        model: "\${ERGOCAI_MODULES}/e-paper/2.13inch/2.13inch.glb"
+        model: "github:shiqi-614/ErgoCai.modules/e-paper/2.13inch/2.13inch.glb"
         module: e-paper
         z: 30
 `

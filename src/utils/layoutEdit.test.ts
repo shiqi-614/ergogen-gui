@@ -1,6 +1,6 @@
 import {expect, it} from "vitest";
 import yaml from "js-yaml";
-import {findKeySite, splitShift, deleteColumn, deleteRow, insertEntry, keyMentions, nextName, addOutline, caseLines, caseReferences, deleteCase, insertIntoStack, mirrorCaseLines, stacksWith, addPcbOutline, appendEntry, appendListItem, appendOutline, applyEdits, deleteEntry, deleteListItem, deleteOutline, deleteOutlinePart, findAnchorShift, findChildShift, findChildValue, findItemSites, findPartSites, findShift, findSite, findValue, findWhereList, formatLength, insertPolygonPoint, moveListItem, nudge, outlineReferences, parseLength, partLines, pcbOutlines, plateLines, removePolygonPoint, EditSite} from "./layoutEdit";
+import {assemblyLines, deletePcb, entryLines, pcbReferences, findKeySite, splitShift, deleteColumn, deleteRow, insertEntry, keyMentions, nextName, addOutline, caseLines, caseReferences, deleteCase, insertIntoStack, mirrorCaseLines, stacksWith, addPcbOutline, appendEntry, appendListItem, appendOutline, applyEdits, deleteEntry, deleteListItem, deleteOutline, deleteOutlinePart, findAnchorShift, findChildShift, findChildValue, findItemSites, findPartSites, findShift, findSite, findValue, findWhereList, formatLength, insertPolygonPoint, moveListItem, nudge, outlineReferences, parseLength, partLines, pcbOutlines, plateLines, removePolygonPoint, EditSite} from "./layoutEdit";
 
 const config = `points:
   zones:
@@ -622,4 +622,43 @@ it("finds and adds a key's own settings, however its rows are written", () => {
         'z', 'c', 'r', 'shift') as EditSite;
     expect(splitShift(shift.raw)).toEqual(['0', '-0.2kx']);
     expect(findKeySite('points:\n  zones:\n    z:\n      columns:\n        c:\n', 'z', 'c', 'r', 'skip')).toMatchObject({start: expect.any(Number)});
+});
+
+const BOARDS = `pcbs:
+  right:
+    # its edge
+    outlines:
+      main:
+        outline: board
+  left:
+    mirror:
+      from: right
+  other:
+    outlines: {}
+assemblies:
+  a_right:
+    stack: [x]
+    pcb:
+      name: right
+      top: x
+  a_left:
+    stack: [y]
+    pcb: left
+  a_other:
+    stack: []
+    pcb: other
+`;
+
+it('copies a pcb, and deletes one with its mirror and their assemblies', () => {
+    expect(entryLines(BOARDS, 'pcbs', 'right')).toEqual(['# its edge', 'outlines:', '  main:', '    outline: board']);
+    expect(pcbReferences(BOARDS, 'right')).toEqual({mirrors: ['left'], assemblies: ['a_right', 'a_left']});
+    const left = yaml.load(deletePcb(BOARDS, 'right')) as any;
+    expect(Object.keys(left.pcbs)).toEqual(['other']);
+    expect(Object.keys(left.assemblies)).toEqual(['a_other']);
+    expect(assemblyLines(['b', 'c'], 'right', 'c')).toEqual(['stack: [b, c]', 'pcb:', '  name: right', '  top: c']);
+    expect(assemblyLines([], 'right')).toEqual(['stack: []', 'pcb: right']);
+    const lines = assemblyLines(['b'], 'right', undefined, [{name: 'e-paper', model: '${M}/e.glb', module: 'e-paper', z: '30'}, {name: '', model: 'https://x/y.glb'}]);
+    expect(lines).toEqual(['stack: [b]', 'pcb: right', 'parts:', '  - name: e-paper', '    model: "${M}/e.glb"', '    module: e-paper', '    z: 30',
+        '  - model: "https://x/y.glb"']);
+    expect((yaml.load(lines.join('\n')) as any).parts[0]).toEqual({name: 'e-paper', model: '${M}/e.glb', module: 'e-paper', z: 30});
 });

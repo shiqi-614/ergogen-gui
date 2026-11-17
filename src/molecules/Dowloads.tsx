@@ -1,5 +1,7 @@
 import NewCase from "./NewCase";
 import NewOutline, {OutlineRequest} from "./NewOutline";
+import NewPcb from "./NewPcb";
+import NewAssembly from "./NewAssembly";
 import DownloadRow from "../atoms/DownloadRow";
 import Loading, {Spinner} from "../atoms/Loading";
 import yaml from 'js-yaml';
@@ -27,7 +29,7 @@ const SectionContainer = styled.div`
   margin-bottom: 0.5em;
 `;
 
-// the title opens and closes the section; Outlines and Cases also have a "+" for a new one
+// the title opens and closes the section; Outlines, PCBs, Cases and Assemblies also have a "+" for a new one
 const SectionHeader = styled.div`
   display: flex;
   align-items: center;
@@ -71,6 +73,9 @@ const SectionHeader = styled.div`
     background: #28a745;
   }
 `;
+
+// the sections a new item can be added to, and what it is called
+const NEW_ITEM: Record<string, string> = {Outlines: 'outline', PCBs: 'PCB', Cases: 'case', Assemblies: 'assembly'};
 
 type Props = {
     setPreview: (key: string) => void,
@@ -162,9 +167,9 @@ const Downloads = ({setPreview, label, previewKey, onNewOutline}: Props) => {
 
     }
 
-    if (results?.pcbs) {
+    if (results) {
         const pcbs = section('PCBs');
-        for (const [pcb_name, pcb_data] of Object.entries(results.pcbs as Record<string, { preview?: { kicad_pcb?: string } }>)) {
+        for (const [pcb_name, pcb_data] of Object.entries((results.pcbs ?? {}) as Record<string, { preview?: { kicad_pcb?: string } }>)) {
             if (pcb_data?.preview?.kicad_pcb) {
                 pcbs.push({
                         fileName: pcb_name,
@@ -222,9 +227,9 @@ const Downloads = ({setPreview, label, previewKey, onNewOutline}: Props) => {
 
 
     // the case parts stacked around a board (config.assemblies): shown in the board's 3D view, which downloads them
-    if (results?.assemblies) {
+    if (results) {
         const assemblies = section('Assemblies');
-        for (const [name, assembly] of Object.entries(results.assemblies as Record<string, { pcb?: { name: string } }>)) {
+        for (const [name, assembly] of Object.entries((results.assemblies ?? {}) as Record<string, { pcb?: { name: string } }>)) {
             const board = assembly?.pcb?.name;
             if (!board || !results?.pcbs?.[board]?.preview?.kicad_pcb) continue;
             assemblies.push({fileName: name, extension: '', content: '', preview: `assemblies.${name}`, label: name});
@@ -242,10 +247,10 @@ const Downloads = ({setPreview, label, previewKey, onNewOutline}: Props) => {
           {
               sections.map(({title, items}) => {
                   const shown = items.filter(download => !download.fileName.startsWith("_"));
-                  const addable = title === 'Outlines' || title === 'Cases';
+                  const what = NEW_ITEM[title];
+                  const addable = !!what;
                   if (!shown.length && !addable) return null;
                   const isOpen = !!open[title];
-                  const what = title === 'Outlines' ? 'outline' : 'case';
 
                   return (
                       <SectionContainer key={title}>
@@ -263,6 +268,10 @@ const Downloads = ({setPreview, label, previewKey, onNewOutline}: Props) => {
                               <NewOutline onCancel={() => setAdding(null)} onCreate={request => { setAdding(null); onNewOutline(request); }}/>}
                           {adding === title && title === 'Cases' &&
                               <NewCase onCancel={() => setAdding(null)} onCreated={key => { setAdding(null); setPreview(key); }}/>}
+                          {adding === title && title === 'PCBs' &&
+                              <NewPcb onCancel={() => setAdding(null)} onCreated={key => { setAdding(null); setPreview(key); }}/>}
+                          {adding === title && title === 'Assemblies' &&
+                              <NewAssembly onCancel={() => setAdding(null)} onCreated={key => { setAdding(null); setPreview(key); }}/>}
                           {isOpen && shown.map((download, i) =>
                               <DownloadRow key={i} {...download} setPreview={setPreview} setTabIndex={tabContext?.setTabIndex}
                                            active={!!download.preview && download.preview === previewKey}/>

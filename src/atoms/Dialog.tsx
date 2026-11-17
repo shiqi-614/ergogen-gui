@@ -16,7 +16,7 @@ const Overlay = styled.div`
 `;
 
 const Box = styled.div`
-  width: min(26rem, calc(100vw - 2rem));
+  width: min(28rem, calc(100vw - 2rem));
   max-height: calc(100vh - 2rem);
   overflow: auto;
   padding: 1rem 1.2rem;
@@ -65,6 +65,76 @@ const Box = styled.div`
   .field .controls > select, .field .controls > input:not([type="checkbox"]) {
     flex-grow: 1;
     min-width: 0;
+  }
+
+  .field .checks {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.2rem 0.6rem;
+    max-height: 9rem;
+    overflow-y: auto;
+  }
+
+  .field .checks label {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    white-space: nowrap;
+  }
+
+  .field .checks .order {
+    min-width: 1.1rem;
+    border-radius: 0.6rem;
+    background: #28a745;
+    color: #ffffff;
+    font-size: 0.75rem;
+    text-align: center;
+  }
+
+  .field:has(.checks) {
+    align-items: start;
+  }
+
+  .part {
+    margin: 0 0 0.6rem 7.1rem;
+    padding: 0.4rem;
+    border-radius: 0.25rem;
+    background: #232323;
+  }
+
+  .part .row {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    margin-bottom: 0.3rem;
+  }
+
+  .part .row input:first-child {
+    width: 4.5rem;
+  }
+
+  .part .row input.short {
+    width: 2.8rem;
+  }
+
+  .part .row select {
+    flex-grow: 1;
+    min-width: 0;
+  }
+
+  .part input.model {
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .part button.remove {
+    padding: 0.1rem 0.45rem;
+    background: transparent;
+    color: #bdbdbd;
+  }
+
+  .part button.remove:hover {
+    color: #ff6d6d;
   }
 
   .hint {

@@ -3,7 +3,7 @@ import {useConfigContext} from "../context/ConfigContext";
 import {
     ATTRS, AnchorShift, Attr, Edit, EditSite, Length,
     addOutline, appendOutline, applyEdits, findAnchorShift, findShift, findSite, formatLength,
-    insertPolygonPoint, isPlainNumber, nudge, parseLength, plateLines, removePolygonPoint,
+    findKeySite, insertPolygonPoint, isPlainNumber, splitShift, nudge, parseLength, plateLines, removePolygonPoint,
 } from "../utils/layoutEdit";
 import {OutlineHandle, Polygon, keyHull, nearMisses, outlineHandles} from "../utils/outlineGeometry";
 import {
@@ -79,7 +79,22 @@ type HandleDrag = {
     text?: string,
 };
 
-type Drag = ColumnDrag | RotateDrag | ZoneDrag | HandleDrag;
+// one key, by its own shift: in its own frame (the column's turn, before the key's own rotate), x the other way
+// on a mirrored key; the key on the other half moves with it
+type KeyDrag = {
+    kind: 'key',
+    name: string,
+    sourceText: string,
+    start: Vec,
+    sign: number,
+    frame: number,
+    raw: [string | undefined, string | undefined],
+    site: EditSite,
+    names: Set<string>,
+    text?: string,
+};
+
+type Drag = ColumnDrag | RotateDrag | ZoneDrag | HandleDrag | KeyDrag;
 
 // where a dragged outline handle is now, and the lines it snapped to
 type HandleAt = { key: string, at: Vec, guides: [Vec, Vec][] };
@@ -93,8 +108,8 @@ type Cursor = { point: DrawnPoint, guides: [Vec, Vec][], closes: boolean };
 const exactText = (v: number) => String(Number(v.toFixed(6)));
 
 const HELP = 'Click a key to select its column. Drag it up/down for stagger, sideways for spread '
-    + '(Shift: with the columns after it), the green handle for splay, Alt-drag to move the zone. '
-    + 'Pick an outline at the top left to drag its points.';
+    + '(Shift: with the columns after it), the green handle for splay, Alt-drag to move the zone; on the panel\'s '
+    + 'Key tab, dragging moves just that key. Pick an outline at the top left to drag its points.';
 
 type Props = {
     // a new outline to make (from the Downloads list), once the keys are known; onRequestDone when it is
@@ -301,7 +316,34 @@ const LayoutEditor = ({request, onRequestDone}: Props): JSX.Element | null => {
         if (e.button !== 0) return;
         svgRef.current?.setPointerCapture(e.pointerId);
         if (e.altKey) startZoneDrag(e, p);
+        else if (panelTab === 'key') startKeyMove(e, p);
         else startColumnDrag(e, p);
+    };
+
+    const startKeyMove = (e: React.PointerEvent, p: Point) => {
+        const site = findKeySite(configInput, p.meta.zone.name, p.meta.col.name, p.meta.row, 'shift');
+        const raw = typeof site === 'string' ? null : site.raw === undefined ? [undefined, undefined] as [undefined, undefined] : splitShift(site.raw);
+        if (typeof site === 'string' || !raw) {
+            setHint(`Can't move ${p.meta.name}: ${typeof site === 'string' ? site : `its shift is "${site.raw}", change it in the panel`}`);
+            return;
+        }
+        const source = p.meta.name.replace(/^mirror_/, '');
+        drag.current = {
+            kind: 'key', name: source, sourceText: configInput, start: toBoard(e), sign: signOf(p),
+            frame: p.r - signOf(p) * p.meta.rotate, raw, site, names: new Set([source, `mirror_${source}`]),
+        };
+    };
+
+    const moveKey = (d: KeyDrag, e: React.PointerEvent) => {
+        const now = toBoard(e);
+        const local = rotate({x: now.x - d.start.x, y: now.y - d.start.y}, -d.frame);
+        const shift = {x: round(d.sign * local.x, 0.1), y: round(local.y, 0.1)};
+        const move = rotate({x: d.sign * shift.x, y: shift.y}, d.frame);
+        // the transform moves the source half's way: x the other way for a key dragged on the mirrored half
+        setTransform({names: d.names, dx: d.sign * move.x, dy: move.y, angle: 0, pivots: {}});
+        const x = nudge(d.raw[0], shift.x, units), y = nudge(d.raw[1], shift.y, units);
+        d.text = applyEdits(d.sourceText, [{site: d.site, value: `[${x}, ${y}]`}]);
+        setHint(`${d.name} shift: [${x}, ${y}]`);
     };
 
     const startRotate = (e: React.PointerEvent, side: Side) => {
@@ -460,6 +502,7 @@ const LayoutEditor = ({request, onRequestDone}: Props): JSX.Element | null => {
         else if (d?.kind === 'rotate') moveRotate(d, e);
         else if (d?.kind === 'zone') moveZone(d, e);
         else if (d?.kind === 'handle') moveHandle(d, e);
+        else if (d?.kind === 'key') moveKey(d, e);
     };
 
     const endDrag = () => {

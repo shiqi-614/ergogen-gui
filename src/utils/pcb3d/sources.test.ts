@@ -37,3 +37,9 @@ it('reads KiCad 5 variables and backslashes, and knows no address for the rest',
 it('picks the converter by extension', () => {
     expect(['a.STEP', 'a.stp', 'a.igs', 'a.wrl', 'a.obj'].map(formatOf)).toEqual(['step', 'step', 'iges', 'vrml', null]);
 });
+
+it('takes a whole address as a model path too', () => {
+    expect(addressOf('https://example.com/models/a b.glb', [])).toEqual({url: 'https://example.com/models/a b.glb'});
+    expect(addressOf('github:shiqi-614/ErgoCai.modules/e-paper/2.13inch/2.13inch.glb', []))
+        .toEqual({repo: 'shiqi-614/ErgoCai.modules', file: 'e-paper/2.13inch/2.13inch.glb'});
+});
