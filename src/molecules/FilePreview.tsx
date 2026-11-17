@@ -1,6 +1,6 @@
 import SvgPreview from "../atoms/SvgPreview";
 import StlPreview from "../atoms/StlPreview";
-import KicanvasPreview from "../atoms/KicanvasPreview";
+import PcbPreview from "./PcbPreview";
 
 type Props = {
     previewKey: string,
@@ -26,7 +26,7 @@ const FilePreview = ({previewKey, previewContent, width = '100%', height = '100%
                 )
             case 'kicad_pcb':
                 return (
-                    <KicanvasPreview pcb={text} name={`${previewKey.split(".")[1]}_preview.kicad_pcb`} pcbName={previewKey.split(".")[1]}/>
+                    <PcbPreview pcb={text} name={`${previewKey.split(".")[1]}_preview.kicad_pcb`} pcbName={previewKey.split(".")[1]}/>
                 )
             default:
                 return <></>;
