@@ -7,7 +7,9 @@ import {useConfigContext} from "../context/ConfigContext";
 type Props = {
     pcb: string,
     // the pcb's name in the config, e.g. ergo_cai_right; KiCanvas's view edits its parts on the board
-    board: string
+    board: string,
+    // the view to open with, instead of the one last picked
+    initialView?: '2d' | '3d'
 };
 
 type View = '2d' | '3d';
@@ -42,8 +44,8 @@ const SwitchButton = styled.button<{ $active: boolean }>`
 let lastView: View = '2d';
 
 // A board in KiCanvas (2D, the layers as KiCad draws them) or in 3D with the footprints' models.
-const PcbPreview = ({pcb, board}: Props): JSX.Element => {
-    const [view, setView] = useState<View>(lastView);
+const PcbPreview = ({pcb, board, initialView}: Props): JSX.Element => {
+    const [view, setView] = useState<View>(initialView || lastView);
     const results = useConfigContext()?.results as any;
     // the case parts around this board: the first of config.assemblies that holds it
     const stack = useMemo((): Stack | null => {

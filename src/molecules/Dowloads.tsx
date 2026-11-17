@@ -57,6 +57,8 @@ type DownloadObj = {
     extension: string,
     content: string,
     preview?: string,
+    // shown instead of the file name, for an entry that only previews (no content to download)
+    label?: string,
 };
 
 type DownloadArr = Array<DownloadObj>;
@@ -144,6 +146,16 @@ const Downloads = ({setPreview, label, previewKey}: Props) => {
         }
     }
 
+
+    // the case parts stacked around a board (config.assemblies): shown in the board's 3D view, which downloads them
+    if (results?.assemblies) {
+        const assemblies = section('Assemblies');
+        for (const [name, assembly] of Object.entries(results.assemblies as Record<string, { pcb?: { name: string } }>)) {
+            const board = assembly?.pcb?.name;
+            if (!board || !results?.pcbs?.[board]?.preview?.kicad_pcb) continue;
+            assemblies.push({fileName: name, extension: '', content: '', preview: `assemblies.${name}`, label: `${name}: ${board} in its case, 3D`});
+        }
+    }
 
     if (results?.cases) {
         const cases = section('Cases');

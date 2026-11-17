@@ -1,6 +1,7 @@
 import SvgPreview from "../atoms/SvgPreview";
 import StlPreview from "../atoms/StlPreview";
 import PcbPreview from "./PcbPreview";
+import {useConfigContext} from "../context/ConfigContext";
 
 type Props = {
     previewKey: string,
@@ -13,6 +14,17 @@ type Props = {
 const FilePreview = ({previewKey, previewContent, width = '100%', height = '100%', className}: Props) => {
     const previewExt = previewKey.split(".").slice(-1)[0];
     const text = typeof previewContent === 'string' ? previewContent : "";
+    const results = useConfigContext()?.results as any;
+    // assemblies.<name>: the board it holds, in 3D with its case
+    const assembly = previewKey.startsWith('assemblies.') ? results?.assemblies?.[previewKey.slice('assemblies.'.length)] : null;
+    if (assembly) {
+        const board = assembly.pcb?.name;
+        return (
+            <div className={className}>
+                <PcbPreview pcb={results?.pcbs?.[board]?.preview?.kicad_pcb || ''} board={board} initialView="3d"/>
+            </div>
+        );
+    }
 
     const renderFilePreview = (previewExt: string) => {
         switch (previewExt) {

@@ -7,6 +7,8 @@ type Props = {
     extension: string,
     content: string,
     preview?: string,
+    // shown instead of the file name; an entry without content only previews
+    label?: string,
     // the preview pane shows this file
     active?: boolean,
     setPreview: (preview: string) => void,
@@ -75,8 +77,8 @@ const DownloadLink = styled.a`
     }
 `;
 
-const DownloadRow = ({fileName, extension, content, preview, active = false, setPreview, setTabIndex}: Props): JSX.Element => {
-    const fullName = `${fileName}.${extension}`;
+const DownloadRow = ({fileName, extension, content, preview, label, active = false, setPreview, setTabIndex}: Props): JSX.Element => {
+    const fullName = label || `${fileName}.${extension}`;
     return (
         <Row $previewable={!!preview} $active={active}>
             {preview ? (
@@ -94,13 +96,15 @@ const DownloadRow = ({fileName, extension, content, preview, active = false, set
             ) : (
                 <FileName>{fullName}</FileName>
             )}
-            <DownloadLink target={"_blank"}
-               rel={"noreferrer"}
-               title={`Download ${fullName}`}
-               download={fullName}
-               href={window.URL.createObjectURL(new Blob([content], {type: "octet/stream"}))}>
-                <DownloadIcon/>
-            </DownloadLink>
+            {content && (
+                <DownloadLink target={"_blank"}
+                   rel={"noreferrer"}
+                   title={`Download ${fullName}`}
+                   download={fullName}
+                   href={window.URL.createObjectURL(new Blob([content], {type: "octet/stream"}))}>
+                    <DownloadIcon/>
+                </DownloadLink>
+            )}
         </Row>
     );
 };
