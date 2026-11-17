@@ -10,8 +10,10 @@ units:
   screwSize: 1.05
   studSize: 1.75
   # the funnels through the case wall in front of the power switch and the USB port (usb_and_swith): half width
-  # where they start, half width at the far end, and how far out the far end is
-  funnelNarrow: 5
+  # where they start, half width at the far end, and how far out the far end is. The start is as wide as the
+  # switchplate's cut-outs for the two parts (the Dwgs.User rectangles in their footprints, 11.2 mm), so the
+  # sides of those openings run straight on into the funnels.
+  funnelNarrow: 5.6
   funnelWide: 25
   funnelDepth: 10
   # How far out from the board edge the funnels start, in every case part. The gap part is only a frame around
@@ -575,8 +577,9 @@ cases:
       extrude: 5
       operation: subtract
       layers: [Dwgs.User]
+    # the USB module's resistors; the receptacle and the switch get the cut-outs in their footprints, below
     - what: pcb
-      name: /modules.(usb|power_switch)/
+      name: /modules.usb.USB_R/
       extrude: 5
       operation: subtract
       expand: 0.1
@@ -598,7 +601,8 @@ cases:
       name: pcb_screw_mounting
       extrude: 5
       operation: subtract
-    # the room the switch lever and the USB plug need, drawn on Dwgs.User in their footprints
+    # the power switch and the USB receptacle, with the room the lever and the plug need: drawn on Dwgs.User in
+    # their footprints, over the whole part
     - what: pcb
       name: /modules.(usb.USB_J1|power_switch(-left)?.BAT_SW1)/
       extrude: 5
