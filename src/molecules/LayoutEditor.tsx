@@ -15,7 +15,7 @@ import {
     Canvas, CenterHandle, Container, EdgeTarget, ErrorText, Key, OutlineBar, RotateHandle, StatusBar, VertexHandle,
 } from "./layout/styles";
 import {fromFrame, nearestKey, shiftFrom, toFrame} from "../utils/keyFrame";
-import ColumnPanel from "./layout/ColumnPanel";
+import ColumnPanel, {Tab} from "./layout/ColumnPanel";
 import OutlinePanel from "./layout/OutlinePanel";
 import {OutlineRequest} from "./NewOutline";
 
@@ -115,6 +115,8 @@ const LayoutEditor = ({request, onRequestDone}: Props): JSX.Element | null => {
     const [transform, setTransform] = useState<Transform | null>(null);
     // the panel at the top right, folded down to its title (it can cover points near the board's top)
     const [panelFolded, setPanelFolded] = useState(false);
+    // the panel's tab: the keys it edits are the ones lit
+    const [panelTab, setPanelTab] = useState<Tab>('column');
     const [outline, setOutline] = useState<string>('');
     const [paths, setPaths] = useState<Record<string, string>>({});
     const [handleAt, setHandleAt] = useState<HandleAt | null>(null);
@@ -294,7 +296,7 @@ const LayoutEditor = ({request, onRequestDone}: Props): JSX.Element | null => {
 
     const startKeyDrag = (e: React.PointerEvent, p: Point) => {
         e.stopPropagation();
-        setSelected({zone: p.meta.zone.name, col: p.meta.col.name});
+        setSelected({zone: p.meta.zone.name, col: p.meta.col.name, row: p.meta.row, mirrored: !!p.meta.mirrored});
         setHint(null);
         if (e.button !== 0) return;
         svgRef.current?.setPointerCapture(e.pointerId);
@@ -625,6 +627,13 @@ const LayoutEditor = ({request, onRequestDone}: Props): JSX.Element | null => {
 
     const commit = (text: string) => configContext.setConfigInput(text);
 
+    // what the panel's tab edits: the picked key (on both halves), its row, its zone, or its column
+    const lit = (p: Point) => !!selected && p.meta.zone.name === selected.zone && (
+        panelTab === 'key' ? p.meta.col.name === selected.col && p.meta.row === selected.row
+            : panelTab === 'row' ? p.meta.row === selected.row
+                : panelTab === 'zone' ? true
+                    : p.meta.col.name === selected.col);
+
     // the rotate handle sits above each side's column, on the line from its pivot
     const handles = selected && columnInfo && !transform
         ? (Object.entries(columnInfo.frames) as [Side, Frame][]).map(([side, frame]) => {
@@ -659,7 +668,7 @@ const LayoutEditor = ({request, onRequestDone}: Props): JSX.Element | null => {
                                     width={p.meta.width - 1}
                                     height={p.meta.height - 1}
                                     rx={1}
-                                    selected={sameColumn(p, selected)}
+                                    selected={lit(p)}
                                     onPointerDown={e => startKeyDrag(e, p)}
                                 >
                                     <title>{name}</title>
@@ -752,6 +761,13 @@ const LayoutEditor = ({request, onRequestDone}: Props): JSX.Element | null => {
                     onCommit={commit}
                     folded={panelFolded}
                     onFold={setPanelFolded}
+                    keysOf={(col, row) => Object.entries(points ?? {})
+                        .filter(([, p]) => p.meta.zone.name === selected.zone && (!col || p.meta.col.name === col) && (!row || p.meta.row === row))
+                        .map(([name]) => name)}
+                    onSelect={setSelected}
+                    onTab={setPanelTab}
+                    keyMeta={Object.values(points ?? {}).find(p => sameColumn(p, selected) && p.meta.row === selected.row
+                        && !!p.meta.mirrored === !!selected.mirrored)?.meta}
                 />
             )}
 

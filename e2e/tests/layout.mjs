@@ -68,4 +68,67 @@ export const tests = [
             assert(furthest(during, after) < 1.5, `the preview (mirror included) should match ergogen, off by up to ${furthest(during, after).toFixed(1)} px`);
         },
     },
+    {
+        name: 'layout: a column and a row are added beside a key, and deleted again',
+        async run(page, {url}) {
+            await freshApp(page, url);
+            await openLayout(page);
+            await page.click((await keyCenters(page)).matrix_col3_row2);
+            await page.press('Column');
+            await page.press('+ Right');
+            await page.until(`'col7' in jsyaml.load(window.monaco.editor.getModels()[0].getValue()).points.zones.matrix.columns`, 30, 'a new column');
+            const columns = Object.keys((await parsed(page)).points.zones.matrix.columns);
+            assert(columns.indexOf('col7') === columns.indexOf('col3') + 1, `col7 should follow col3: ${columns}`);
+            await page.until(`[...document.querySelectorAll('svg title')].some(t => t.textContent === 'matrix_col7_row2')`, 60, 'its keys');
+            const keys = await keyCenters(page);
+            assert(keys.matrix_col7_row2[0] > keys.matrix_col3_row2[0] && keys.matrix_col7_row2[0] < keys.matrix_col4_row2[0], 'the new column should sit between col3 and col4');
+            // it is picked: deleted with its ×
+            await page.ev(`document.querySelector('button[title="Delete column col7"]').click()`);
+            await page.until(`!('col7' in jsyaml.load(window.monaco.editor.getModels()[0].getValue()).points.zones.matrix.columns)`, 30, 'the column to go');
+
+            await page.click((await keyCenters(page)).matrix_col3_row2);
+            await page.press('Row');
+            await page.press('+ Above');
+            await page.until(`'row5' in jsyaml.load(window.monaco.editor.getModels()[0].getValue()).points.zones.matrix.rows`, 30, 'a new row');
+            const rows = Object.keys((await parsed(page)).points.zones.matrix.rows);
+            assert(rows.indexOf('row5') === rows.indexOf('row2') + 1, `row5 should come after row2 (above it): ${rows}`);
+            await page.until(`[...document.querySelectorAll('svg title')].some(t => t.textContent === 'matrix_col3_row5')`, 60, 'its keys');
+            const withRow = await keyCenters(page);
+            assert(withRow.matrix_col3_row5[1] < withRow.matrix_col3_row2[1] && withRow.matrix_col3_row5[1] > withRow.matrix_col3_row1[1], 'the new row should sit between row2 and row1');
+            await page.ev(`document.querySelector('button[title="Delete row row5"]').click()`);
+            await page.until(`!('row5' in jsyaml.load(window.monaco.editor.getModels()[0].getValue()).points.zones.matrix.rows)`, 30, 'the row to go');
+            const left = await parsed(page);
+            assert(Object.keys(left.points.zones.matrix.columns).length === 7 && Object.keys(left.points.zones.matrix.rows).length === 5, 'the other columns and rows should stay');
+        },
+    },
+    {
+        name: "layout: a key's own width and shift are set, and it is hidden and brought back",
+        async run(page, {url}) {
+            await freshApp(page, url);
+            await openLayout(page);
+            const col = `jsyaml.load(window.monaco.editor.getModels()[0].getValue()).points.zones.matrix.columns.col3`;
+            const keyWidth = `(() => { const t = [...document.querySelectorAll('svg title')].find(t => t.textContent === 'matrix_col3_row2'); return t && t.parentElement.getBoundingClientRect().width })()`;
+            const before = await page.ev(keyWidth);
+            await page.click((await keyCenters(page)).matrix_col3_row2);
+            await page.press('Key');
+            const box = name => `[...document.querySelectorAll('label.field')].find(l => l.querySelector('.label').textContent === '${name}').querySelector('input')`;
+            await page.ev(`${box('Width')}.focus()`);
+            await page.type('1.5kx');
+            await page.key('Enter', 'Enter', 13);
+            await page.until(`${col}['rows.row2.width'] === '1.5kx'`, 30, 'the width to be written');
+            await page.until(`${keyWidth} > ${before} * 1.3`, 60, 'the key to widen');
+            await page.ev(`${box('Shift Y')}.focus()`);
+            await page.type('2');
+            await page.key('Enter', 'Enter', 13);
+            await page.until(`JSON.stringify(${col}['rows.row2.shift']) === '[0,2]'`, 30, 'the shift to be written');
+
+            await page.press('Hide key');
+            await page.until(`${col}['rows.row2.skip'] === true`, 30, 'skip to be written');
+            await page.until(`![...document.querySelectorAll('svg title')].some(t => t.textContent === 'matrix_col3_row2')`, 60, 'the key to go');
+            await page.press('Column');
+            await page.press('row2 ↺');
+            await page.until(`${col}['rows.row2.skip'] === false`, 30, 'skip: false');
+            await page.until(`[...document.querySelectorAll('svg title')].some(t => t.textContent === 'matrix_col3_row2')`, 60, 'the key to come back');
+        },
+    },
 ];

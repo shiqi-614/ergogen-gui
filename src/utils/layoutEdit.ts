@@ -77,6 +77,56 @@ export const findSite = (text: string, zone: string, col: string, attr: Attr): E
     return insertInto(text, colNode, `key.${attr}`);
 };
 
+// What one key sets for itself
+export type KeyAttr = 'width' | 'height' | 'rotate' | 'shift' | 'skip';
+
+// Finds what key <zone>_<col>_<row> sets for itself: points.zones.<zone>.columns.<col>.rows.<row>.<attr>, in
+// any of the ways it can be written (rows: {row1: {width: 2}}, rows.row1: {width: 2}, rows.row1.width: 2,
+// rows: {row1.width: 2}). If the key doesn't set it, the site adds it next to what the key does set, else as
+// rows.<row>.<attr> in the column. A shift's site is its whole [x, y] list.
+export const findKeySite = (text: string, zone: string, col: string, row: string, attr: KeyAttr): EditSite | string => {
+    const doc = parseDocument(text, {keepCstNodes: true});
+    if (doc.errors.length) return 'the config has YAML errors';
+    const columns = doc.getIn(['points', 'zones', zone, 'columns'], true);
+    if (!isBlockMap(columns)) return `points.zones.${zone}.columns is not a plain map`;
+    const colPair = findPair(columns, col);
+    if (!colPair) return `column ${col} is not written out in the config`;
+    const line = `rows.${row}.${attr}`;
+    if (colPair.value === null) {
+        const keyStart = (colPair.key as Scalar).range?.[0] ?? 0;
+        const at = endOfLine(text, keyStart);
+        const indent = ' '.repeat(columnOf(text, keyStart) + 2);
+        return {start: at, end: at, render: v => `\n${indent}${line}: ${v}`};
+    }
+    const colMap = colPair.value;
+    if (!isBlockMap(colMap)) return `column ${col} is not a plain map`;
+    const rowsPair = findPair(colMap, 'rows');
+    const rowsMap = isBlockMap(rowsPair?.value) ? rowsPair!.value as YAMLMap : undefined;
+    if (rowsPair && rowsPair.value !== null && !rowsMap) return `the rows of column ${col} are not a plain map`;
+    // the maps this key's settings can be in, and the prefix they have there
+    const own = [findPair(colMap, `rows.${row}`)?.value, rowsMap && findPair(rowsMap, row)?.value]
+        .filter((m): m is YAMLMap => isBlockMap(m));
+    const places: [YAMLMap, string][] = [[colMap, `rows.${row}.`], ...own.map(m => [m, ''] as [YAMLMap, string])];
+    if (rowsMap) places.push([rowsMap, `${row}.`]);
+    for (const [map, prefix] of places) {
+        const pair = findPair(map, prefix + attr);
+        if (!pair) continue;
+        if (pair.value instanceof Scalar) return replaceScalar(text, pair.value);
+        const range = (pair.value as YAMLSeq | null)?.cstNode?.valueRange;
+        if (!range) return `its ${attr} is not a plain value`;
+        return {start: range.start, end: range.end, raw: text.slice(range.start, range.end), render: v => v};
+    }
+    if (own.length) return insertInto(text, own[0], attr);
+    if (rowsMap) return insertInto(text, rowsMap, `${row}.${attr}`);
+    return insertInto(text, colMap, line);
+};
+
+// The two values of a shift written [x, y]
+export const splitShift = (raw: string | undefined): [string, string] | null => {
+    const m = raw?.trim().match(/^\[([^,\]]*),([^,\]]*)\]$/);
+    return m ? [m[1].trim(), m[2].trim()] : null;
+};
+
 // Finds points.zones.<zone>.anchor.shift, nested or dotted, as a two-number list.
 // The edits write both numbers, adding the shift (or the whole anchor) when it is missing.
 export type AnchorShift = {
@@ -737,6 +787,95 @@ export const deleteCase = (text: string, name: string, mirrors = true): string =
 
 // A case mirrored from another (for the other half of a split board)
 export const mirrorCaseLines = (from: string) => ['mirror:', `  from: ${from}`];
+
+// the comment lines right above a line go with what follows them
+const withComments = (text: string, start: number) => {
+    while (start > 0) {
+        const previous = lineStartOf(text, start - 1);
+        if (!/^[ \t]*#/.test(text.slice(previous, start))) break;
+        start = previous;
+    }
+    return start;
+};
+
+// Adds <name> with the given lines (relative to the name's indentation) to the map at path, right before or
+// after its entry <beside>, in the map's order
+export const insertEntry = (text: string, path: string[], name: string, lines: string[], beside: string, after: boolean): string => {
+    const doc = parseDocument(text, {keepCstNodes: true});
+    if (doc.errors.length) throw new Error('the config has YAML errors');
+    if (!/^[A-Za-z_][\w-]*$/.test(name)) throw new Error(`"${name}" can't be a name here: use letters, digits, _ or -`);
+    const map = doc.getIn(path, true);
+    if (!isBlockMap(map)) throw new Error(`${path.join('.')} is not a plain map`);
+    if (findPair(map, name)) throw new Error(`there already is a ${path.join('.')}.${name}`);
+    const pairs = map.items as Pair[];
+    const index = pairs.findIndex(pair => pair.key instanceof Scalar && String(pair.key.value) === beside);
+    if (index < 0) throw new Error(`${path.join('.')} has no ${beside}`);
+    if (after && index === pairs.length - 1) return appendEntry(text, path, name, lines);
+    const keyStart = (pairs[after ? index + 1 : index].key as Scalar).range?.[0];
+    if (keyStart === undefined) throw new Error(`can't find ${path.join('.')}.${beside} in the text`);
+    const pad = ' '.repeat(columnOf(text, keyStart));
+    const at = withComments(text, lineStartOf(text, keyStart));
+    return text.slice(0, at) + [`${pad}${name}:`, ...lines.map(line => `${pad}  ${line}`)].join('\n') + '\n' + text.slice(at);
+};
+
+// A name for one more of names: <prefix><n> with n one past the highest there is
+export const nextName = (names: string[], prefix: string) => {
+    const numbers = names.map(n => n.startsWith(prefix) ? Number(n.slice(prefix.length)) : NaN).filter(n => Number.isInteger(n));
+    let n = numbers.length ? Math.max(...numbers) + 1 : names.length;
+    while (names.includes(`${prefix}${n}`)) n++;
+    return `${prefix}${n}`;
+};
+
+// Deletes points.zones.<zone>.columns.<col>
+export const deleteColumn = (text: string, zone: string, col: string): string => {
+    const doc = parseDocument(text, {keepCstNodes: true});
+    const columns = doc.getIn(['points', 'zones', zone, 'columns'], true);
+    if (isBlockMap(columns) && columns.items.length < 2) throw new Error(`${col} is the only column of ${zone}`);
+    return deleteEntry(text, ['points', 'zones', zone, 'columns'], col);
+};
+
+// Deletes points.zones.<zone>.rows.<row>, and what the zone's columns set for that row (rows.<row>.skip: …,
+// or <row> in their rows map)
+export const deleteRow = (text: string, zone: string, row: string): string => {
+    const doc = parseDocument(text, {keepCstNodes: true});
+    if (doc.errors.length) throw new Error('the config has YAML errors');
+    const rows = doc.getIn(['points', 'zones', zone, 'rows'], true);
+    if (!isBlockMap(rows)) throw new Error(`points.zones.${zone}.rows is not a plain map`);
+    const rowPairs = rows.items as Pair[];
+    const index = rowPairs.findIndex(pair => pair.key instanceof Scalar && String(pair.key.value) === row);
+    if (index < 0) throw new Error(`${zone} has no row ${row}`);
+    if (rowPairs.length < 2) throw new Error(`${row} is the only row of ${zone}`);
+    const ranges: Range[] = [itemLines(text, rowPairs[index], rowPairs[index + 1])];
+    const columns = doc.getIn(['points', 'zones', zone, 'columns'], true);
+    for (const colPair of isBlockMap(columns) ? columns.items as Pair[] : []) {
+        if (!isBlockMap(colPair.value)) continue;
+        const pairs = colPair.value.items as Pair[];
+        pairs.forEach((pair, i) => {
+            const key = pair.key instanceof Scalar ? String(pair.key.value) : '';
+            if (key === `rows.${row}` || key.startsWith(`rows.${row}.`)) {
+                ranges.push(itemLines(text, pair, pairs[i + 1]));
+            } else if (key === 'rows' && isBlockMap(pair.value)) {
+                const own = pair.value.items as Pair[];
+                const of = own.map(p => p.key instanceof Scalar && (String(p.key.value) === row || String(p.key.value).startsWith(`${row}.`)));
+                if (!of.some(Boolean)) return;
+                // the column's whole rows map, when that row was all it had
+                if (of.every(Boolean)) ranges.push(itemLines(text, pair, pairs[i + 1]));
+                else own.forEach((p, j) => of[j] && ranges.push(itemLines(text, p, own[j + 1])));
+            }
+        });
+    }
+    const shared = ranges.flatMap(range => anchorsUsedElsewhere(text, range));
+    if (shared.length) throw new Error(`it defines ${shared.map(a => `&${a}`).join(', ')}, which other parts of the config still use`);
+    return removeRanges(text, ranges);
+};
+
+// The lines of the config that name any of the given keys (an anchor's ref, an outline's point, a footprint's
+// where), as "line: text", to say what a deleted column or row leaves without its key
+export const keyMentions = (text: string, keys: string[]): string[] => {
+    if (!keys.length) return [];
+    const pattern = new RegExp(`(^|[^\\w])(${keys.map(k => k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')})(?![\\w])`);
+    return text.split('\n').flatMap((line, i) => pattern.test(line.replace(/#.*/, '')) ? [`${i + 1}: ${line.trim()}`] : []);
+};
 
 export const applyEdits = (text: string, edits: Edit[]) =>
     [...edits]

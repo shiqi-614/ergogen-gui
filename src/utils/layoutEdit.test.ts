@@ -1,5 +1,6 @@
 import {expect, it} from "vitest";
-import {addOutline, caseLines, caseReferences, deleteCase, insertIntoStack, mirrorCaseLines, stacksWith, addPcbOutline, appendEntry, appendListItem, appendOutline, applyEdits, deleteEntry, deleteListItem, deleteOutline, deleteOutlinePart, findAnchorShift, findChildShift, findChildValue, findItemSites, findPartSites, findShift, findSite, findValue, findWhereList, formatLength, insertPolygonPoint, moveListItem, nudge, outlineReferences, parseLength, partLines, pcbOutlines, plateLines, removePolygonPoint, EditSite} from "./layoutEdit";
+import yaml from "js-yaml";
+import {findKeySite, splitShift, deleteColumn, deleteRow, insertEntry, keyMentions, nextName, addOutline, caseLines, caseReferences, deleteCase, insertIntoStack, mirrorCaseLines, stacksWith, addPcbOutline, appendEntry, appendListItem, appendOutline, applyEdits, deleteEntry, deleteListItem, deleteOutline, deleteOutlinePart, findAnchorShift, findChildShift, findChildValue, findItemSites, findPartSites, findShift, findSite, findValue, findWhereList, formatLength, insertPolygonPoint, moveListItem, nudge, outlineReferences, parseLength, partLines, pcbOutlines, plateLines, removePolygonPoint, EditSite} from "./layoutEdit";
 
 const config = `points:
   zones:
@@ -547,4 +548,78 @@ assemblies:
     stack: [left_bottom]
 `);
     expect(deleteCase(cases, 'right_top', false)).toContain('  left_top:\n    mirror:\n      from: right_top');
+});
+
+const ZONE = `points:
+  zones:
+    matrix:
+      columns:
+        col0:
+          key.stagger: 1
+          rows.row1.skip: true
+        # the middle one
+        col1:
+          rows:
+            row1:
+              width: 2
+        col2:
+          rows.row0.skip: true
+          rows:
+            row1.skip: true
+            row0.width: 2
+      rows:
+        row0:
+        row1:
+outlines:
+  board:
+    - what: rectangle
+      where: matrix_col1_row1
+`;
+
+it('adds a column before or after another, comments staying with theirs', () => {
+    const before = insertEntry(ZONE, ['points', 'zones', 'matrix', 'columns'], 'col3', ['key.stagger: 0'], 'col1', false);
+    expect(before).toContain('          rows.row1.skip: true\n        col3:\n          key.stagger: 0\n        # the middle one\n        col1:');
+    const after = insertEntry(ZONE, ['points', 'zones', 'matrix', 'columns'], 'col3', [], 'col2', true);
+    expect(Object.keys((yaml.load(after) as any).points.zones.matrix.columns)).toEqual(['col0', 'col1', 'col2', 'col3']);
+    const row = insertEntry(ZONE, ['points', 'zones', 'matrix', 'rows'], 'row2', [], 'row1', true);
+    expect(Object.keys((yaml.load(row) as any).points.zones.matrix.rows)).toEqual(['row0', 'row1', 'row2']);
+    expect(nextName(['col0', 'col1', 'col2'], 'col')).toBe('col3');
+    expect(nextName(['left', 'right'], 'col')).toBe('col2');
+});
+
+it('deletes a column, and a row with what each column sets for it', () => {
+    const noCol = yaml.load(deleteColumn(ZONE, 'matrix', 'col1')) as any;
+    expect(Object.keys(noCol.points.zones.matrix.columns)).toEqual(['col0', 'col2']);
+    const noRow = yaml.load(deleteRow(ZONE, 'matrix', 'row1')) as any;
+    const columns = noRow.points.zones.matrix.columns;
+    expect(Object.keys(noRow.points.zones.matrix.rows)).toEqual(['row0']);
+    expect(columns.col0).toEqual({'key.stagger': 1});
+    expect(columns.col1).toBeNull();
+    expect(columns.col2).toEqual({'rows.row0.skip': true, rows: {'row0.width': 2}});
+    expect(() => deleteRow(deleteRow(ZONE, 'matrix', 'row1'), 'matrix', 'row0')).toThrow(/only row/);
+    expect(keyMentions(ZONE, ['matrix_col1_row1'])).toEqual(['24: where: matrix_col1_row1']);
+    expect(keyMentions(ZONE, ['matrix_col1_row0'])).toEqual([]);
+});
+
+it("finds and adds a key's own settings, however its rows are written", () => {
+    const value = (attr: Parameters<typeof findKeySite>[4], col: string, row: string) => {
+        const site = findKeySite(ZONE, 'matrix', col, row, attr);
+        if (typeof site === 'string') throw new Error(site);
+        return site;
+    };
+    // written: dotted in the column, in a nested rows map, dotted in a nested rows map
+    expect(value('skip', 'col0', 'row1').raw).toBe('true');
+    expect(value('width', 'col1', 'row1').raw).toBe('2');
+    expect(value('skip', 'col2', 'row1').raw).toBe('true');
+    expect(value('skip', 'col2', 'row0').raw).toBe('true');
+    // added next to what the key sets, else in its column's rows, else to the column
+    const load = (site: EditSite, v: string) => (yaml.load(applyEdits(ZONE, [{site, value: v}])) as any).points.zones.matrix.columns;
+    expect(load(value('height', 'col1', 'row1'), '3').col1.rows.row1).toEqual({height: 3, width: 2});
+    expect(load(value('width', 'col2', 'row0'), '3').col2.rows['row0.width']).toBe(3);
+    expect(load(value('rotate', 'col2', 'row1'), '9').col2.rows['row1.rotate']).toBe(9);
+    expect(load(value('shift', 'col0', 'row0'), '[1, 2]').col0['rows.row0.shift']).toEqual([1, 2]);
+    const shift = findKeySite('points:\n  zones:\n    z:\n      columns:\n        c:\n          rows.r:\n            shift: [0, -0.2kx]\n',
+        'z', 'c', 'r', 'shift') as EditSite;
+    expect(splitShift(shift.raw)).toEqual(['0', '-0.2kx']);
+    expect(findKeySite('points:\n  zones:\n    z:\n      columns:\n        c:\n', 'z', 'c', 'r', 'skip')).toMatchObject({start: expect.any(Number)});
 });

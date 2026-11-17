@@ -10,6 +10,7 @@
 # testing
 /coverage
 /e2e/failures
+/e2e/.cache
 
 # production
 /build

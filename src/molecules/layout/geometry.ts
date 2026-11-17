@@ -25,7 +25,8 @@ export type Meta = {
 export type Point = { x: number, y: number, r: number, meta: Meta };
 export type Points = Record<string, Point>;
 export type Units = Record<string, number>;
-export type Column = { zone: string, col: string };
+// a column, and the row and half (mirrored or not) of the key it was picked by
+export type Column = { zone: string, col: string, row?: string, mirrored?: boolean };
 export type View = { x: number, y: number, w: number, h: number };
 export type Vec = { x: number, y: number };
 export type Side = 'source' | 'mirror';

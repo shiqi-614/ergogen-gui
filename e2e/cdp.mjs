@@ -50,6 +50,57 @@ export class Cdp {
 
 const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
 
+// What ergogen fetches from GitHub (its footprint libraries), kept on disk for the tests: GitHub allows 60 API calls
+// an hour without a token, and each test starts the app afresh. A file of a commit never changes; the rest (a
+// branch's head, a file of main) is fetched again after an hour, and an old copy serves while GitHub doesn't answer.
+const GITHUB_CACHE = new URL('./.cache/github/', import.meta.url);
+const FRESH_MS = 60 * 60 * 1000;
+
+const githubCache = async () => {
+    const {mkdir, readFile, writeFile} = await import('node:fs/promises');
+    const {createHash} = await import('node:crypto');
+    await mkdir(GITHUB_CACHE, {recursive: true});
+    const fileOf = key => new URL(createHash('sha1').update(key).digest('hex') + '.json', GITHUB_CACHE);
+    return {
+        get: async key => { try { return JSON.parse(await readFile(fileOf(key), 'utf8')); } catch { return null; } },
+        set: (key, entry) => writeFile(fileOf(key), JSON.stringify(entry)),
+    };
+};
+
+// a file of a commit, or a commit's list of files
+const fixed = url => /^https:\/\/raw\.githubusercontent\.com\/[^/]+\/[^/]+\/[0-9a-f]{40}\//.test(url)
+    || /\/git\/trees\/[0-9a-f]{40}/.test(url);
+
+const serveGithub = async (cdp, cache, {requestId, request}) => {
+    const accept = request.headers.Accept ?? request.headers.accept ?? '';
+    const key = `${request.method} ${request.url} ${accept}`;
+    const kept = await cache.get(key);
+    const fulfill = entry => cdp.send('Fetch.fulfillRequest', {
+        requestId, responseCode: entry.status, body: entry.body,
+        responseHeaders: [{name: 'Content-Type', value: entry.type}, {name: 'Access-Control-Allow-Origin', value: '*'}],
+    });
+    if (kept && (fixed(request.url) || Date.now() - kept.at < FRESH_MS)) return fulfill(kept);
+    try {
+        // some connections to GitHub hang: give each try 10 s
+        let response;
+        for (let tries = 4; !response; tries--) {
+            try {
+                response = await fetch(request.url, {method: request.method, headers: accept ? {Accept: accept} : {}, signal: AbortSignal.timeout(10000)});
+            } catch (error) {
+                if (tries <= 1) throw error;
+            }
+        }
+        const entry = {status: response.status, type: response.headers.get('content-type') ?? 'text/plain',
+            body: Buffer.from(await response.arrayBuffer()).toString('base64'), at: Date.now()};
+        if (response.ok) await cache.set(key, entry);
+        else if (kept) return fulfill(kept);
+        return fulfill(entry);
+    } catch {
+        if (kept) return fulfill(kept);
+        return cdp.send('Fetch.failRequest', {requestId, errorReason: 'Failed'});
+    }
+};
+
 // One browser tab, driven the way a person would: page JS for reading state, CDP input events for clicks
 export class Page {
     constructor(cdp, log) {
@@ -64,6 +115,9 @@ export class Page {
         page.targetId = target.id;
         await page.cdp.send('Page.enable');
         await page.cdp.send('Runtime.enable');
+        const cache = await githubCache();
+        page.cdp.on('Fetch.requestPaused', paused => serveGithub(page.cdp, cache, paused).catch(() => {}));
+        await page.cdp.send('Fetch.enable', {patterns: [{urlPattern: 'https://api.github.com/*'}, {urlPattern: 'https://raw.githubusercontent.com/*'}]});
         await page.cdp.send('Emulation.setDeviceMetricsOverride', {width: 1600, height: 1000, deviceScaleFactor: 1, mobile: false});
         // confirm() before a delete: say yes
         page.cdp.on('Page.javascriptDialogOpening', ({message}) => {
