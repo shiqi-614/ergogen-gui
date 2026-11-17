@@ -8,7 +8,7 @@ type PointLike = { x: number, y: number, r: number, meta?: { mirrored?: boolean 
 
 // An anchor in the config, where it ends up, and the frame (degrees) its shift is applied in
 export type OutlineHandle = {
-    kind: 'vertex' | 'center',
+    kind: 'vertex' | 'center' | 'part',
     key: string,
     // the key the anchor is written relative to, when it names one
     ref?: string,
@@ -122,6 +122,56 @@ export const outlineHandles = (
         }
     }
     return {handles, polygons, skipped};
+};
+
+// The parts of a pcb placed by an anchor (its modules, and footprints with a where like
+// {ref, shift, rotate}), once for each half they are on. This fork leaves asym: clone parts off the
+// pcb itself and asym: source ones off a pcb mirrored from it; others are on both halves, the
+// mirrored one placed from the mirrored keys. Footprints that follow keys (where: true, a list of
+// key names, a regex) are not anchors and are left out.
+export type PartHandle = OutlineHandle & { name: string, section: string, file: string, half: 'source' | 'mirror' };
+
+export const pcbPartHandles = (
+    config: any, pcb: string, points: Record<string, PointLike>, evaluate: Evaluate
+): { handles: PartHandle[], skipped: string[] } => {
+    const handles: PartHandle[] = [];
+    const skipped: string[] = [];
+    const pcbConfig = config?.pcbs?.[pcb];
+    if (!pcbConfig || typeof pcbConfig !== 'object') return {handles, skipped};
+    for (const section of ['modules', 'footprints']) {
+        const entries = Object.entries(pcbConfig[section] ?? {}) as [string, any][];
+        for (const [name, part] of entries) {
+            const where = part?.where;
+            if (!where || typeof where !== 'object' || Array.isArray(where)) continue;
+            const file = String(part?.what?.github?.file ?? part?.what ?? name).split('/').pop() ?? name;
+            const path = ['pcbs', pcb, section, name, 'where'];
+            const halves: ('source' | 'mirror')[] = [];
+            if (part.asym !== 'clone') halves.push('source');
+            if (part.asym !== 'source') halves.push('mirror');
+            for (const half of halves) {
+                let raw = where;
+                if (half === 'mirror') {
+                    const ref = refOf(where);
+                    if (!ref || !points[`mirror_${ref}`]) continue;
+                    raw = {...where, ref: `mirror_${ref}`};
+                }
+                try {
+                    const placed = resolveAnchor(raw, points, ORIGIN, evaluate);
+                    if (!placed) {
+                        skipped.push(`${section}.${name}`);
+                        continue;
+                    }
+                    handles.push({
+                        kind: 'part', key: `${path.join('.')}@${half}`, path, label: `${section}.${name}`, ref: refOf(raw),
+                        at: placed.at, frame: placed.frame, name, section, file, half,
+                    });
+                } catch (e: unknown) {
+                    skipped.push(`${section}.${name}`);
+                }
+            }
+        }
+    }
+    return {handles, skipped};
 };
 
 // The corners of every key that the convex hull of the keys passes through, each as a shift from

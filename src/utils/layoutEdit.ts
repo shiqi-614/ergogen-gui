@@ -213,24 +213,26 @@ export type NewPoint = { ref: string, shift: [string, string] };
 
 // Adds a polygon outline at the end of the outlines section (or a new outlines section at the
 // end of the config), in the same ref + shift form as hand-written ones, so it follows its keys
-// Adds outlines.<name> with the given parts, written as lines relative to the name's indentation,
-// at the end of the outlines section (or in a new outlines section at the end of the config)
-export const appendOutline = (text: string, name: string, lines: string[]): string => {
+// Adds <name> with the given lines (relative to the name's indentation) as the last entry of the
+// map at path, before the blank lines that separate it from what follows. A missing top-level map
+// is started at the end of the config.
+export const appendEntry = (text: string, path: string[], name: string, lines: string[]): string => {
     const doc = parseDocument(text, {keepCstNodes: true});
     if (doc.errors.length) throw new Error('the config has YAML errors');
-    if (!/^[A-Za-z_][\w-]*$/.test(name)) throw new Error(`"${name}" can't be an outline name`);
-    const outlines = doc.get('outlines', true);
-    if (outlines !== undefined && outlines !== null && !isBlockMap(outlines)) throw new Error('outlines is not a plain map');
-    if (isBlockMap(outlines) && findPair(outlines, name)) throw new Error(`there already is an outline called ${name}`);
+    if (!/^[A-Za-z_][\w-]*$/.test(name)) throw new Error(`"${name}" can't be a name here: use letters, digits, _ or -`);
+    const map = doc.getIn(path, true);
+    if (map !== undefined && map !== null && !isBlockMap(map)) throw new Error(`${path.join('.')} is not a plain map`);
+    if (isBlockMap(map) && findPair(map, name)) throw new Error(`there already is a ${path.join('.')}.${name}`);
+    if (!isBlockMap(map) && path.length > 1) throw new Error(`the config has no ${path.join('.')} section to add to`);
 
-    const first = isBlockMap(outlines) ? (outlines.items[0] as Pair | undefined)?.key : undefined;
+    const first = isBlockMap(map) ? (map.items[0] as Pair | undefined)?.key : undefined;
     const indent = first instanceof Scalar && first.range ? columnOf(text, first.range[0]) : 2;
     const pad = (n: number) => ' '.repeat(indent + n);
     const body = [`${pad(0)}${name}:`, ...lines.map(line => `${pad(2)}${line}`)].join('\n') + '\n';
 
-    if (isBlockMap(outlines) && outlines.range) {
-        // after the last outline, but before the blank lines that separate it from what follows
-        let at = outlines.range[1];
+    if (isBlockMap(map) && map.range) {
+        // after the last entry, but before the blank lines that separate it from what follows
+        let at = map.range[1];
         // the map can end partway into a line of spaces: start from the beginning of that line
         const lineOfEnd = text.lastIndexOf('\n', at - 1) + 1;
         if (/^[ \t]*$/.test(text.slice(lineOfEnd, at))) at = lineOfEnd;
@@ -244,8 +246,29 @@ export const appendOutline = (text: string, name: string, lines: string[]): stri
         return text.slice(0, at) + body + text.slice(at);
     }
     const ending = text.endsWith('\n') ? '' : '\n';
-    return `${text}${ending}outlines:\n${body}`;
+    return `${text}${ending}${path[0]}:\n${body}`;
 };
+
+// Adds outlines.<name> with the given parts
+export const appendOutline = (text: string, name: string, lines: string[]): string => {
+    if (!/^[A-Za-z_][\w-]*$/.test(name)) throw new Error(`"${name}" can't be an outline name`);
+    try {
+        return appendEntry(text, ['outlines'], name, lines);
+    } catch (e: unknown) {
+        throw new Error(String(e instanceof Error ? e.message : e).replace(/^there already is a outlines\./, 'there already is an outline called '));
+    }
+};
+
+// A part placed on a pcb: what it is (a file in a GitHub repo) and where, as a shift from a key
+export const partLines = (repo: string, file: string, ref: string, shift: [string, string]) => [
+    'what:',
+    '  github:',
+    `    repo: "${repo}"`,
+    `    file: "${file}"`,
+    'where:',
+    `  ref: ${ref}`,
+    `  shift: [${shift[0]}, ${shift[1]}]`,
+];
 
 // A polygon outline in the same ref + shift form as hand-written ones, so it follows its keys
 export const addOutline = (text: string, name: string, points: NewPoint[]): string => appendOutline(text, name, [
@@ -388,10 +411,15 @@ export const deleteOutline = (text: string, name: string, withReferences: boolea
 };
 
 // Deletes one part (a list item, or a named part) of outlines.<name>
-export const deleteOutlinePart = (text: string, name: string, key: string | number): string => {
+export const deleteOutlinePart = (text: string, name: string, key: string | number): string =>
+    deleteEntry(text, ['outlines', name], key);
+
+// Deletes the list item or map key <key> of the node at path, unless it defines YAML anchors
+// that something else still uses
+export const deleteEntry = (text: string, path: (string | number)[], key: string | number): string => {
     const doc = parseDocument(text, {keepCstNodes: true});
     if (doc.errors.length) throw new Error('the config has YAML errors');
-    const node = doc.getIn(['outlines', name], true);
+    const node = doc.getIn(path, true);
     let range: Range | undefined;
     if (node instanceof YAMLSeq && typeof key === 'number' && node.items[key]) {
         range = itemLines(text, node.items[key] as YAMLMap, node.items[key + 1]);
@@ -400,10 +428,131 @@ export const deleteOutlinePart = (text: string, name: string, key: string | numb
         const index = pairs.findIndex(pair => pair.key instanceof Scalar && String(pair.key.value) === String(key));
         if (index >= 0) range = itemLines(text, pairs[index], pairs[index + 1]);
     }
-    if (!range) throw new Error(`outlines.${name} has no part ${key}`);
+    if (!range) throw new Error(`${path.join('.')} has no ${typeof key === 'number' ? 'part' : 'entry'} ${key}`);
     const shared = anchorsUsedElsewhere(text, range);
-    if (shared.length) throw new Error(`the part defines ${shared.map(a => `&${a}`).join(', ')}, which other parts of the config still use`);
+    if (shared.length) throw new Error(`it defines ${shared.map(a => `&${a}`).join(', ')}, which other parts of the config still use`);
     return removeRanges(text, [range]);
+};
+
+// A key of the map at path: its value's site, or where to add it
+export const findValue = (text: string, path: (string | number)[], key: string): EditSite | string => {
+    const doc = parseDocument(text, {keepCstNodes: true});
+    if (doc.errors.length) return 'the config has YAML errors';
+    const node = doc.getIn(path, true);
+    if (!isBlockMap(node)) return `${path.join('.')} is not a plain map`;
+    const pair = findPair(node, key);
+    return pair ? replaceScalar(text, pair.value) : insertInto(text, node, key);
+};
+
+// <child>.<key> of the map at path, written nested (adjust: {rotate: 1}) or dotted (adjust.rotate: 1).
+// A missing one is added: into <child> when there is one, otherwise as a dotted key.
+const childOf = (text: string, path: (string | number)[], child: string) => {
+    const doc = parseDocument(text, {keepCstNodes: true});
+    if (doc.errors.length) return 'the config has YAML errors';
+    const node = doc.getIn(path, true);
+    if (!isBlockMap(node)) return `${path.join('.')} is not a plain map`;
+    const childPair = findPair(node, child);
+    if (childPair && !isBlockMap(childPair.value)) return `${child} is not a plain map`;
+    return {node, childMap: childPair?.value as YAMLMap | undefined};
+};
+
+export const findChildValue = (text: string, path: (string | number)[], child: string, key: string): EditSite | string => {
+    const found = childOf(text, path, child);
+    if (typeof found === 'string') return found;
+    const dotted = findPair(found.node, `${child}.${key}`);
+    if (dotted) return replaceScalar(text, dotted.value);
+    if (found.childMap) {
+        const pair = findPair(found.childMap, key);
+        return pair ? replaceScalar(text, pair.value) : insertInto(text, found.childMap, key);
+    }
+    return insertInto(text, found.node, `${child}.${key}`);
+};
+
+export const findChildShift = (text: string, path: (string | number)[], child: string): AnchorShift | string => {
+    const found = childOf(text, path, child);
+    if (typeof found === 'string') return found;
+    const dotted = findPair(found.node, `${child}.shift`);
+    if (dotted) return shiftList(text, dotted.value);
+    if (found.childMap) {
+        const pair = findPair(found.childMap, 'shift');
+        return pair ? shiftList(text, pair.value) : insertShift(insertInto(text, found.childMap, 'shift'));
+    }
+    return insertShift(insertInto(text, found.node, `${child}.shift`));
+};
+
+// The keys a footprint is on, when its where is a list of key names (or one name): where to
+// write a new list, in the same flow style
+export const findWhereList = (text: string, path: (string | number)[]): { names: string[], site: EditSite } | string => {
+    const doc = parseDocument(text, {keepCstNodes: true});
+    if (doc.errors.length) return 'the config has YAML errors';
+    const node = doc.getIn(path, true);
+    if (!isBlockMap(node)) return `${path.join('.')} is not a plain map`;
+    const pair = findPair(node, 'where');
+    const value = pair?.value;
+    if (value instanceof Scalar && typeof value.value === 'string' && !value.value.startsWith('/')) {
+        const site = replaceScalar(text, value);
+        return typeof site === 'string' ? site : {names: [value.value], site};
+    }
+    const range = value instanceof YAMLSeq ? value.cstNode?.valueRange : null;
+    if (value instanceof YAMLSeq && value.type === 'FLOW_SEQ' && range && value.items.every(i => i instanceof Scalar && typeof i.value === 'string')) {
+        // just the [ ... ], not a comment after it
+        const {start, end} = range;
+        return {names: value.items.map(i => String((i as Scalar).value)), site: {start, end, raw: text.slice(start, end), render: v => v}};
+    }
+    return 'its where is not a list of key names written like [a, b]';
+};
+
+// a footprint placed on keys: what it is and the keys it is on
+export const keyFootprintLines = (repo: string, file: string, keys: string[]) => [
+    'what:',
+    '  github:',
+    `    repo: "${repo}"`,
+    `    file: "${file}"`,
+    `where: [${keys.join(', ')}]`,
+];
+
+// The outlines a pcb's board edge is made of: pcbs.<pcb>.outlines, each entry naming one outline
+export const pcbOutlines = (text: string, pcb: string): { key: string, outline: string }[] | string => {
+    const doc = parseDocument(text, {keepCstNodes: true});
+    if (doc.errors.length) return 'the config has YAML errors';
+    const pcbMap = doc.getIn(['pcbs', pcb], true);
+    if (!isBlockMap(pcbMap)) return `pcbs.${pcb} is not a plain map`;
+    const outlines = findPair(pcbMap, 'outlines')?.value;
+    if (outlines === undefined || outlines === null) return [];
+    if (!isBlockMap(outlines)) return `pcbs.${pcb}.outlines is not a plain map`;
+    return (outlines.items as Pair[]).map(pair => {
+        const entry = pair.value;
+        const outline = isBlockMap(entry) ? findPair(entry, 'outline')?.value : undefined;
+        return {key: String((pair.key as Scalar).value), outline: outline instanceof Scalar ? String(outline.value) : ''};
+    });
+};
+
+// Makes outlines.<outline> part of a pcb's board edge: a new entry in pcbs.<pcb>.outlines, which is
+// started (in front of the pcb's other keys) when the pcb has none
+export const addPcbOutline = (text: string, pcb: string, outline: string): string => {
+    const doc = parseDocument(text, {keepCstNodes: true});
+    if (doc.errors.length) throw new Error('the config has YAML errors');
+    const pcbMap = doc.getIn(['pcbs', pcb], true);
+    if (!isBlockMap(pcbMap)) throw new Error(`pcbs.${pcb} is not a plain map`);
+    const pair = findPair(pcbMap, 'outlines');
+    const taken = isBlockMap(pair?.value) ? (pair?.value as YAMLMap).items.map(p => String(((p as Pair).key as Scalar).value)) : [];
+    let key = outline;
+    for (let n = 2; taken.includes(key); n++) key = `${outline}_${n}`;
+    if (isBlockMap(pair?.value)) return appendEntry(text, ['pcbs', pcb, 'outlines'], key, [`outline: ${outline}`]);
+    if (pair && pair.value !== null) throw new Error(`pcbs.${pcb}.outlines is not a plain map`);
+
+    const firstKey = (pcbMap.items[0] as Pair | undefined)?.key;
+    const start = firstKey instanceof Scalar ? firstKey.range?.[0] : undefined;
+    if (start === undefined) throw new Error(`pcbs.${pcb} is empty`);
+    const indent = columnOf(text, start);
+    const pad = (n: number) => ' '.repeat(indent + n);
+    const entry = `${pad(2)}${key}:\n${pad(4)}outline: ${outline}`;
+    if (pair) {
+        // "outlines:" with nothing under it
+        const at = endOfLine(text, (pair.key as Scalar).range?.[0] ?? start);
+        return text.slice(0, at) + '\n' + entry + text.slice(at);
+    }
+    return text.slice(0, start) + `outlines:\n${entry}\n${pad(0)}` + text.slice(start);
 };
 
 export const applyEdits = (text: string, edits: Edit[]) =>

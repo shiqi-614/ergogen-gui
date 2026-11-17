@@ -2,10 +2,13 @@ import {useEffect, useRef, useState} from "react";
 import styled from "styled-components";
 import Loading from "./Loading";
 import Button from "./Button";
+import PcbEditor from "./PcbEditor";
 
 type Props = {
     pcb: string,
-    name?: string
+    name?: string,
+    // the pcb in the config the board is of, so its parts can be edited on it
+    pcbName?: string
 };
 
 type Camera = { x: number, y: number, zoom: number };
@@ -74,7 +77,7 @@ const Failed = styled.div`
   color: #ff6d6d;
 `;
 
-const KicanvasPreview = ({pcb, name = 'preview.kicad_pcb'}: Props): JSX.Element => {
+const KicanvasPreview = ({pcb, name = 'preview.kicad_pcb', pcbName}: Props): JSX.Element => {
     const container = useRef<HTMLDivElement>(null);
     // keeps the view while the board is regenerated after an edit
     const camera = useRef<Camera | null>(null);
@@ -82,6 +85,8 @@ const KicanvasPreview = ({pcb, name = 'preview.kicad_pcb'}: Props): JSX.Element 
     const [status, setStatus] = useState<'loading' | 'shown' | 'failed'>('loading');
     // bumped by Retry, to load the script again
     const [attempt, setAttempt] = useState(0);
+    // the board viewer, once it has drawn this board
+    const [viewer, setViewer] = useState<any>(null);
 
     useEffect(() => {
         const target = container.current;
@@ -89,6 +94,7 @@ const KicanvasPreview = ({pcb, name = 'preview.kicad_pcb'}: Props): JSX.Element 
         let embed: HTMLElement | null = null;
         let cancelled = false;
         setStatus('loading');
+        setViewer(null);
 
         loadKicanvas().then(() => {
             if (cancelled) return;
@@ -117,6 +123,7 @@ const KicanvasPreview = ({pcb, name = 'preview.kicad_pcb'}: Props): JSX.Element 
                     viewer.zoom_to_board();
                 }
                 viewer.draw();
+                if (!cancelled) setViewer(viewer);
             });
             target.replaceChildren(element);
             embed = element;
@@ -138,6 +145,8 @@ const KicanvasPreview = ({pcb, name = 'preview.kicad_pcb'}: Props): JSX.Element 
     return (
         <Container>
             <Board ref={container}/>
+            {/* stays mounted while the board regenerates after an edit, so editing goes on on the new one */}
+            {pcbName && <PcbEditor viewer={status === 'shown' ? viewer : null} pcb={pcbName}/>}
             {pcb && status !== 'shown' && (
                 <Overlay>
                     {status === 'failed'

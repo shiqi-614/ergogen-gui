@@ -1,5 +1,5 @@
 import {expect, it} from "vitest";
-import {keyHull, nearMisses, outlineHandles} from "./outlineGeometry";
+import {keyHull, nearMisses, outlineHandles, pcbPartHandles} from "./outlineGeometry";
 
 const points = {
     a: {x: 0, y: 0, r: 0},
@@ -42,4 +42,26 @@ it('wraps the keys in the corners on their hull', () => {
     };
     const hull = keyHull(keys);
     expect(hull.map(c => `${c.ref} ${c.shift.join(',')}`).sort()).toEqual(['a -9,-9', 'b 9,-9', 'b 9,9', 'c -9,9', 'c 9,9'].sort());
+});
+
+it('places a pcb part on each half it is on', () => {
+    const keys = {
+        a: {x: 0, y: 0, r: 0},
+        mirror_a: {x: 100, y: 0, r: 0, meta: {mirrored: true}},
+    };
+    const config = {pcbs: {right: {
+        modules: {
+            usb: {what: {github: {file: 'usb/usb.kicad_pcb'}}, where: {ref: ['a'], shift: [5, 16], rotate: 90}},
+            only_right: {where: {ref: 'a', shift: [1, 0]}, asym: 'source'},
+            only_left: {where: {ref: 'a', shift: [1, 0]}, asym: 'clone'},
+        },
+        footprints: {keys: {where: true}},
+    }}};
+    const {handles} = pcbPartHandles(config, 'right', keys, Number);
+    expect(handles.map(h => [h.name, h.half, h.at.x, h.at.y, h.at.r, h.file])).toEqual([
+        ['usb', 'source', 5, 16, 90, 'usb.kicad_pcb'],
+        ['usb', 'mirror', 95, 16, -90, 'usb.kicad_pcb'],
+        ['only_right', 'source', 1, 0, 0, 'only_right'],
+        ['only_left', 'mirror', 99, 0, 0, 'only_left'],
+    ]);
 });

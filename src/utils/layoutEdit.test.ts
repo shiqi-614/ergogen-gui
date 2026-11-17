@@ -1,5 +1,5 @@
 import {expect, it} from "vitest";
-import {addOutline, appendOutline, applyEdits, deleteOutline, deleteOutlinePart, findAnchorShift, findPartSites, findShift, findSite, formatLength, insertPolygonPoint, nudge, outlineReferences, parseLength, plateLines, removePolygonPoint, EditSite} from "./layoutEdit";
+import {addOutline, addPcbOutline, appendEntry, appendOutline, applyEdits, deleteEntry, deleteOutline, deleteOutlinePart, findAnchorShift, findChildShift, findChildValue, findPartSites, findShift, findSite, findValue, findWhereList, formatLength, insertPolygonPoint, nudge, outlineReferences, parseLength, partLines, pcbOutlines, plateLines, removePolygonPoint, EditSite} from "./layoutEdit";
 
 const config = `points:
   zones:
@@ -312,4 +312,116 @@ it('deletes a part, but not one whose anchor is still used', () => {
     expect(deleteOutlinePart(used, 'holes', 'b')).toContain('        ref: a\n  board:');
     expect(() => deleteOutlinePart(used, 'holes', 'a')).toThrow(/&pos1/);
     expect(() => deleteOutline(used, 'holes', true)).not.toThrow();
+});
+
+const pcbConfig = `pcbs:
+  right:
+    footprints:
+      hole:
+        what: x
+        where: &pos
+          ref: a
+          shift: [1, 2]
+    modules:
+      usb:
+        what:
+          github:
+            repo: "r"
+            file: "usb.kicad_pcb"
+        where:
+          ref: [a]
+          shift: [0, 16]
+
+cases: {}
+`;
+
+it('adds a part after the last one, as a shift from a key', () => {
+    const out = appendEntry(pcbConfig, ['pcbs', 'right', 'modules'], 'joystick', partLines('r', 'joy.kicad_pcb', 'b', ['3', '-4']));
+    expect(out).toContain(`          shift: [0, 16]
+      joystick:
+        what:
+          github:
+            repo: "r"
+            file: "joy.kicad_pcb"
+        where:
+          ref: b
+          shift: [3, -4]
+
+cases: {}`);
+    expect(() => appendEntry(pcbConfig, ['pcbs', 'right', 'modules'], 'usb', [])).toThrow(/already/);
+    expect(() => appendEntry(pcbConfig, ['pcbs', 'left', 'modules'], 'x', [])).toThrow(/no pcbs.left.modules/);
+});
+
+it('deletes an entry', () => {
+    expect(deleteEntry(pcbConfig, ['pcbs', 'right', 'modules'], 'usb')).toContain('    modules:\n\ncases: {}');
+    expect(() => deleteEntry(pcbConfig, ['pcbs', 'right', 'footprints'], 'hole')).not.toThrow();
+});
+
+const footprints = `pcbs:
+  right:
+    footprints:
+      diodes:
+        what: x
+        where: true
+        adjust:
+          shift: [0, -8.4]
+          rotate: 180
+        side: back
+      stab:
+        what: y
+        where: [thumbs_col2_row5, thumbs_col3_row5] # two keys
+      led:
+        what: z
+        where: matrix_col0_row0
+        adjust.rotate: 90
+`;
+const fp = (name: string) => ['pcbs', 'right', 'footprints', name];
+
+it('finds or adds the adjust of a footprint, nested or dotted', () => {
+    const shift = findChildShift(footprints, fp('diodes'), 'adjust');
+    if (typeof shift === 'string') throw new Error(shift);
+    expect(shift.raw).toEqual(['0', '-8.4']);
+    const ledShift = findChildShift(footprints, fp('led'), 'adjust');
+    if (typeof ledShift === 'string') throw new Error(ledShift);
+    expect(applyEdits(footprints, ledShift.edits('1', '2'))).toContain('      led:\n        adjust.shift: [1, 2]\n        what: z');
+    expect((findChildValue(footprints, fp('led'), 'adjust', 'rotate') as EditSite).raw).toBe('90');
+    expect((findChildValue(footprints, fp('diodes'), 'adjust', 'rotate') as EditSite).raw).toBe('180');
+    expect(applyEdits(footprints, [{site: findChildValue(footprints, fp('stab'), 'adjust', 'rotate') as EditSite, value: '5'}]))
+        .toContain('      stab:\n        adjust.rotate: 5\n        what: y');
+    expect((findValue(footprints, fp('diodes'), 'side') as EditSite).raw).toBe('back');
+});
+
+it('reads and rewrites the keys a footprint is on', () => {
+    const stab = findWhereList(footprints, fp('stab'));
+    const led = findWhereList(footprints, fp('led'));
+    if (typeof stab === 'string' || typeof led === 'string') throw new Error('no list');
+    expect(stab.names).toEqual(['thumbs_col2_row5', 'thumbs_col3_row5']);
+    expect(applyEdits(footprints, [{site: stab.site, value: '[thumbs_col2_row5]'}])).toContain('        where: [thumbs_col2_row5] # two keys\n');
+    expect(led.names).toEqual(['matrix_col0_row0']);
+    expect(findWhereList(footprints, fp('diodes'))).toMatch(/not a list/);
+});
+
+const boards = `pcbs:
+  right:
+    outlines:
+      main:
+        outline: board
+    footprints:
+      a: {}
+  bare:
+    footprints:
+      a: {}
+  empty:
+    outlines:
+    footprints: {}
+`;
+
+it('reads, adds and removes the outlines of a pcb', () => {
+    expect(pcbOutlines(boards, 'right')).toEqual([{key: 'main', outline: 'board'}]);
+    expect(pcbOutlines(boards, 'bare')).toEqual([]);
+    expect(addPcbOutline(boards, 'right', 'cut')).toContain('      main:\n        outline: board\n      cut:\n        outline: cut\n    footprints:');
+    expect(addPcbOutline(addPcbOutline(boards, 'right', 'cut'), 'right', 'cut')).toContain('      cut_2:\n        outline: cut\n');
+    expect(addPcbOutline(boards, 'bare', 'board')).toContain('  bare:\n    outlines:\n      board:\n        outline: board\n    footprints:');
+    expect(addPcbOutline(boards, 'empty', 'board')).toContain('  empty:\n    outlines:\n      board:\n        outline: board\n    footprints: {}');
+    expect(deleteEntry(boards, ['pcbs', 'right', 'outlines'], 'main')).toContain('    outlines:\n    footprints:');
 });
