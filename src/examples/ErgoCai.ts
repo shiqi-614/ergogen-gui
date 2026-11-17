@@ -385,15 +385,16 @@ pcbs:
           ref: [matrix_col0_row0]
           shift: [-24, -31.5]
           rotate: 0
-      jst-ph-battery-backup:
-        what:
-          github:
-            repo: "shiqi-614/ErgoCai.modules"
-            file: "battery/JST_PH_P2.00mm/JST_PH_P2.00mm.kicad_pcb"
-        where:
-          ref: [matrix_col0_row0]
-          shift: [-29, 14.5]
-          rotate: 0
+      # A backup battery connector, left off for now: to fit it, the case has to take its lead to the battery too.
+      # jst-ph-battery-backup:
+      #   what:
+      #     github:
+      #       repo: "shiqi-614/ErgoCai.modules"
+      #       file: "battery/JST_PH_P2.00mm/JST_PH_P2.00mm.kicad_pcb"
+      #   where:
+      #     ref: [matrix_col0_row0]
+      #     shift: [-29, 14.5]
+      #     rotate: 0
       e-paper:
         what: 
           github:
@@ -566,10 +567,13 @@ cases:
     - what: outline
       name: combo
       extrude: 5
+    # the switches' plate cut-out, drawn on Eco2.User in their footprints: the 14 mm square, and room for the two
+    # latches, which reach 0.5 mm past it
     - what: pcb
       name: /footprints.keys[12]/
       extrude: 5
       operation: subtract
+      layers: [Eco2.User]
     - what: pcb
       name: /footprints.keys3/
       extrude: 5
