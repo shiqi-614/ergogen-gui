@@ -1,6 +1,6 @@
 import {useEffect, useMemo, useState} from "react";
 import styled from "styled-components";
-import {Actions, Button, CardHead, CardShell, Field, Gap, Status, colors} from "../ui";
+import {Actions, Button, CardHead, CardShell, Check, Field, Gap, Status, colors} from "../ui";
 import yaml from "js-yaml";
 import {useConfigContext} from "../context/ConfigContext";
 import {EditSite, addAssemblyPart, applyEdits, deleteListItem, findItemSites} from "../utils/layoutEdit";
@@ -57,6 +57,27 @@ const AssemblyParts = ({assembly}: Props): JSX.Element | null => {
             return [];
         }
     }, [text, assembly]);
+    // The other half's assembly: the one whose board is this board's mirror (or the board it mirrors). Its parts
+    // follow these when they are the same, name for name, so an edit lands on the same part there.
+    const other = useMemo(() => {
+        try {
+            const config = yaml.load(text) as any;
+            const boardOf = (a: any) => typeof a?.pcb === 'string' ? a.pcb : a?.pcb?.name;
+            const board = boardOf(config?.assemblies?.[assembly]);
+            const pcbs = config?.pcbs ?? {};
+            const mirror = Object.keys(pcbs).find(p => p !== board && (pcbs[p]?.mirror?.from === board || pcbs[board]?.mirror?.from === p));
+            const name = mirror && Object.keys(config?.assemblies ?? {}).find(a => a !== assembly && boardOf(config.assemblies[a]) === mirror);
+            if (!name) return null;
+            const names = (a: string) => JSON.stringify(((config.assemblies[a]?.parts ?? []) as any[]).map(p => p?.name ?? ''));
+            return {name, same: names(name) === names(assembly)};
+        } catch (e: unknown) {
+            return null;
+        }
+    }, [text, assembly]);
+    const [bothChoice, setBoth] = useState(true);
+    const both = !!other?.same && bothChoice;
+    const otherPath = other ? ['assemblies', other.name, 'parts'] : null;
+
     if (!configContext) return null;
 
     const write = (make: () => string, message: string) => {
@@ -73,7 +94,14 @@ const AssemblyParts = ({assembly}: Props): JSX.Element | null => {
         if (typeof site === 'string') return setNote(`Can't set ${attr}: ${site}`);
         const written = attr === 'model' ? JSON.stringify(value) : value;
         if (written === site.raw || (attr === 'model' && value === unquote(site.raw))) return;
-        write(() => applyEdits(text, [{site, value: written}]), `#${index} ${attr}: ${value}`);
+        write(() => {
+            const next = applyEdits(text, [{site, value: written}]);
+            if (!both || !otherPath) return next;
+            // the same part of the other half, found again in the changed text
+            const theirs = findItemSites(next, otherPath, [...ATTRS]);
+            const there = typeof theirs === 'string' ? null : theirs[index]?.sites[attr];
+            return there && typeof there !== 'string' ? applyEdits(next, [{site: there, value: written}]) : next;
+        }, `#${index} ${attr}: ${value}${both ? `, on ${other?.name} too` : ''}`);
     };
     // a box written on Enter or when left
     const box = (index: number, attr: Attr, className: string, placeholder: string, title: string) => {
@@ -100,10 +128,19 @@ const AssemblyParts = ({assembly}: Props): JSX.Element | null => {
             <CardHead title={`Parts of ${assembly}: ${parts.length}`} subtitle="other 3D models on the board" folded={folded} onFold={setFolded} foldAt="left"
                       actions={!folded && (
                           <Button $variant="go" title="Another 3D model on the board, e.g. a module board on standoffs"
-                                  onClick={() => write(() => addAssemblyPart(text, assembly, {name: `part${parts.length + 1}`, model: '', module: modules[0], z: '0'}),
-                                      'a part added: give it a model')}>+ Part</Button>
+                                  onClick={() => write(() => {
+                                      const part = {name: `part${parts.length + 1}`, model: '', module: modules[0], z: '0'};
+                                      const next = addAssemblyPart(text, assembly, part);
+                                      return both && other ? addAssemblyPart(next, other.name, part) : next;
+                                  }, `a part added${both ? `, on ${other?.name} too` : ''}: give it a model`)}>+ Part</Button>
                       )}/>
             {!folded && <div className="body">
+                {other && (
+                    <Check title={other.same ? `Every change here is made to ${other.name}'s parts too` : `${other.name}'s parts are not the same as these, so they are changed one by one`}>
+                        <input type="checkbox" checked={both} disabled={!other.same} onChange={e => setBoth(e.target.checked)}/>
+                        {other.same ? `both halves: ${other.name} too` : `${other.name} has other parts: this half only`}
+                    </Check>
+                )}
                 {parts.map((part, index) => {
                     const module = rawOf(part.sites.module);
                     return (
@@ -124,7 +161,10 @@ const AssemblyParts = ({assembly}: Props): JSX.Element | null => {
                             <Actions>
                                 <Gap/>
                                 <Button $variant="danger" title={`Delete part #${index}`}
-                                        onClick={() => window.confirm(`Delete part #${index} of ${assembly}?`) && write(() => deleteListItem(text, path, index), `#${index} deleted`)}>Delete</Button>
+                                        onClick={() => window.confirm(`Delete part #${index} of ${assembly}${both ? ` and of ${other?.name}` : ''}?`) && write(() => {
+                                            const next = deleteListItem(text, path, index);
+                                            return both && otherPath ? deleteListItem(next, otherPath, index) : next;
+                                        }, `#${index} deleted${both ? `, on ${other?.name} too` : ''}`)}>Delete</Button>
                             </Actions>
                         </div>
                     );

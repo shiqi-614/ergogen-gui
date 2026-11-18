@@ -839,6 +839,47 @@ export const deletePcb = (text: string, name: string): string => {
     return deleteEntry(out, ['pcbs'], name);
 };
 
+// --- where an error is ---
+
+// Where a field ergogen names (e.g. "pcbs.left.outlines.edge.outline") is written: the deepest key of it the text has,
+// following dotted keys (rows.row4.skip: …) too. Line and column count from 1, as editors do.
+export const locateField = (text: string, field: string): { line: number, column: number, found: string } | null => {
+    const doc = parseDocument(text, {keepCstNodes: true});
+    if (doc.errors.length || !field) return null;
+    const segments = field.split('.');
+    let node: unknown = doc.contents;
+    let at: number | undefined;
+    let found: string[] = [];
+    for (let i = 0; i < segments.length;) {
+        let next: { value: unknown, start?: number, taken: number } | null = null;
+        if (node instanceof YAMLSeq && /^\d+$/.test(segments[i])) {
+            const item = node.items[Number(segments[i])] as { range?: [number, number] } | undefined;
+            if (item) next = {value: item, start: item.range?.[0], taken: 1};
+        } else if (node instanceof YAMLMap) {
+            // the longest run of segments that is one key: "rows.row4" written dotted, or "rows" then "row4"
+            for (let n = segments.length - i; n >= 1 && !next; n--) {
+                const pair = findPair(node, segments.slice(i, i + n).join('.'));
+                if (pair) next = {value: pair.value, start: (pair.key as Scalar).range?.[0], taken: n};
+            }
+        }
+        if (!next) break;
+        found = [...found, ...segments.slice(i, i + next.taken)];
+        if (next.start !== undefined) at = next.start;
+        node = next.value instanceof Alias ? next.value.source : next.value;
+        i += next.taken;
+    }
+    if (at === undefined) return null;
+    const before = text.slice(0, at);
+    return {line: before.split('\n').length, column: at - before.lastIndexOf('\n'), found: found.join('.')};
+};
+
+// The field an ergogen message is about: Field "a.b" …, or Unexpected key "k" within field "a.b" (then a.b.k)
+export const fieldOf = (message: string): string | null => {
+    const unexpected = /Unexpected key "([^"]+)" within field "([^"]+)"/.exec(message);
+    if (unexpected) return `${unexpected[2]}.${unexpected[1]}`;
+    return /[Ff]ield "([^"]+)"/.exec(message)?.[1] ?? null;
+};
+
 // --- zones and the mirror ---
 
 // A new zone after <after>: one key, its anchor a key of the board and a shift from it

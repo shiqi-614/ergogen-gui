@@ -1,5 +1,6 @@
 import {useEffect, useRef, useState} from "react";
 import ErrorBoundary from "./atoms/ErrorBoundary";
+import {configErrors, revealLine} from "./utils/configErrors";
 import styled from "styled-components";
 import Split from "react-split";
 
@@ -33,6 +34,15 @@ const FlexContainer = styled.div`
 `;
 
 const Error = styled.div`
+  /* an error the config's line is known for: a click shows it */
+  &.located, .located {
+    cursor: pointer;
+  }
+
+  &.located:hover, .located:hover {
+    text-decoration: underline;
+  }
+
   background: #ff6d6d;
   color: #a31111;
   padding: 1em;
@@ -159,6 +169,10 @@ const Ergogen = () => {
     // a new outline asked for in the Downloads list, made by the layout editor
     const [outlineRequest, setOutlineRequest] = useState<OutlineRequest | null>(null);
 
+    // the cases are made only while a case or an assembly is on show (they take most of a run's time)
+    const wantCases = mode === 'preview' && (previewKey.startsWith('cases.') || previewKey.startsWith('assemblies.'));
+    useEffect(() => configContext?.setWantCases(wantCases), [wantCases]); // eslint-disable-line react-hooks/exhaustive-deps
+
     useEffect(()=>{
         if(selectedOption?.value) {
             configContext?.setConfigInput(selectedOption.value)
@@ -244,13 +258,21 @@ const Ergogen = () => {
                               <DownloadIcon/>
                             </IconButton>
                         </GenerateContainer>
-                        {configContext?.error && <Error role="alert" data-ergogen-error>{configContext?.error?.toString()}</Error>}
+                        {configContext?.error && (() => {
+                            const at = configErrors(configContext.configInput ?? '', configContext.error, undefined)[0];
+                            return <Error role="alert" data-ergogen-error className={at ? 'located' : ''} title={at ? `Show line ${at.line} in the config` : undefined}
+                                          onClick={() => at && revealLine(at.line, at.column)}>{configContext?.error?.toString()}</Error>;
+                        })()}
                         {/* the parts ergogen could not make; the rest is made and shown */}
                         {!configContext?.error && Object.keys(configContext?.results?.errors ?? {}).length > 0 && (
                             <Error role="alert" data-ergogen-error>
-                                {Object.entries(configContext.results.errors as Record<string, string>).map(([item, message]) => (
-                                    <div key={item}><b>{item}</b> could not be made: {message}</div>
-                                ))}
+                                {Object.entries(configContext.results.errors as Record<string, string>).map(([item, message]) => {
+                                    const at = configErrors(configContext.configInput ?? '', null, {[item]: message})[0];
+                                    return (
+                                        <div key={item} className={at ? 'located' : ''} title={at ? `Show line ${at.line} in the config` : undefined}
+                                             onClick={() => at && revealLine(at.line, at.column)}><b>{item}</b> could not be made: {message}</div>
+                                    );
+                                })}
                             </Error>
                         )}
                     </EditorContainer>

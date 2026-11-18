@@ -134,7 +134,7 @@ export const tests = [
             const moved = (await right(page)).modules.usb.where;
             near(Number(moved.shift[0]), Number(where.shift[0]) + 0.3, 1e-6, 'three steps right are 0.3 mm');
             await waitForBoard(page, 'USB_J1', before);
-            await page.until(`(() => { const f = ${viewer}?.board.footprints.find(f => f.reference === 'USB_J1'); return f && Math.abs(f.at.rotation - (${before[2]} - 5)) < 1e-6 })()`, 120, 'USB_J1 to turn');
+            await page.until(`(() => { const f = ${viewer}?.board?.footprints.find(f => f.reference === 'USB_J1'); return f && Math.abs(f.at.rotation - (${before[2]} - 5)) < 1e-6 })()`, 120, 'USB_J1 to turn');
             const after = await boardFootprint(page, 'USB_J1');
             near(after[0] - before[0], 0.3, 1e-6, 'USB_J1 should move 0.3 mm right');
             near(after[1] - before[1], -1, 1e-6, 'and 1 mm up');

@@ -81,27 +81,38 @@ export const tests = [
         },
     },
     {
-        name: "boards: an assembly's parts are set, added and deleted in its 3D view",
+        name: "boards: an assembly's parts are set, added and deleted in its 3D view, on both halves when they match",
         async run(page, {url}) {
             await freshApp(page, url);
+            const before = await parsed(page);
+            const right0 = before.assemblies.ergocai_right.parts ?? [], left0 = before.assemblies.ergocai_left.parts ?? [];
+            const n = right0.length;
+            // the other half follows while both have the same parts, name for name
+            const same = JSON.stringify(right0.map(p => p.name)) === JSON.stringify(left0.map(p => p.name));
             await page.ev(`[...document.querySelectorAll('button')].find(b => b.textContent.startsWith('▸ Assemblies'))?.click()`);
             await page.ev(`[...document.querySelectorAll('button')].find(b => b.textContent.trim() === 'ergocai_right')?.click()`);
-            await page.until(`document.body.textContent.includes('Parts of ergocai_right: 1')`, 120, 'the parts panel');
+            await page.until(`document.body.textContent.includes('Parts of ergocai_right: ${n}')`, 120, 'the parts panel');
+            assert(await page.ev(`document.querySelector('label input[type=checkbox][disabled]') === null`) === same,
+                same ? 'both halves should be ticked' : 'the other half should be left alone');
             const parts = `jsyaml.load(${config}).assemblies.ergocai_right.parts`;
+            const left = `(jsyaml.load(${config}).assemblies.ergocai_left.parts ?? [])`;
             const box = (i, cls) => `document.querySelectorAll('.part')[${i}].querySelector('input.${cls}')`;
             await page.ev(`${box(0, 'z')}.select()`);
             await page.type('31');
             await page.key('Enter', 'Enter', 13);
             await page.until(`${parts}[0].z === 31`, 30, 'the height to be written');
+            await page.until(`${left}[0]?.z ${same ? '===' : '!=='} 31`, 30, same ? 'the other half to follow' : 'the other half to stay');
             await page.press('+ Part');
-            await page.until(`${parts}.length === 2`, 30, 'a second part');
-            await page.until(`document.querySelectorAll('.part').length === 2`, 30, 'its line');
-            await page.ev(`${box(1, 'model')}.focus()`);
+            await page.until(`${parts}.length === ${n + 1} && ${left}.length === ${same ? n + 1 : left0.length}`, 30, 'a new part');
+            await page.until(`document.querySelectorAll('.part').length === ${n + 1}`, 30, 'its line');
+            await page.ev(`${box(n, 'model')}.focus()`);
             await page.type('github:shiqi-614/ErgoCai.modules/e-paper/2.13inch/2.13inch.glb');
             await page.key('Enter', 'Enter', 13);
-            await page.until(`${parts}[1].model === 'github:shiqi-614/ErgoCai.modules/e-paper/2.13inch/2.13inch.glb'`, 30, 'its model');
-            await page.ev(`document.querySelector('button[title="Delete part #1"]').click()`);
-            await page.until(`${parts}.length === 1 && ${parts}[0].name === 'e-paper'`, 30, 'the second part to go');
+            await page.until(`${parts}[${n}].model === 'github:shiqi-614/ErgoCai.modules/e-paper/2.13inch/2.13inch.glb'`, 30, 'its model');
+            await page.ev(`document.querySelector('button[title="Delete part #${n}"]').click()`);
+            await page.until(`${parts}.length === ${n} && ${left}.length === ${left0.length}`, 30, 'the new part to go');
+            assert(JSON.stringify((await parsed(page)).assemblies.ergocai_right.parts.map(p => p.name)) === JSON.stringify(right0.map(p => p.name)),
+                'the parts should be back as they were, but for the height');
         },
     },
 ];

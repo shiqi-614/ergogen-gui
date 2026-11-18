@@ -5,6 +5,7 @@ import NewAssembly from "./NewAssembly";
 import {NewUnit, UnitList, useUnits} from "./Units";
 import {ConfirmDelete, Deletable} from "./DeleteItem";
 import {colors} from "../ui";
+import {configErrors, revealLine} from "../utils/configErrors";
 import DownloadRow from "../atoms/DownloadRow";
 import Loading, {Spinner} from "../atoms/Loading";
 import yaml from 'js-yaml';
@@ -77,6 +78,9 @@ const SectionHeader = styled.div`
   }
 `;
 
+// the config section of each Downloads section that holds items ergogen makes
+const SECTION_OF: Record<string, string> = {outlines: 'Outlines', pcbs: 'PCBs', cases: 'Cases', assemblies: 'Assemblies'};
+
 // the sections a new item can be added to, and what it is called
 const NEW_ITEM: Record<string, string> = {Outlines: 'outline', PCBs: 'PCB', Cases: 'case', Assemblies: 'assembly'};
 
@@ -98,6 +102,8 @@ type DownloadObj = {
     label?: string,
     // why ergogen could not make it (it has nothing to show or download, but it can be deleted)
     error?: string,
+    // a case or an assembly not made yet, or made of an older config (opening it makes it)
+    state?: 'pending' | 'stale',
 };
 
 type DownloadArr = Array<DownloadObj>;
@@ -120,6 +126,8 @@ const Downloads = ({setPreview, label, previewKey, onNewOutline}: Props) => {
     if(!configContext) return null;
 
     const {configInput, results, error, running} = configContext;
+    // what the config has, for the items a run may leave out
+    const configured: any = (() => { try { return yaml.load(configInput ?? '') ?? {}; } catch (e: unknown) { return {}; } })();
 
     const sections: Array<DownloadSection> = [];
     const section = (title: string) => {
@@ -193,22 +201,17 @@ const Downloads = ({setPreview, label, previewKey, onNewOutline}: Props) => {
 
     if (results) {
         const cases = section('Cases');
-        for (const [name, caseObj] of Object.entries(results.cases ?? {})) {
-            cases.push(
-                {
-                    fileName: name,
-                    extension: 'stl',
-                    // @ts-ignore
-                    content: caseObj.stl,
-                    preview: `cases.${name}.stl`
-                }
-            )
+        // the config's cases, made or not: a preview leaves them out unless one is on show (opening it makes them)
+        for (const name of Object.keys(configured.cases ?? {})) {
+            if (results.errors?.[`cases.${name}`]) continue;
+            const made = results.cases?.[name];
+            cases.push({fileName: name, extension: 'stl', content: made?.stl ?? '', preview: `cases.${name}.stl`,
+                state: !made ? 'pending' : results.casesStale ? 'stale' : undefined});
         }
 
     }
 
     // what ergogen could not make, in its section: e.g. "pcbs.left" under PCBs
-    const SECTION_OF: Record<string, string> = {outlines: 'Outlines', pcbs: 'PCBs', cases: 'Cases', assemblies: 'Assemblies'};
     for (const [item, message] of Object.entries((results?.errors ?? {}) as Record<string, string>)) {
         const [kind, ...rest] = item.split('.');
         const found = sections.find(s => s.title === SECTION_OF[kind]);
@@ -245,10 +248,13 @@ const Downloads = ({setPreview, label, previewKey, onNewOutline}: Props) => {
     // the case parts stacked around a board (config.assemblies): shown in the board's 3D view, which downloads them
     if (results) {
         const assemblies = section('Assemblies');
-        for (const [name, assembly] of Object.entries((results.assemblies ?? {}) as Record<string, { pcb?: { name: string } }>)) {
-            const board = assembly?.pcb?.name;
-            if (!board || !results?.pcbs?.[board]?.preview?.kicad_pcb) continue;
-            assemblies.push({fileName: name, extension: '', content: '', preview: `assemblies.${name}`, label: name});
+        for (const name of Object.keys(configured.assemblies ?? {})) {
+            if (results.errors?.[`assemblies.${name}`]) continue;
+            const made = results.assemblies?.[name] as { pcb?: { name: string } } | undefined;
+            const board = made?.pcb?.name;
+            if (made && (!board || !results?.pcbs?.[board]?.preview?.kicad_pcb)) continue;
+            assemblies.push({fileName: name, extension: '', content: '', preview: `assemblies.${name}`, label: name,
+                state: !made ? 'pending' : results.casesStale ? 'stale' : undefined});
         }
     }
 
@@ -315,7 +321,12 @@ const Downloads = ({setPreview, label, previewKey, onNewOutline}: Props) => {
                           {isOpen && shown.map((download, i) =>
                               <DownloadRow key={i} {...download} setPreview={setPreview} setTabIndex={tabContext?.setTabIndex}
                                            active={!!download.preview && download.preview === previewKey}
-                                           onDelete={what ? () => setDeleting({kind: what as Deletable, name: download.fileName}) : undefined}/>
+                                           onDelete={what ? () => setDeleting({kind: what as Deletable, name: download.fileName}) : undefined}
+                                           onShowError={download.error ? () => {
+                                               const kind = Object.entries(SECTION_OF).find(([, t]) => t === title)?.[0];
+                                               const at = configErrors(configInput ?? '', null, {[`${kind}.${download.fileName}`]: download.error as string})[0];
+                                               if (at) revealLine(at.line, at.column);
+                                           } : undefined}/>
                           )}
                       </SectionContainer>
                   );

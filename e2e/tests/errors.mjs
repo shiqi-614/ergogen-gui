@@ -52,6 +52,11 @@ export const tests = [
             await page.until(`!!document.querySelector('[data-failed="e2e_broken"]')`, 10, 'its row, marked failed');
             assert(/e2e_broken.outlines.edge.outline/.test(await page.ev(`document.querySelector('[data-failed="e2e_broken"]').title`)), 'its row should say why');
             assert(await page.ev(`[...document.querySelectorAll('button')].some(b => b.textContent === 'ergo_cai_right.kicad_pcb')`), 'the other boards should still be made');
+            // the editor underlines the line that names the missing outline, and the row goes there
+            const line = await page.ev(`window.monaco.editor.getModels()[0].getValue().split('\\n').findIndex(l => l.includes('outline: no_such_outline')) + 1`);
+            await page.until(`window.monaco.editor.getModelMarkers({owner: 'ergogen'}).some(m => m.startLineNumber === ${line})`, 30, 'the error marked on its line');
+            await page.ev(`document.querySelector('[data-failed="e2e_broken"]').click()`);
+            await page.until(`window.monaco.editor.getEditors()[0].getPosition().lineNumber === ${line}`, 10, 'the editor to show that line');
             await page.ev(`[...document.querySelectorAll('button')].find(b => b.textContent.startsWith('▸ Cases'))?.click()`);
             assert(await page.ev(`[...document.querySelectorAll('button')].some(b => b.textContent === 'right_top.stl')`), 'the cases should still be made');
             // deleted from its row, the error goes

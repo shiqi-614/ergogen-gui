@@ -1,109 +1,25 @@
 import React, {useCallback, useEffect, useMemo, useRef, useState} from "react";
 import {useConfigContext} from "../context/ConfigContext";
 import {
-    ATTRS, AnchorShift, Attr, Edit, EditSite, Length,
-    addOutline, appendOutline, applyEdits, findAnchorShift, findShift, findSite, formatLength,
-    findKeySite, insertPolygonPoint, isPlainNumber, splitShift, nudge, parseLength, plateLines, removePolygonPoint,
+    ATTRS, Attr, Length, addOutline, appendOutline, findAnchorShift, findShift, findSite, findKeySite,
+    insertPolygonPoint, isPlainNumber, splitShift, parseLength, plateLines, removePolygonPoint,
 } from "../utils/layoutEdit";
 import {OutlineHandle, Polygon, keyHull, nearMisses, outlineHandles} from "../utils/outlineGeometry";
 import {
     Column, Frame, Point, Points, Side, Site, Transform, Units, Vec, View,
-    columnFrame, columnOrder, computePoints, editableLength, evaluator, fitView, format, place, radians, rotate,
-    round, rowOrder, sameColumn, sideOf, signOf,
+    columnFrame, columnOrder, computePoints, evaluator, fitView, place, radians, rotate, rowOrder, sameColumn,
+    sideOf, signOf,
 } from "./layout/geometry";
 import {
     Canvas, CenterHandle, Container, EdgeTarget, ErrorText, Key, OutlineBar, RotateHandle, StatusBar, VertexHandle,
 } from "./layout/styles";
-import {fromFrame, nearestKey, shiftFrom, toFrame} from "../utils/keyFrame";
 import ColumnPanel, {Tab} from "./layout/ColumnPanel";
 import OutlinePanel from "./layout/OutlinePanel";
 import ErrorBoundary from "../atoms/ErrorBoundary";
 import {OutlineRequest} from "./NewOutline";
+import {Drag, HandleAt, HandleDrag, stepDrag} from "./layout/drags";
+import {Cursor, Drawing, placeNear as placeNearKey, pointAt as snapDrawnPoint} from "./layout/drawing";
 
-type ColumnDrag = {
-    kind: 'column',
-    column: Column,
-    sourceText: string,
-    start: Vec,
-    theta: number,
-    mirrored: boolean,
-    firstCol: boolean,
-    own: Set<string>,
-    withRest: Set<string>,
-    base: Record<Attr, number>,
-    sites: Record<Attr, Site>,
-    // stagger and spread add up column by column: moving one column alone takes
-    // the opposite change on the next one, so the columns after it stay put
-    next?: { col: string, base: Record<Attr, number>, sites: Record<Attr, Site> },
-    axis?: 'stagger' | 'spread',
-    text?: string,
-};
-
-type RotateDrag = {
-    kind: 'rotate',
-    sourceText: string,
-    sign: number,
-    pivot: Vec,
-    startAngle: number,
-    base: number,
-    site: EditSite,
-    withRest: Set<string>,
-    pivots: Partial<Record<Side, Vec>>,
-    text?: string,
-};
-
-type ZoneDrag = {
-    kind: 'zone',
-    zone: string,
-    sourceText: string,
-    start: Vec,
-    mirrored: boolean,
-    // the frame the anchor's shift is in: its ref point's rotation plus its orient (radians)
-    frame: number,
-    base: [Length, Length],
-    anchor: AnchorShift,
-    names: Set<string>,
-    // the global mirror is anchored on a key of this zone, so its axis moves with the zone
-    movesAxis: boolean,
-    text?: string,
-};
-
-// an outline polygon point, or the where of an outline part
-type HandleDrag = {
-    kind: 'handle',
-    handle: OutlineHandle,
-    sourceText: string,
-    start: Vec,
-    shift: AnchorShift,
-    // the polygon points before and after this one, to line it up with, with their shifts as written
-    neighbors: { handle: OutlineHandle, raw: [string | undefined, string | undefined] }[],
-    text?: string,
-};
-
-// one key, by its own shift: in its own frame (the column's turn, before the key's own rotate), x the other way
-// on a mirrored key; the key on the other half moves with it
-type KeyDrag = {
-    kind: 'key',
-    name: string,
-    sourceText: string,
-    start: Vec,
-    sign: number,
-    frame: number,
-    raw: [string | undefined, string | undefined],
-    site: EditSite,
-    names: Set<string>,
-    text?: string,
-};
-
-type Drag = ColumnDrag | RotateDrag | ZoneDrag | HandleDrag | KeyDrag;
-
-// where a dragged outline handle is now, and the lines it snapped to
-type HandleAt = { key: string, at: Vec, guides: [Vec, Vec][] };
-
-// A point of an outline being drawn: written as a shift from its nearest key, like hand-written ones
-type DrawnPoint = { ref: string, shift: [number, number], at: Vec };
-type Drawing = { name: string, points: DrawnPoint[] };
-type Cursor = { point: DrawnPoint, guides: [Vec, Vec][], closes: boolean };
 
 // six decimals: enough for a snapped point to stay exactly in line, and short for round ones
 const exactText = (v: number) => String(Number(v.toFixed(6)));
@@ -335,18 +251,6 @@ const LayoutEditor = ({request, onRequestDone}: Props): JSX.Element | null => {
         };
     };
 
-    const moveKey = (d: KeyDrag, e: React.PointerEvent) => {
-        const now = toBoard(e);
-        const local = rotate({x: now.x - d.start.x, y: now.y - d.start.y}, -d.frame);
-        const shift = {x: round(d.sign * local.x, 0.1), y: round(local.y, 0.1)};
-        const move = rotate({x: d.sign * shift.x, y: shift.y}, d.frame);
-        // the transform moves the source half's way: x the other way for a key dragged on the mirrored half
-        setTransform({names: d.names, dx: d.sign * move.x, dy: move.y, angle: 0, pivots: {}});
-        const x = nudge(d.raw[0], shift.x, units), y = nudge(d.raw[1], shift.y, units);
-        d.text = applyEdits(d.sourceText, [{site: d.site, value: `[${x}, ${y}]`}]);
-        setHint(`${d.name} shift: [${x}, ${y}]`);
-    };
-
     const startRotate = (e: React.PointerEvent, side: Side) => {
         e.stopPropagation();
         if (e.button !== 0 || !selected || !columnInfo) return;
@@ -374,65 +278,6 @@ const LayoutEditor = ({request, onRequestDone}: Props): JSX.Element | null => {
         };
     };
 
-    const moveColumn = (d: ColumnDrag, e: React.PointerEvent) => {
-        const now = toBoard(e);
-        let dx = now.x - d.start.x;
-        const dy = now.y - d.start.y;
-        if (d.mirrored) dx = -dx;
-        // the movement along and across the column
-        const across = dx * Math.cos(d.theta) + dy * Math.sin(d.theta);
-        const along = -dx * Math.sin(d.theta) + dy * Math.cos(d.theta);
-        if (!d.axis) {
-            if (Math.hypot(across, along) < 1) return;
-            // spread does nothing on a zone's first column
-            d.axis = d.firstCol || Math.abs(along) >= Math.abs(across) ? 'stagger' : 'spread';
-        }
-        const axis = d.axis;
-        // Shift drags the columns after this one along, as ergogen's own stagger and spread do
-        const alone = !e.shiftKey && !!d.next;
-        const own = editableLength(d.sites[axis], units);
-        if (typeof own === 'string') return setHint(`Can't drag the ${axis} of ${d.column.col}: ${own}`);
-        const next = alone && d.next ? editableLength(d.next.sites[axis], units) : null;
-        if (typeof next === 'string') return setHint(`Can't keep ${d.next?.col} in place: ${next}. Hold Shift to move it too`);
-
-        const value = round(d.base[axis] + (axis === 'stagger' ? along : across), 0.1);
-        const change = value - d.base[axis];
-        // back from the column's frame to the board's
-        const move = rotate(axis === 'stagger' ? {x: 0, y: change} : {x: change, y: 0}, d.theta * 180 / Math.PI);
-        setTransform({names: alone ? d.own : d.withRest, dx: move.x, dy: move.y, angle: 0, pivots: {}});
-        const edits: Edit[] = [{site: own.site, value: formatLength(value, own.like)}];
-        if (next && d.next) edits.push({site: next.site, value: formatLength(d.next.base[axis] - change, next.like)});
-        d.text = applyEdits(d.sourceText, edits);
-        setHint(`${axis}: ${format(value)} mm` + (next && d.next ? `, ${d.next.col} ${format(d.next.base[axis] - change)} so the columns after it stay put` : ''));
-    };
-
-    const moveRotate = (d: RotateDrag, e: React.PointerEvent) => {
-        const now = toBoard(e);
-        let turned = (Math.atan2(now.y - d.pivot.y, now.x - d.pivot.x) - d.startAngle) * 180 / Math.PI;
-        turned = ((turned + 540) % 360) - 180;
-        // on the mirrored side the column turns the other way
-        const value = round(d.base + d.sign * turned, 0.5);
-        setTransform({names: d.withRest, dx: 0, dy: 0, angle: value - d.base, pivots: d.pivots});
-        d.text = applyEdits(d.sourceText, [{site: d.site, value: format(value)}]);
-        setHint(`splay: ${format(value)}°, the columns after it turn with it`);
-    };
-
-    const moveZone = (d: ZoneDrag, e: React.PointerEvent) => {
-        const now = toBoard(e);
-        const dx = (now.x - d.start.x) * (d.mirrored ? -1 : 1);
-        const dy = now.y - d.start.y;
-        // the anchor's shift is in its ref point's frame
-        const local = rotate({x: dx, y: dy}, -d.frame);
-        const shift = {x: round(local.x, 0.1), y: round(local.y, 0.1)};
-        const move = rotate(shift, d.frame);
-        // ergogen mirrors across the x of the mirror's anchor: when that moves by dx, every mirrored key moves by 2 dx
-        setTransform({names: d.names, dx: move.x, dy: move.y, angle: 0, pivots: {}, mirrorDx: d.movesAxis ? 2 * move.x : 0});
-        const x = formatLength(d.base[0].mm + shift.x, d.base[0]);
-        const y = formatLength(d.base[1].mm + shift.y, d.base[1]);
-        d.text = applyEdits(d.sourceText, d.anchor.edits(x, y));
-        setHint(`zone ${d.zone} anchor shift: [${x}, ${y}]`);
-    };
-
     const startHandleDrag = (e: React.PointerEvent, handle: OutlineHandle) => {
         e.stopPropagation();
         if (e.button !== 0) return;
@@ -456,54 +301,16 @@ const LayoutEditor = ({request, onRequestDone}: Props): JSX.Element | null => {
         setHint(`${handle.label}: shift [${shift.raw.map(v => v ?? '0').join(', ')}]`);
     };
 
-    const moveHandle = (d: HandleDrag, e: React.PointerEvent) => {
-        const now = toBoard(e);
-        const {at, frame} = d.handle;
-        const wanted = {x: at.x + now.x - d.start.x, y: at.y + now.y - d.start.y};
-        // line up with a neighbouring point when within a few pixels of it
-        const snap = 6 / (boardRef.current?.getScreenCTM()?.a || 1);
-        const guides: [Vec, Vec][] = [];
-        const snappedTo: { x?: HandleDrag['neighbors'][number], y?: HandleDrag['neighbors'][number] } = {};
-        for (const n of d.neighbors) {
-            if (!snappedTo.x && Math.abs(wanted.x - n.handle.at.x) < snap) {
-                wanted.x = n.handle.at.x;
-                snappedTo.x = n;
-                guides.push([n.handle.at, wanted]);
-            }
-            if (!snappedTo.y && Math.abs(wanted.y - n.handle.at.y) < snap) {
-                wanted.y = n.handle.at.y;
-                snappedTo.y = n;
-                guides.push([n.handle.at, wanted]);
-            }
-        }
-        const snapped = {x: !!snappedTo.x, y: !!snappedTo.y};
-        // from the board to the frame the shift is in; a mirrored anchor shifts x the other way
-        const local = toFrame({x: wanted.x - at.x, y: wanted.y - at.y}, {r: frame, mirrored: at.mirrored});
-        // in a turned frame a snapped board axis mixes both shift values, so both stay exact
-        const turned = Math.abs(((frame % 90) + 90) % 90) > 1e-9;
-        const exact = turned && (snapped.x || snapped.y) ? {x: true, y: true} : snapped;
-        if (!exact.x) local.x = round(local.x, 0.1);
-        if (!exact.y) local.y = round(local.y, 0.1);
-        // Lined up with a point on the same, unturned key: write the same text it has ("1ky + 3"),
-        // so the edge is exactly straight and stays so when the keys move
-        const copies = (n: HandleDrag['neighbors'][number] | undefined, axis: 0 | 1) =>
-            !!n && n.handle.ref !== undefined && n.handle.ref === d.handle.ref && n.raw[axis] !== undefined
-            && Math.abs(frame % 360) < 1e-9 && Math.abs(n.handle.frame % 360) < 1e-9;
-        const x = copies(snappedTo.x, 0) ? snappedTo.x!.raw[0]! : nudge(d.shift.raw[0], local.x, units, exact.x);
-        const y = copies(snappedTo.y, 1) ? snappedTo.y!.raw[1]! : nudge(d.shift.raw[1], local.y, units, exact.y);
-        d.text = applyEdits(d.sourceText, d.shift.edits(x, y));
-        const moved = fromFrame(local, {r: frame, mirrored: at.mirrored});
-        setHandleAt({key: d.handle.key, at: {x: at.x + moved.x, y: at.y + moved.y}, guides: guides.map(([n]) => [n, wanted])});
-        setHint(`${d.handle.label}: shift [${x}, ${y}]` + (guides.length ? ', lined up with the next point' : ''));
-    };
-
     const moveDrag = (e: React.PointerEvent) => {
         const d = drag.current;
-        if (d?.kind === 'column') moveColumn(d, e);
-        else if (d?.kind === 'rotate') moveRotate(d, e);
-        else if (d?.kind === 'zone') moveZone(d, e);
-        else if (d?.kind === 'handle') moveHandle(d, e);
-        else if (d?.kind === 'key') moveKey(d, e);
+        if (!d) return;
+        // an outline point snaps to its neighbours within 6 pixels
+        const step = stepDrag(d, {now: toBoard(e), shiftKey: e.shiftKey, snap: 6 / (boardRef.current?.getScreenCTM()?.a || 1), units});
+        if (!step) return;
+        if (step.text !== undefined) d.text = step.text;
+        if (step.transform !== undefined) setTransform(step.transform);
+        if (step.handleAt) setHandleAt(step.handleAt);
+        setHint(step.hint);
     };
 
     const endDrag = () => {
@@ -546,14 +353,7 @@ const LayoutEditor = ({request, onRequestDone}: Props): JSX.Element | null => {
     };
     createOutline.current = create;
 
-    // where a point at wanted goes: written as a shift from the nearest key, in that key's frame
-    // (to 0.1 mm, or exactly when it has been lined up with another point)
-    const placeNear = (wanted: Vec, exact: boolean): DrawnPoint | null => {
-        if (!points) return null;
-        const ref = nearestKey(points, wanted);
-        if (!ref) return null;
-        return {ref, ...shiftFrom(points[ref], wanted, exact ? undefined : 0.1)};
-    };
+    const placeNear = (wanted: Vec, exact: boolean) => placeNearKey(points, wanted, exact);
 
     // A click on an outline edge adds a point there, between the edge's two points
     const insertOnEdge = (e: React.PointerEvent, polygon: Polygon, index: number) => {
@@ -597,35 +397,9 @@ const LayoutEditor = ({request, onRequestDone}: Props): JSX.Element | null => {
         return true;
     };
 
-    // The point a click would add: snapped level with the last or first point when close to it,
-    // then written as a shift from the nearest key, in that key's frame
-    const pointAt = (e: React.PointerEvent, d: Drawing): Cursor | null => {
-        if (!points) return null;
-        const pxPerMm = boardRef.current?.getScreenCTM()?.a || 1;
-        const wanted = toBoard(e);
-        const first = d.points[0];
-        if (first && d.points.length >= 3 && Math.hypot(wanted.x - first.at.x, wanted.y - first.at.y) < 8 / pxPerMm) {
-            return {point: first, guides: [], closes: true};
-        }
-        const guides: [Vec, Vec][] = [];
-        const snapped = {x: false, y: false};
-        for (const n of [d.points[d.points.length - 1], first].filter(Boolean) as DrawnPoint[]) {
-            if (!snapped.x && Math.abs(wanted.x - n.at.x) < 6 / pxPerMm) {
-                wanted.x = n.at.x;
-                snapped.x = true;
-                guides.push([n.at, wanted]);
-            }
-            if (!snapped.y && Math.abs(wanted.y - n.at.y) < 6 / pxPerMm) {
-                wanted.y = n.at.y;
-                snapped.y = true;
-                guides.push([n.at, wanted]);
-            }
-        }
-        // snapped points keep the precision that lines them up
-        const point = placeNear(wanted, snapped.x || snapped.y);
-        if (!point) return null;
-        return {point, guides: guides.map(([n]) => [n, point.at]), closes: false};
-    };
+    // the point a click would add (drawing.ts), at the view's scale
+    const pointAt = (e: React.PointerEvent, d: Drawing): Cursor | null =>
+        snapDrawnPoint(points, d, toBoard(e), boardRef.current?.getScreenCTM()?.a || 1);
 
     const finishDrawing = (d: Drawing) => {
         if (d.points.length < 3) return setHint('An outline needs at least 3 points');

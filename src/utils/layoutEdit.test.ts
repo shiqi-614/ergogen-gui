@@ -1,6 +1,6 @@
 import {expect, it} from "vitest";
 import yaml from "js-yaml";
-import {addMirror, addZone, deleteMirror, deleteZone, deleteUnit, unitEntries, unitMentions, addAssemblyPart, assemblyLines, deletePcb, entryLines, pcbReferences, findKeySite, splitShift, deleteColumn, deleteRow, insertEntry, keyMentions, nextName, addOutline, caseLines, caseReferences, deleteCase, insertIntoStack, mirrorCaseLines, stacksWith, addPcbOutline, appendEntry, appendListItem, appendOutline, applyEdits, deleteEntry, deleteListItem, deleteOutline, deleteOutlinePart, findAnchorShift, findChildShift, findChildValue, findItemSites, findPartSites, findShift, findSite, findValue, findWhereList, formatLength, insertPolygonPoint, moveListItem, nudge, outlineReferences, parseLength, partLines, pcbOutlines, plateLines, removePolygonPoint, EditSite} from "./layoutEdit";
+import {fieldOf, locateField, addMirror, addZone, deleteMirror, deleteZone, deleteUnit, unitEntries, unitMentions, addAssemblyPart, assemblyLines, deletePcb, entryLines, pcbReferences, findKeySite, splitShift, deleteColumn, deleteRow, insertEntry, keyMentions, nextName, addOutline, caseLines, caseReferences, deleteCase, insertIntoStack, mirrorCaseLines, stacksWith, addPcbOutline, appendEntry, appendListItem, appendOutline, applyEdits, deleteEntry, deleteListItem, deleteOutline, deleteOutlinePart, findAnchorShift, findChildShift, findChildValue, findItemSites, findPartSites, findShift, findSite, findValue, findWhereList, formatLength, insertPolygonPoint, moveListItem, nudge, outlineReferences, parseLength, partLines, pcbOutlines, plateLines, removePolygonPoint, EditSite} from "./layoutEdit";
 
 const config = `points:
   zones:
@@ -717,4 +717,16 @@ it('adds and deletes a zone, and the mirror', () => {
     expect((yaml.load(deleteMirror(mirrored)) as any).points.mirror).toBeUndefined();
     expect(applyEdits(ZONE, [{site: findChildValue(ZONE, ['points', 'zones', 'matrix'], 'anchor', 'rotate') as EditSite, value: '10'}]))
         .toContain('      anchor.rotate: 10\n      columns:');
+});
+
+it('finds the line a field ergogen names is on, dotted keys and lists too', () => {
+    expect(locateField(ZONE, 'points.zones.matrix.columns.col0.rows.row1.skip')).toEqual({line: 7, column: 11, found: 'points.zones.matrix.columns.col0.rows.row1.skip'});
+    expect(locateField(ZONE, 'points.zones.matrix.columns.col2.rows.row0.width')?.line).toBe(17);
+    expect(locateField(ZONE, 'outlines.board.0.where')).toMatchObject({line: 24, found: 'outlines.board.0.where'});
+    // as deep as the text goes
+    expect(locateField(ZONE, 'outlines.board.0.nope')).toMatchObject({line: 23, found: 'outlines.board.0'});
+    expect(locateField(ZONE, 'nothing')).toBeNull();
+    expect(fieldOf('Error: Field "pcbs.x.outlines.edge.outline" should be one of [a, b]!')).toBe('pcbs.x.outlines.edge.outline');
+    expect(fieldOf('Unexpected key "parts" within field "assemblies.right"!')).toBe('assemblies.right.parts');
+    expect(fieldOf('Cannot convert undefined or null to object')).toBeNull();
 });

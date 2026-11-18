@@ -17,8 +17,11 @@ type Props = {
     setTabIndex: Dispatch<SetStateAction<number>> | undefined,
     // deletes what the row is from the config (after asking)
     onDelete?: () => void,
-    // why ergogen could not make it
+    // why ergogen could not make it, and showing where in the config
     error?: string,
+    // not made yet, or made of an older config: opening it makes it
+    state?: 'pending' | 'stale',
+    onShowError?: () => void,
 };
 
 // a file with a preview shows a hand and lights up under the pointer; the one on show stays marked
@@ -103,6 +106,15 @@ const DeleteButton = styled.button`
     }
 `;
 
+// a case or an assembly the preview has not made (again) yet
+const Later = styled.span`
+    flex-shrink: 0;
+    margin-left: 0.4em;
+    color: ${colors.muted};
+    font-size: 0.8rem;
+    cursor: help;
+`;
+
 // a row of something ergogen could not make: its name in red, the reason under the pointer
 const Failed = styled.div`
     flex-grow: 1;
@@ -114,12 +126,12 @@ const Failed = styled.div`
     cursor: help;
 `;
 
-const DownloadRow = ({fileName, extension, content, preview, label, active = false, setPreview, setTabIndex, onDelete, error}: Props): JSX.Element => {
+const DownloadRow = ({fileName, extension, content, preview, label, active = false, setPreview, setTabIndex, onDelete, error, onShowError, state}: Props): JSX.Element => {
     const fullName = label || `${fileName}.${extension}`;
     return (
         <Row $previewable={!!preview} $active={active}>
             {error ? (
-                <Failed title={error} data-failed={fileName}>⚠ {fullName}: could not be made</Failed>
+                <Failed title={`${error}\n(click to show it in the config)`} data-failed={fileName} onClick={onShowError}>⚠ {fullName}: could not be made</Failed>
             ) : preview ? (
                 <PreviewLink
                     $active={active}
@@ -135,6 +147,8 @@ const DownloadRow = ({fileName, extension, content, preview, label, active = fal
             ) : (
                 <FileName>{fullName}</FileName>
             )}
+            {state && <Later title={state === 'pending' ? 'not made yet: open it to make it' : 'made before the last change: open it to make it again'}>
+                {state === 'pending' ? 'not made yet' : '↻'}</Later>}
             {content && (
                 <DownloadLink target={"_blank"}
                    rel={"noreferrer"}

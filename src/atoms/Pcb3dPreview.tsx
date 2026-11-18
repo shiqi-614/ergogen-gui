@@ -1,5 +1,6 @@
 import {useEffect, useRef, useState} from "react";
 import styled from "styled-components";
+import {Actions, Button, CardHead, CardShell, Gap, Status as StatusText, Tip, colors, fontSize} from "../ui";
 import * as THREE from "three";
 import {OrbitControls} from "three/examples/jsm/controls/OrbitControls";
 import {STLLoader} from "three/examples/jsm/loaders/STLLoader";
@@ -93,8 +94,8 @@ const Status = styled.div`
   padding: 0.35rem 0.6rem;
   border-radius: 0.25rem;
   background: rgba(0, 0, 0, 0.6);
-  color: #dddddd;
-  font-size: 0.8rem;
+  color: ${colors.text};
+  font-size: ${fontSize.small};
 
   summary {
     cursor: pointer;
@@ -109,7 +110,7 @@ const Status = styled.div`
 `;
 
 // like the download buttons in the Downloads list, in the pane's top right corner
-const Download = styled.button`
+const Download = styled(Button)`
   position: absolute;
   top: 0.5rem;
   right: 0.5rem;
@@ -117,39 +118,19 @@ const Download = styled.button`
   align-items: center;
   gap: 0.35rem;
   padding: 0.3rem 0.6rem;
-  border: none;
-  border-radius: 0.25rem;
-  background-color: #28a745;
-  color: #ffffff;
-  font: inherit;
   font-size: 0.85rem;
-  cursor: pointer;
-  transition: background-color .15s ease-in-out;
-
-  &:hover:not(:disabled) {
-    background-color: #218838;
-  }
 
   &:disabled {
-    background-color: #595959;
-    color: #bbbbbb;
-    cursor: default;
+    background: ${colors.button};
   }
 `;
 
 // the case parts and the collision check, under the 2D / 3D switch
-const Panel = styled.div`
-  position: absolute;
+const Card = styled(CardShell)`
   top: 2.6rem;
   left: 0.5rem;
-  max-width: min(24rem, calc(100% - 1rem));
+  width: min(22rem, calc(100% - 1rem));
   max-height: calc(100% - 6rem);
-  overflow: auto;
-  padding: 0.45rem 0.6rem;
-  border-radius: 0.25rem;
-  background: rgba(0, 0, 0, 0.6);
-  color: #dddddd;
-  font-size: 0.8rem;
 
   label {
     display: flex;
@@ -162,11 +143,10 @@ const Panel = styled.div`
     margin: 0.3rem 0 0;
     padding-left: 1.1rem;
   }
-`;
 
-const PanelTitle = styled.div`
-  margin-bottom: 0.25rem;
-  color: #ffffff;
+  summary {
+    cursor: pointer;
+  }
 `;
 
 // a part's row: its switch, the height of its bottom, and where its top is then
@@ -175,44 +155,11 @@ const Row = styled.div`
   grid-template-columns: 1fr 4.2rem 3.6rem;
   align-items: center;
   gap: 0.35rem;
-
-  input[type=number] {
-    width: 100%;
-    padding: 0 0.2rem;
-    border: 1px solid #666666;
-    border-radius: 0.2rem;
-    background: #2b2b2b;
-    color: #ffffff;
-    font: inherit;
-  }
+  margin-bottom: 0.2rem;
 
   .top {
-    color: #999999;
-  }
-`;
-
-const Buttons = styled.div`
-  display: flex;
-  gap: 0.35rem;
-`;
-
-const Check = styled.button`
-  margin-top: 0.4rem;
-  padding: 0.2rem 0.6rem;
-  border: none;
-  border-radius: 0.25rem;
-  background: #595959;
-  color: #ffffff;
-  font: inherit;
-  cursor: pointer;
-
-  &:hover:not(:disabled) {
-    background: #6a6a6a;
-  }
-
-  &:disabled {
-    color: #aaaaaa;
-    cursor: default;
+    color: ${colors.muted};
+    font-size: ${fontSize.small};
   }
 `;
 
@@ -301,6 +248,8 @@ const Pcb3dPreview = ({pcb, fileName, stack, onSave}: Props): JSX.Element => {
     const view = useRef<Built | null>(null);
     // case parts switched off, by name; a ref too, for parts that load after a switch
     const [hidden, setHidden] = useState<Record<string, boolean>>({});
+    // the heights card, folded down to its title
+    const [panelFolded, setPanelFolded] = useState(false);
     const hiddenNow = useRef(hidden);
     hiddenNow.current = hidden;
     const [check, setCheck] = useState<CheckState>({state: 'idle'});
@@ -685,13 +634,15 @@ const Pcb3dPreview = ({pcb, fileName, stack, onSave}: Props): JSX.Element => {
     };
     return (
         <Container ref={container}>
-            <Download onClick={download} disabled={!built || loading || exporting}
+            <Download $variant="go" onClick={download} disabled={!built || loading || exporting}
                       title={loading ? 'The models are still loading' : `Download the board with its models as glTF (${fileName}), for Blender and other 3D tools`}>
                 <DownloadIcon/>{exporting ? 'Exporting…' : '.glb'}
             </Download>
             {stack && (
-                <Panel>
-                    <PanelTitle>Case ({stack.name}), from the bottom up; heights in mm</PanelTitle>
+                <Card>
+                    <CardHead title={`Case (${stack.name})`} subtitle="from the bottom up: each part's bottom – its top, in mm"
+                              folded={panelFolded} onFold={setPanelFolded} foldAt="left"/>
+                    {!panelFolded && <div className="body">
                     {stack.parts.map(p => {
                         const z = positions.parts[p.name] ?? p.z;
                         return (
@@ -729,21 +680,22 @@ const Pcb3dPreview = ({pcb, fileName, stack, onSave}: Props): JSX.Element => {
                             </Row>
                         );
                     })}
-                    {moved(stack, positions) && (
-                        <Buttons>
-                            <Check onClick={() => onSave?.(editOf(stack, positions))} disabled={!onSave}
-                                   title="Write these heights into the config's assemblies, as gaps, the board's shift and the other parts' z">
+                    <Actions>
+                        <Button onClick={checkCollisions} disabled={!built || loading || check.state === 'running'}
+                                title={`Which footprints' models, other parts and the board reach more than ${TOLERANCE} mm into the case parts shown`}>
+                            {check.state === 'running' ? `Checking… ${check.done} of ${check.total}` : 'Check collisions'}
+                        </Button>
+                        <Gap/>
+                        {moved(stack, positions) && <>
+                            <Button onClick={reset}>Reset</Button>
+                            <Button $variant="go" onClick={() => onSave?.(editOf(stack, positions))} disabled={!onSave}
+                                    title="Write these heights into the config's assemblies, as gaps, the board's shift and the other parts' z">
                                 Save to config
-                            </Check>
-                            <Check onClick={reset}>Reset</Check>
-                        </Buttons>
-                    )}
-                    <Check onClick={checkCollisions} disabled={!built || loading || check.state === 'running'}
-                           title={`Which footprints' models, other parts and the board reach more than ${TOLERANCE} mm into the case parts shown`}>
-                        {check.state === 'running' ? `Checking… ${check.done} of ${check.total}` : 'Check collisions'}
-                    </Check>
+                            </Button>
+                        </>}
+                    </Actions>
                     {check.state === 'done' && (check.found.length === 0
-                        ? <div>Nothing runs into the case parts shown.</div>
+                        ? <Tip>Nothing runs into the case parts shown.</Tip>
                         : <details open>
                             <summary>
                                 {count(check.found)} {count(check.found) === 1 ? 'footprint runs' : 'footprints run'} into
@@ -756,8 +708,9 @@ const Pcb3dPreview = ({pcb, fileName, stack, onSave}: Props): JSX.Element => {
                                 </li>
                             ))}</ul>
                         </details>)}
-                    {check.state === 'failed' && <div>Cannot check: {check.why}</div>}
-                </Panel>
+                    {check.state === 'failed' && <StatusText>Cannot check: {check.why}</StatusText>}
+                    </div>}
+                </Card>
             )}
             {error && <Message>{error}</Message>}
             {(loading || missing.length > 0) && (

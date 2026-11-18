@@ -31,11 +31,11 @@ export const lines = (text, count) =>
 // the KiCanvas board viewer, and one of its footprints' position and angle
 export const viewer = `document.querySelector('kicanvas-embed[loaded]')?.shadowRoot.querySelector('kc-board-app').shadowRoot.querySelector('kc-board-viewer').viewer`;
 export const boardFootprint = (page, reference) =>
-    page.ev(`(() => { const f = ${viewer}?.board.footprints.find(f => f.reference === ${JSON.stringify(reference)}); return f ? [f.at.position.x, f.at.position.y, f.at.rotation] : null })()`);
+    page.ev(`(() => { const f = ${viewer}?.board?.footprints.find(f => f.reference === ${JSON.stringify(reference)}); return f ? [f.at.position.x, f.at.position.y, f.at.rotation] : null })()`);
 
 // waits for the board to regenerate after an edit: a footprint moves or turns
 export const waitForBoard = async (page, reference, before) => {
-    await page.until(`(() => { const f = ${viewer}?.board.footprints.find(f => f.reference === ${JSON.stringify(reference)}); return !!f && JSON.stringify([f.at.position.x, f.at.position.y, f.at.rotation]) !== ${JSON.stringify(JSON.stringify(before))} })()`,
+    await page.until(`(() => { const f = ${viewer}?.board?.footprints.find(f => f.reference === ${JSON.stringify(reference)}); return !!f && JSON.stringify([f.at.position.x, f.at.position.y, f.at.rotation]) !== ${JSON.stringify(JSON.stringify(before))} })()`,
         120, `${reference} to move on the regenerated board`);
 };
 
@@ -69,6 +69,17 @@ export const settled = async page => {
     await page.until(`!document.querySelector('[aria-label="Generating"]')`, 180, 'the last ergogen run to finish');
     const error = await page.ev(`document.querySelector('[data-ergogen-error]')?.textContent ?? null`);
     if (error) throw new Error(`the config the test left makes ergogen fail: ${error.slice(0, 300)}`);
+    // the preview leaves the cases out unless one is on show: the whole config, cases and all, has to make too
+    const left = await page.ev(`(async () => {
+        const c = jsyaml.load(window.monaco.editor.getModels()[0].getValue()) ?? {};
+        const pick = ['points', 'units', 'variables', 'outlines', 'pcbs', 'cases', 'assemblies'];
+        const input = Object.fromEntries(pick.map(k => [k, {...c[k]}]));
+        try {
+            const r = await window.ergogen.process({...input, is_preview: true}, true, () => {}, {tolerant: true});
+            return Object.entries(r.errors ?? {}).map(([k, v]) => k + ': ' + v).join(' | ');
+        } catch (e) { return String(e); }
+    })()`);
+    if (left) throw new Error(`the config the test left does not make in full: ${left.slice(0, 300)}`);
     const broken = await page.ev(`[...document.querySelectorAll('[data-error-boundary]')].map(b => b.textContent).join(' | ')`);
     if (broken) throw new Error(`part of the page failed to draw: ${broken.slice(0, 300)}`);
 };

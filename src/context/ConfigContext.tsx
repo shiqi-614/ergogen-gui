@@ -1,4 +1,4 @@
-import React, {createContext, Dispatch, SetStateAction, useCallback, useContext, useEffect, useState} from 'react';
+import React, {createContext, Dispatch, SetStateAction, useCallback, useContext, useEffect, useRef, useState} from 'react';
 import { DebouncedFunc } from "lodash-es";
 import yaml from "js-yaml";
 import debounce from "lodash.debounce";
@@ -24,7 +24,10 @@ type ContextProps = {
     autoGen: boolean,
     setAutoGen: Dispatch<SetStateAction<boolean>>,
     autoGen3D: boolean,
-    setAutoGen3D: Dispatch<SetStateAction<boolean>>
+    setAutoGen3D: Dispatch<SetStateAction<boolean>>,
+    // whether what is on show needs the cases (a case, an assembly): without, a run leaves them out, which is
+    // most of its time, and the last ones made stay, marked results.casesStale
+    setWantCases: (want: boolean) => void,
 };
 
 type ProcessOptions = {
@@ -53,6 +56,9 @@ const ConfigContextProvider = ({initialInput, children}: Props) => {
     const [debug, setDebug] = useState<boolean>(true);
     const [autoGen, setAutoGen] = useState<boolean>(true);
     const [autoGen3D, setAutoGen3D] = useState<boolean>(false);
+    const wantCases = useRef(false);
+    // the cases and assemblies of the last run that made them, and the config they were made from
+    const lastCases = useRef<{ text: string | undefined, cases: any, assemblies: any } | null>(null);
 
 
     const parseConfig = (inputString: string): [string, { [key: string]: any[] }] => {
@@ -112,13 +118,22 @@ const ConfigContextProvider = ({initialInput, children}: Props) => {
                 window.stage = import.meta.env.MODE || 'production';
                 if (options.is_preview) {
                     console.log("is preview");
+                    const skipCases = !wantCases.current;
                     results = await window.ergogen.process(
                         inputConfig,
                         debug, // debug
                         (m: string) => console.log(m), // logger
                         // an outline, pcb, case or assembly that fails is left out, in results.errors, and the rest shown
-                        {tolerant: true}
+                        {tolerant: true, skip: skipCases ? ['cases'] : []}
                     );
+                    if (results && skipCases) {
+                        // the cases as they were last made, until one is on show again
+                        results.cases = lastCases.current?.cases;
+                        results.assemblies = lastCases.current?.assemblies;
+                        results.casesStale = !lastCases.current || lastCases.current.text !== textInput;
+                    } else if (results) {
+                        lastCases.current = {text: textInput, cases: results.cases, assemblies: results.assemblies};
+                    }
                 } else {
                     console.log("get result from ergogen api");
                     // https://ergo.shiqi614.win/api/ergogen
@@ -187,6 +202,13 @@ const ConfigContextProvider = ({initialInput, children}: Props) => {
         [window.ergogen]
     );
 
+    // a case or an assembly on show: one more run, with the cases, when the ones there are were made of an older config
+    const setWantCases = (want: boolean) => {
+        const was = wantCases.current;
+        wantCases.current = want;
+        if (want && !was && (results?.casesStale || !results) && autoGen) processInput(configInput, {is_preview: true});
+    };
+
     useEffect(() => {
         if(autoGen) {
             processInput(configInput, { is_preview: true});
@@ -208,7 +230,8 @@ const ConfigContextProvider = ({initialInput, children}: Props) => {
                 autoGen,
                 setAutoGen,
                 autoGen3D,
-                setAutoGen3D
+                setAutoGen3D,
+                setWantCases,
             } }
         >
             { children }
