@@ -696,12 +696,16 @@ assemblies:
         module: e-paper
         z: 30
       # the joystick module (ErgoCai.modules joystick/Alpsalpine-pogo, exported from KiCad with its models) on the
-      # joystick mount: its board's bottom at 12 mm, 4 mm over the pcb's top (trackball/PMW3610-pogo/PMW3610-pogo.glb
-      # for the trackball module)
+      # joystick mount: its board's bottom at 12 mm, 4 mm over the pcb's top
       - name: joystick
         model: "github:shiqi-614/ErgoCai.modules/joystick/Alpsalpine-pogo/Alpsalpine-pogo.glb"
         module: joystick
         z: 12
+      # or the trackball module in its place, with its ball cup and 25 mm ball (trackball/PMW3610-pogo/cup)
+      # - name: trackball
+      #   model: "github:shiqi-614/ErgoCai.modules/trackball/PMW3610-pogo/PMW3610-pogo.glb"
+      #   module: joystick
+      #   z: 12
   ergocai_left:
     stack: [left_buttom, left_gap, left_switchplate, left_middle, left_top]
     pcb:
