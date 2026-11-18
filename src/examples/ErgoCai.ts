@@ -410,11 +410,13 @@ pcbs:
           ref: matrix_col1_row0
           shift: [-9.5, 21.5]
         asym: clone
+      # the joystick module connects by its 6P FFC (into the mount's JOYSTICK_J1) or by the six pogo pins on its
+      # back, on the mount's contact pads JOYSTICK_P1: use one (joystick-mount/joystick-mount.kicad_pcb: FFC only)
       joystick: 
         what: 
           github:
             repo: "shiqi-614/ErgoCai.modules"
-            file: "joystick/joystick-mount/joystick-mount.kicad_pcb"
+            file: "joystick/joystick-mount-ffc-pogo/joystick-mount-ffc-pogo.kicad_pcb"
         where: 
           ref: [thumbs_col3_row5]
           shift: [-7, -30]
@@ -693,6 +695,12 @@ assemblies:
         model: "github:shiqi-614/ErgoCai.modules/e-paper/2.13inch/2.13inch.glb"
         module: e-paper
         z: 30
+      # the joystick module (ErgoCai.modules joystick/Alpsalpine-ffc-pogo, exported from KiCad with its models) on
+      # the joystick mount: its board's bottom at 12 mm, 4 mm over the pcb's top
+      - name: joystick
+        model: "github:shiqi-614/ErgoCai.modules/joystick/Alpsalpine-ffc-pogo/Alpsalpine-ffc-pogo.glb"
+        module: joystick
+        z: 12
   ergocai_left:
     stack: [left_buttom, left_gap, left_switchplate, left_middle, left_top]
     pcb:
