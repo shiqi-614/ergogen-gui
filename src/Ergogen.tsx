@@ -1,4 +1,5 @@
 import {useEffect, useRef, useState} from "react";
+import ErrorBoundary from "./atoms/ErrorBoundary";
 import styled from "styled-components";
 import Split from "react-split";
 
@@ -218,7 +219,7 @@ const Ergogen = () => {
                             onChange={(newValue: ConfigOption|null) => setSelectedOption(newValue)}
                             placeholder={"Paste your config below, or select an example here!"}
                         />
-                        <StyledConfigEditor/>
+                        <ErrorBoundary area="the config editor"><StyledConfigEditor/></ErrorBoundary>
 
                         <GenerateContainer>
                             <GenerateButton
@@ -243,7 +244,15 @@ const Ergogen = () => {
                               <DownloadIcon/>
                             </IconButton>
                         </GenerateContainer>
-                        {configContext?.error && <Error role="alert">{configContext?.error?.toString()}</Error>}
+                        {configContext?.error && <Error role="alert" data-ergogen-error>{configContext?.error?.toString()}</Error>}
+                        {/* the parts ergogen could not make; the rest is made and shown */}
+                        {!configContext?.error && Object.keys(configContext?.results?.errors ?? {}).length > 0 && (
+                            <Error role="alert" data-ergogen-error>
+                                {Object.entries(configContext.results.errors as Record<string, string>).map(([item, message]) => (
+                                    <div key={item}><b>{item}</b> could not be made: {message}</div>
+                                ))}
+                            </Error>
+                        )}
                     </EditorContainer>
                 </LeftSplitPane>
 
@@ -260,16 +269,21 @@ const Ergogen = () => {
                                 <ModeTab active={mode === 'preview'} onClick={() => switchMode('preview')}>Preview</ModeTab>
                                 <ModeTab active={mode === 'layout'} onClick={() => switchMode('layout')}>Layout</ModeTab>
                             </ModeBar>
-                            {mode === 'layout'
-                                ? <LayoutEditor request={outlineRequest} onRequestDone={() => setOutlineRequest(null)}/>
-                                // until the first run has results (or an error) there is nothing to preview
-                                : configContext.results || configContext.error
-                                    ? <StyledFilePreview key={previewKey} previewKey={previewKey} previewContent={previewContent}/>
-                                    : <PreviewLoading text="Generating the preview…"/>}
+                            <ErrorBoundary area={mode === 'layout' ? 'the layout editor' : 'the preview'}
+                                           resetKey={`${mode} ${previewKey} ${configContext.configInput}`}>
+                                {mode === 'layout'
+                                    ? <LayoutEditor request={outlineRequest} onRequestDone={() => setOutlineRequest(null)}/>
+                                    // until the first run has results (or an error) there is nothing to preview
+                                    : configContext.results || configContext.error
+                                        ? <StyledFilePreview key={previewKey} previewKey={previewKey} previewContent={previewContent}/>
+                                        : <PreviewLoading text="Generating the preview…"/>}
+                            </ErrorBoundary>
                         </LeftSplitPane>
                         <RightSplitPane>
-                            <Downloads setPreview={showPreview} label={selectedOptionLabel} onNewOutline={newOutline}
-                                       previewKey={mode === 'preview' ? previewKey : undefined}/>
+                            <ErrorBoundary area="the Downloads list" resetKey={configContext.configInput}>
+                                <Downloads setPreview={showPreview} label={selectedOptionLabel} onNewOutline={newOutline}
+                                           previewKey={mode === 'preview' ? previewKey : undefined}/>
+                            </ErrorBoundary>
                         </RightSplitPane>
                     </InnerSplit>
                 </RightSplitPane>

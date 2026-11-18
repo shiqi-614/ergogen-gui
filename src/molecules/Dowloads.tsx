@@ -3,6 +3,7 @@ import NewOutline, {OutlineRequest} from "./NewOutline";
 import NewPcb from "./NewPcb";
 import NewAssembly from "./NewAssembly";
 import {NewUnit, UnitList, useUnits} from "./Units";
+import {ConfirmDelete, Deletable} from "./DeleteItem";
 import DownloadRow from "../atoms/DownloadRow";
 import Loading, {Spinner} from "../atoms/Loading";
 import yaml from 'js-yaml';
@@ -94,6 +95,8 @@ type DownloadObj = {
     preview?: string,
     // shown instead of the file name, for an entry that only previews (no content to download)
     label?: string,
+    // why ergogen could not make it (it has nothing to show or download, but it can be deleted)
+    error?: string,
 };
 
 type DownloadArr = Array<DownloadObj>;
@@ -111,6 +114,8 @@ const Downloads = ({setPreview, label, previewKey, onNewOutline}: Props) => {
     // the section whose new-item form is open
     const [adding, setAdding] = useState<string | null>(null);
     const units = useUnits();
+    // the row whose delete is being confirmed
+    const [deleting, setDeleting] = useState<{ kind: Deletable, name: string } | null>(null);
     if(!configContext) return null;
 
     const {configInput, results, error, running} = configContext;
@@ -201,6 +206,14 @@ const Downloads = ({setPreview, label, previewKey, onNewOutline}: Props) => {
 
     }
 
+    // what ergogen could not make, in its section: e.g. "pcbs.left" under PCBs
+    const SECTION_OF: Record<string, string> = {outlines: 'Outlines', pcbs: 'PCBs', cases: 'Cases', assemblies: 'Assemblies'};
+    for (const [item, message] of Object.entries((results?.errors ?? {}) as Record<string, string>)) {
+        const [kind, ...rest] = item.split('.');
+        const found = sections.find(s => s.title === SECTION_OF[kind]);
+        if (found) found.items.push({fileName: rest.join('.'), extension: '', content: '', label: rest.join('.'), error: message});
+    }
+
     if (results?.kicad) {
         const kicad = section('KiCad projects');
         for (const [name, content] of Object.entries(results.kicad)) {
@@ -246,6 +259,15 @@ const Downloads = ({setPreview, label, previewKey, onNewOutline}: Props) => {
               {running && results && <Spinner $size="0.9rem" title="Generating…" role="status" aria-label="Generating"/>}
           </Title>
           {!results && !error && <Loading text="Generating…"/>}
+          {deleting && (
+              <ConfirmDelete kind={deleting.kind} name={deleting.name} onDone={deleted => {
+                  // what the preview showed is gone: back to the points
+                  const shown = previewKey ?? '';
+                  if (deleted && [`outlines.${deleting.name}.svg`, `pcbs.${deleting.name}.preview.kicad_pcb`, `cases.${deleting.name}.stl`,
+                      `assemblies.${deleting.name}`].includes(shown)) setPreview('demo.svg');
+                  setDeleting(null);
+              }}/>
+          )}
           {/* the config's own units: not a download, but what everything below is measured in */}
           {results && (
               <SectionContainer>
@@ -291,7 +313,8 @@ const Downloads = ({setPreview, label, previewKey, onNewOutline}: Props) => {
                               <NewAssembly onCancel={() => setAdding(null)} onCreated={key => { setAdding(null); setPreview(key); }}/>}
                           {isOpen && shown.map((download, i) =>
                               <DownloadRow key={i} {...download} setPreview={setPreview} setTabIndex={tabContext?.setTabIndex}
-                                           active={!!download.preview && download.preview === previewKey}/>
+                                           active={!!download.preview && download.preview === previewKey}
+                                           onDelete={what ? () => setDeleting({kind: what as Deletable, name: download.fileName}) : undefined}/>
                           )}
                       </SectionContainer>
                   );

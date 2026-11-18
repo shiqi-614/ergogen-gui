@@ -1,4 +1,5 @@
 import {useEffect, useRef, useState} from "react";
+import ErrorBoundary from "./ErrorBoundary";
 import styled from "styled-components";
 import Loading from "./Loading";
 import Button from "./Button";
@@ -146,7 +147,7 @@ const KicanvasPreview = ({pcb, name = 'preview.kicad_pcb', pcbName}: Props): JSX
         <Container>
             <Board ref={container}/>
             {/* stays mounted while the board regenerates after an edit, so editing goes on on the new one */}
-            {pcbName && <PcbEditor viewer={status === 'shown' ? viewer : null} pcb={pcbName}/>}
+            {pcbName && <ErrorBoundary area="the board's editor" resetKey={pcb}><PcbEditor viewer={status === 'shown' ? viewer : null} pcb={pcbName}/></ErrorBoundary>}
             {pcb && status !== 'shown' && (
                 <Overlay>
                     {status === 'failed'

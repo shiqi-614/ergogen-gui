@@ -1,5 +1,5 @@
 // New and deleted pcbs and assemblies, from the Downloads list's "+" and their own views
-import {assert, config, freshApp, parsed, pressNew} from '../app.mjs';
+import {assert, config, freshApp, parsed, pressNew, deleteFromList} from '../app.mjs';
 
 const dialogBox = placeholder => `document.querySelector('[role="dialog"] input[placeholder="${placeholder}"]')`;
 const check = (page, label) => page.ev(`[...document.querySelectorAll('[role="dialog"] .checks label')].find(l => l.textContent.trim().replace(/\\d+$/, '').trim() === ${JSON.stringify(label)}).querySelector('input').click()`);
@@ -19,11 +19,12 @@ export const tests = [
             assert(JSON.stringify(Object.keys(c.pcbs.test_right.footprints)) === JSON.stringify(Object.keys(c.pcbs.ergo_cai_right.footprints)),
                 "test_right should have ergo_cai_right's footprints");
             assert(c.pcbs.test_left?.mirror?.from === 'test_right', 'test_left should mirror test_right');
-            await page.until(`!![...document.querySelectorAll('button')].find(b => b.textContent === 'Delete PCB')`, 180, 'its board');
-            await page.press('Delete PCB');
+            await page.until(`!!document.querySelector('kicanvas-embed[loaded]')`, 180, 'its board');
+            const said = await deleteFromList(page, 'PCBs', 'test_right');
             await page.until(`!jsyaml.load(${config}).pcbs.test_right`, 30, 'test_right to go');
             assert(!(await parsed(page)).pcbs.test_left, 'test_left should go with it');
-            assert(page.dialogs?.some(d => d.includes('the mirrored pcb test_left')), 'the confirmation should name the mirrored pcb');
+            assert(said.includes('the mirrored pcb test_left'), `the confirmation should name the mirrored pcb: ${said}`);
+            assert(await page.ev(`!document.querySelector('kicanvas-embed')`), 'the preview should leave the deleted board');
         },
     },
     {
@@ -72,8 +73,8 @@ export const tests = [
                 `test_right: ${JSON.stringify(assemblies.test_right)}`);
             assert(JSON.stringify(assemblies.test_left) === JSON.stringify({stack: ['left_buttom', 'left_top'], pcb: {name: 'ergo_cai_left', top: 'left_buttom'}, parts}),
                 `test_left: ${JSON.stringify(assemblies.test_left)}`);
-            await page.until(`!![...document.querySelectorAll('button')].find(b => b.textContent === 'Delete assembly')`, 180, 'its 3D view');
-            await page.press('Delete assembly');
+            await page.until(`!!document.querySelector('canvas')`, 180, 'its 3D view');
+            await deleteFromList(page, 'Assemblies', 'test_right');
             await page.until(`!jsyaml.load(${config}).assemblies.test_right`, 30, 'test_right to go');
             const after = await parsed(page);
             assert(after.assemblies.test_left && after.pcbs.ergo_cai_right && after.cases.right_top, 'only the assembly should go');

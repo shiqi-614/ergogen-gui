@@ -2,7 +2,7 @@ import {useEffect, useMemo, useState} from "react";
 import styled from "styled-components";
 import yaml from "js-yaml";
 import {useConfigContext} from "../context/ConfigContext";
-import {EditSite, appendListItem, applyEdits, caseReferences, deleteCase, deleteListItem, findItemSites, moveListItem} from "../utils/layoutEdit";
+import {EditSite, appendListItem, applyEdits, deleteListItem, findItemSites, moveListItem} from "../utils/layoutEdit";
 
 // The parts of one case (cases.<name>), in its preview: a line each, in order, saying what it does (+ add,
 // − subtract, ∩ intersect), what it is made from, how thick it is and how many outlines or footprints it matched.
@@ -53,12 +53,6 @@ const Panel = styled.div`
 
   .title span {
     flex-grow: 1;
-  }
-
-  .title button.danger {
-    padding: 0 0.4rem;
-    background: #a33a3a;
-    color: #ffffff;
   }
 
   .line {
@@ -261,23 +255,6 @@ const CaseParts = ({caseName, made, onLight}: Props): JSX.Element | null => {
             fail('delete it', err);
         }
     };
-    // The whole case, and what uses it: the other cases' parts made of it, its place in the assemblies' stacks,
-    // and (unless it is itself a mirror) the cases mirrored from it. The editor's undo brings it all back.
-    const removeCase = () => {
-        const refs = caseReferences(text, caseName);
-        const uses = [
-            ...refs.mirrors.map(m => `the mirrored case ${m}, deleted too`),
-            ...refs.stacks.map(a => `the stack of assemblies.${a}`),
-            ...refs.parts.map(p => `part ${p.split('.')[1]} of ${p.split('.')[0]}`),
-        ];
-        if (!window.confirm(`Delete case ${caseName}?` + (uses.length ? `\nIt is used by:\n${uses.map(u => `  ${u}`).join('\n')}\nThose go too.` : ''))) return;
-        try {
-            write(deleteCase(text, caseName, true), `Deleted ${caseName}`);
-        } catch (err: unknown) {
-            fail(`delete ${caseName}`, err);
-        }
-    };
-
     // a new part at the end, as thick as the case's first, opened to be set
     const add = (what: 'outline' | 'pcb') => {
         const thick = made.find(m => m.extrude !== null)?.extrude ?? 3;
@@ -296,7 +273,6 @@ const CaseParts = ({caseName, made, onLight}: Props): JSX.Element | null => {
             <div className="title">
                 <button title={folded ? 'Show the parts' : 'Fold the parts away'} onClick={() => setFolded(!folded)}>{folded ? '▸' : '▾'}</button>
                 <span>{caseName}: {parts.length} part{parts.length === 1 ? '' : 's'}, in order</span>
-                {!folded && <button className="danger" title={`Delete the case ${caseName}`} onClick={removeCase}>Delete case</button>}
             </div>
             {!folded && source !== caseName && <div className="note">{`${caseName} is ${source} mirrored: these are ${source}'s parts`}</div>}
             {!folded && parts.map((part, index) => {

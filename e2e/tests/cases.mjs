@@ -1,5 +1,5 @@
 // A case's parts, in its own preview (Downloads → Cases), and which 3D board view shows the case
-import {assert, config, freshApp, openPcb, parsed, pressNew} from '../app.mjs';
+import {assert, config, freshApp, openPcb, parsed, pressNew, deleteFromList} from '../app.mjs';
 
 const openCase = async (page, name) => {
     await page.ev(`[...document.querySelectorAll('button')].find(b => b.textContent.startsWith('▸ Cases'))?.click()`);
@@ -94,12 +94,12 @@ export const tests = [
             // it opens, once it is made
             await page.until(`[...document.querySelectorAll('span')].some(s => s.textContent.startsWith('right_lid: ${top} parts'))`, 120, "right_lid's parts");
 
-            await page.press('Delete case');
+            const said = await deleteFromList(page, 'Cases', 'right_lid');
             await page.until(`!jsyaml.load(${config}).cases.right_lid`, 30, 'right_lid to go');
             const after = await parsed(page);
             assert(!after.cases.left_lid, 'left_lid should go with it');
             assert(!after.assemblies.ergocai_right.stack.includes('right_lid') && !after.assemblies.ergocai_left.stack.includes('left_lid'), 'the stacks should no longer have them');
-            assert(page.dialogs?.some(d => d.includes('the mirrored case left_lid')), 'the confirmation should name the mirrored case');
+            assert(said.includes('the mirrored case left_lid'), `the confirmation should name the mirrored case: ${said}`);
         },
     },
 ];

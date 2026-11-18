@@ -171,6 +171,31 @@ const Box = styled.div`
     background: #28a745;
   }
 
+  button.danger {
+    background: #a33a3a;
+  }
+
+  button.danger:hover {
+    background: #c24444;
+  }
+
+  .message {
+    margin-bottom: 0.5rem;
+  }
+
+  ul.uses {
+    max-height: 12rem;
+    overflow-y: auto;
+    margin: 0 0 0.6rem;
+    padding-left: 1.2rem;
+    color: #bdbdbd;
+  }
+
+  .hint-plain {
+    color: #888888;
+    font-size: 0.8rem;
+  }
+
   .buttons {
     display: flex;
     justify-content: flex-end;

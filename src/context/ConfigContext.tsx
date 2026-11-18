@@ -115,7 +115,9 @@ const ConfigContextProvider = ({initialInput, children}: Props) => {
                     results = await window.ergogen.process(
                         inputConfig,
                         debug, // debug
-                        (m: string) => console.log(m) // logger
+                        (m: string) => console.log(m), // logger
+                        // an outline, pcb, case or assembly that fails is left out, in results.errors, and the rest shown
+                        {tolerant: true}
                     );
                 } else {
                     console.log("get result from ergogen api");

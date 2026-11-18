@@ -131,7 +131,6 @@ const OutlinePanel = ({outline, text, onCommit, onDeleted, folded, onFold}: Outl
                     <button className="fold" title={folded ? 'Show the panel' : 'Fold the panel away'} onClick={() => onFold(!folded)}>{folded ? '▸' : '▾'}</button>
                     <h4>{outline}</h4>
                 </div>
-                {!folded && <button className="danger" onClick={removeOutline}>Delete outline</button>}
             </div>
             {!folded && parts.map(part => {
                 const id = String(part.key);

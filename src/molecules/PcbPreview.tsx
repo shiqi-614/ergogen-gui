@@ -1,11 +1,11 @@
 import {useMemo, useState} from "react";
+import ErrorBoundary from "../atoms/ErrorBoundary";
 import styled from "styled-components";
 import KicanvasPreview from "../atoms/KicanvasPreview";
 import Pcb3dPreview, {Stack} from "../atoms/Pcb3dPreview";
 import {useConfigContext} from "../context/ConfigContext";
 import AssemblyParts from "./AssemblyParts";
 import {StackEdit, writeStack} from "../utils/assemblyEdit";
-import {deleteEntry, deletePcb, pcbReferences} from "../utils/layoutEdit";
 
 type Props = {
     pcb: string,
@@ -45,32 +45,6 @@ const SwitchButton = styled.button<{ $active: boolean }>`
   cursor: pointer;
 `;
 
-// right of the view switch
-const DeleteRow = styled.div`
-  position: absolute;
-  top: 0.5rem;
-  left: 7rem;
-  z-index: 1;
-`;
-
-// deletes what is shown: the pcb, or the assembly
-const DeleteButton = styled.button`
-  margin-left: 0.5rem;
-  padding: 0.3rem 0.7rem;
-  border: none;
-  border-radius: 0.25rem;
-  background: #595959;
-  color: #ff8a80;
-  font: inherit;
-  font-size: 0.85rem;
-  cursor: pointer;
-
-  &:hover {
-    background: #a33a3a;
-    color: #ffffff;
-  }
-`;
-
 // the view last picked, for the next board shown
 let lastView: View = '2d';
 
@@ -100,25 +74,6 @@ const PcbPreview = ({pcb, board, initialView, assembly}: Props): JSX.Element => 
             window.alert(`Cannot write the stack into the config: ${e instanceof Error ? e.message : e}`);
         }
     };
-    // The pcb goes with the pcbs mirrored from it and the assemblies holding them; an assembly goes alone. The
-    // editor's undo brings it back.
-    const remove = () => {
-        const text = configContext?.configInput;
-        if (!text) return;
-        try {
-            if (assembly) {
-                if (!window.confirm(`Delete assembly ${assembly}? Its board and cases stay.`)) return;
-                configContext.setConfigInput(deleteEntry(text, ['assemblies'], assembly));
-                return;
-            }
-            const {mirrors, assemblies} = pcbReferences(text, board);
-            const uses = [...mirrors.map(m => `the mirrored pcb ${m}`), ...assemblies.map(a => `assembly ${a}`)];
-            if (!window.confirm(`Delete pcb ${board}?` + (uses.length ? `\nThese go with it:\n${uses.map(u => `  ${u}`).join('\n')}` : ''))) return;
-            configContext.setConfigInput(deletePcb(text, board));
-        } catch (e) {
-            window.alert(`Cannot delete it: ${e instanceof Error ? e.message : e}`);
-        }
-    };
     const choose = (v: View) => {
         lastView = v;
         setView(v);
@@ -129,15 +84,12 @@ const PcbPreview = ({pcb, board, initialView, assembly}: Props): JSX.Element => 
                 <SwitchButton $active={view === '2d'} aria-pressed={view === '2d'} onClick={() => choose('2d')}>2D</SwitchButton>
                 <SwitchButton $active={view === '3d'} aria-pressed={view === '3d'} onClick={() => choose('3d')}>3D</SwitchButton>
             </Switch>
-            <DeleteRow>
-                <DeleteButton title={assembly ? `Delete the assembly ${assembly}` : `Delete the pcb ${board}`} onClick={remove}>
-                    {assembly ? 'Delete assembly' : 'Delete PCB'}
-                </DeleteButton>
-            </DeleteRow>
-            {view === '2d'
-                ? <KicanvasPreview pcb={pcb} name={`${board}_preview.kicad_pcb`} pcbName={board}/>
-                : <Pcb3dPreview pcb={pcb} fileName={`${board}.glb`} stack={stack} onSave={save}/>}
-            {view === '3d' && assembly && <AssemblyParts assembly={assembly}/>}
+            <ErrorBoundary area={view === '2d' ? 'the board' : 'the board in 3D'} resetKey={`${view} ${pcb.length}`}>
+                {view === '2d'
+                    ? <KicanvasPreview pcb={pcb} name={`${board}_preview.kicad_pcb`} pcbName={board}/>
+                    : <Pcb3dPreview pcb={pcb} fileName={`${board}.glb`} stack={stack} onSave={save}/>}
+            </ErrorBoundary>
+            {view === '3d' && assembly && <ErrorBoundary area="the assembly's parts" resetKey={configContext?.configInput}><AssemblyParts assembly={assembly}/></ErrorBoundary>}
         </Wrapper>
     );
 };

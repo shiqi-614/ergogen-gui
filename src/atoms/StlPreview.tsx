@@ -1,4 +1,5 @@
 import {useEffect, useRef, useState} from "react";
+import ErrorBoundary from "./ErrorBoundary";
 import CaseParts, {MadePart, OPERATION_COLOURS} from "../molecules/CaseParts";
 import styled from "styled-components";
 import * as THREE from "three";
@@ -174,7 +175,7 @@ const StlPreview = ({stl, caseName, made}: Props): JSX.Element => {
         <Container ref={container}>
             {!stl && <Message>No STL for this case.</Message>}
             {error && <Message>{error}</Message>}
-            {caseName && <CaseParts caseName={caseName} made={made ?? []} onLight={setLit}/>}
+            {caseName && <ErrorBoundary area="the case's parts" resetKey={made}><CaseParts caseName={caseName} made={made ?? []} onLight={setLit}/></ErrorBoundary>}
         </Container>
     );
 };

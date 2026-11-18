@@ -17,6 +17,7 @@ import {
 import {fromFrame, nearestKey, shiftFrom, toFrame} from "../utils/keyFrame";
 import ColumnPanel, {Tab} from "./layout/ColumnPanel";
 import OutlinePanel from "./layout/OutlinePanel";
+import ErrorBoundary from "../atoms/ErrorBoundary";
 import {OutlineRequest} from "./NewOutline";
 
 type ColumnDrag = {
@@ -790,11 +791,14 @@ const LayoutEditor = ({request, onRequestDone}: Props): JSX.Element | null => {
             </Canvas>
 
             {!selected && outline && !drawing && (
+                <ErrorBoundary area="the outline's panel" resetKey={configInput}>
                 <OutlinePanel outline={outline} text={configInput} onCommit={commit} folded={panelFolded} onFold={setPanelFolded}
                               onDeleted={name => { setOutline(''); setHint(`Deleted outline ${name}; undo in the editor brings it back`); }}/>
+                </ErrorBoundary>
             )}
 
             {selected && (
+                <ErrorBoundary area="the panel" resetKey={`${JSON.stringify(selected)} ${configInput}`}>
                 <ColumnPanel
                     column={selected}
                     text={configInput}
@@ -813,6 +817,7 @@ const LayoutEditor = ({request, onRequestDone}: Props): JSX.Element | null => {
                     keyMeta={Object.values(points ?? {}).find(p => sameColumn(p, selected) && p.meta.row === selected.row
                         && !!p.meta.mirrored === !!selected.mirrored)?.meta}
                 />
+                </ErrorBoundary>
             )}
 
             <OutlineBar onPointerDown={e => e.stopPropagation()}>

@@ -67,6 +67,20 @@ export const settled = async page => {
     await page.ev(`[...document.querySelectorAll('button')].find(b => b.textContent === 'Preview')?.click()`);
     await new Promise(r => setTimeout(r, 600));
     await page.until(`!document.querySelector('[aria-label="Generating"]')`, 180, 'the last ergogen run to finish');
-    const error = await page.ev(`document.querySelector('[role="alert"]')?.textContent ?? null`);
+    const error = await page.ev(`document.querySelector('[data-ergogen-error]')?.textContent ?? null`);
     if (error) throw new Error(`the config the test left makes ergogen fail: ${error.slice(0, 300)}`);
+    const broken = await page.ev(`[...document.querySelectorAll('[data-error-boundary]')].map(b => b.textContent).join(' | ')`);
+    if (broken) throw new Error(`part of the page failed to draw: ${broken.slice(0, 300)}`);
+};
+
+// Deletes an item from its row in the Downloads list (its section opened), saying yes in the dialog. Returns what
+// the dialog said goes with it.
+export const deleteFromList = async (page, section, name) => {
+    await page.ev(`[...document.querySelectorAll('button')].find(b => b.textContent.startsWith('▸ ${section}'))?.click()`);
+    await page.until(`!!document.querySelector('button[title="Delete ${name}"]')`, 30, `the delete button of ${name}`);
+    await page.ev(`document.querySelector('button[title="Delete ${name}"]').click()`);
+    await page.until(`!!document.querySelector('[role="dialog"] button.danger')`, 10, 'the confirmation');
+    const said = await page.ev(`document.querySelector('[role="dialog"]').innerText`);
+    await page.ev(`document.querySelector('[role="dialog"] button.danger').click()`);
+    return said;
 };

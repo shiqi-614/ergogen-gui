@@ -1,5 +1,5 @@
 // Outlines in the layout editor
-import {assert, config, freshApp, openLayout, outlineMenu, parsed, pressNew} from '../app.mjs';
+import {assert, config, freshApp, openLayout, outlineMenu, parsed, pressNew, deleteFromList} from '../app.mjs';
 
 const pick = (page, name) => page.choose(outlineMenu, name);
 const redEdges = `document.querySelectorAll('svg line[stroke="#ff4d4d"]').length`;
@@ -98,14 +98,12 @@ export const tests = [
             const used = Object.keys(config0.outlines).find(name => name !== 'board' && Object.values(config0.cases ?? {})
                 .some(parts => Array.isArray(parts) && parts.some(p => p.what === 'outline' && p.name === name)));
             assert(used, 'the example should have an outline a case uses');
-            await openLayout(page);
-            await pick(page, used);
-            await page.press('Delete outline');
+            const said = await deleteFromList(page, 'Outlines', used);
             await page.until(`!jsyaml.load(${config}).outlines[${JSON.stringify(used)}]`, 30, `${used} to be deleted`);
             const after = await parsed(page);
             const left = Object.values(after.cases ?? {}).some(parts => Array.isArray(parts) && parts.some(p => p.what === 'outline' && p.name === used));
             assert(!left, `no case part should still use ${used}`);
-            assert(page.dialogs?.some(d => d.includes('It is used by')), 'the confirmation should say what uses it');
+            assert(said.includes('These go with it'), `the confirmation should say what uses it: ${said}`);
         },
     },
     {
@@ -129,7 +127,7 @@ export const tests = [
             await page.drag(handle, [handle[0] + 20, handle[1] + 20]);
             await page.until(`JSON.stringify(jsyaml.load(${config}).outlines.board[0].points[${index}].shift) !== ${JSON.stringify(before)}`, 30, `${label} to move`);
             await page.press('▸');
-            await page.until(`[...document.querySelectorAll('button')].some(b => b.textContent === 'Delete outline')`, 10, 'the panel to open again');
+            await page.until(`[...document.querySelectorAll('button')].some(b => b.textContent === '▾')`, 10, 'the panel to open again');
         },
     },
 ];
