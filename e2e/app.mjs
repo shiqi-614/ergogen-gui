@@ -79,8 +79,14 @@ export const deleteFromList = async (page, section, name) => {
     await page.ev(`[...document.querySelectorAll('button')].find(b => b.textContent.startsWith('▸ ${section}'))?.click()`);
     await page.until(`!!document.querySelector('button[title="Delete ${name}"]')`, 30, `the delete button of ${name}`);
     await page.ev(`document.querySelector('button[title="Delete ${name}"]').click()`);
-    await page.until(`!!document.querySelector('[role="dialog"] button.danger')`, 10, 'the confirmation');
+    await page.until(`!![...document.querySelectorAll('[role="dialog"] .buttons button')].find(b => b.textContent === 'Delete')`, 10, 'the confirmation');
     const said = await page.ev(`document.querySelector('[role="dialog"]').innerText`);
-    await page.ev(`document.querySelector('[role="dialog"] button.danger').click()`);
+    await page.ev(`[...document.querySelectorAll('[role="dialog"] .buttons button')].find(b => b.textContent === 'Delete').click()`);
     return said;
 };
+
+// the middle of an svg element titled <prefix>…, one the pointer can reach (not under a panel)
+export const reachableTitled = (page, prefix) => page.center(`[...document.querySelectorAll('svg title')]
+    .filter(t => t.textContent.startsWith(${JSON.stringify(prefix)})).map(t => t.parentElement)
+    .find(e => { const r = e.getBoundingClientRect(); const hit = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2); return hit === e || e.contains(hit); })`,
+    `a reachable element titled "${prefix}"`);

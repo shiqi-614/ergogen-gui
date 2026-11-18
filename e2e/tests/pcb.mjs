@@ -1,5 +1,5 @@
 // Parts and the board outline in the KiCanvas pcb preview
-import {assert, boardFootprint, config, freshApp, near, openPcb, parsed, viewer, waitForBoard} from '../app.mjs';
+import {assert, boardFootprint, config, freshApp, near, openPcb, parsed, reachableTitled, viewer, waitForBoard} from '../app.mjs';
 
 const right = async page => (await parsed(page)).pcbs.ergo_cai_right;
 // how many screen pixels a millimetre is on the board just now
@@ -34,7 +34,7 @@ export const tests = [
         },
     },
     {
-        name: 'pcb: a module is added with a click and deleted with its ×',
+        name: 'pcb: a module is added with a click and deleted in its card',
         async run(page, {url}) {
             await freshApp(page, url);
             await editParts(page, 'Modules');
@@ -49,7 +49,10 @@ export const tests = [
             const added = (await right(page)).modules.e2e_mod.where;
             assert(typeof added.ref === 'string' && added.shift.length === 2, `it should be placed from a key: ${JSON.stringify(added)}`);
             await page.until(`document.querySelectorAll('svg polygon.module').length === ${boxes + 1}`, 120, 'its box');
-            await page.click(await page.titled('Delete module e2e_mod'));
+            // picked, it is deleted in the card
+            await page.click(await page.titled('modules.e2e_mod:'));
+            await page.until(`!!document.querySelector('button[title="Delete module e2e_mod"]')`, 10, 'its card');
+            await page.ev(`document.querySelector('button[title="Delete module e2e_mod"]').click()`);
             await page.until(`!jsyaml.load(${config}).pcbs.ergo_cai_right.modules.e2e_mod`, 30, 'the module to be deleted');
         },
     },
@@ -60,7 +63,7 @@ export const tests = [
             await editParts(page, 'Footprints');
             const [d1, d5] = [await boardFootprint(page, 'D1'), await boardFootprint(page, 'D5')];
             const adjust = (await right(page)).footprints.diodes.adjust;
-            const diode = await page.titled('footprints.diodes');
+            const diode = await reachableTitled(page, 'footprints.diodes');
             await page.click(diode);
             await page.until(`document.querySelectorAll('svg polygon.footprint.chosen').length > 30`, 10, 'every diode to be picked');
             await page.drag(diode, [diode[0], diode[1] + 30]);
@@ -94,21 +97,23 @@ export const tests = [
         name: 'pcb: an outline is checked into the board edge and out again',
         async run(page, {url}) {
             await freshApp(page, url);
-            await editParts(page, 'Board outline');
+            await editParts(page, 'Board edge');
             const names = await page.ev(`[...document.querySelectorAll('label')].filter(l => l.querySelector('input[type=checkbox]') && !l.querySelector('input').checked).map(l => l.textContent)`);
             assert(names.length, 'some outline should not be in the board edge yet');
             const name = names[names.length - 1];
             const entries = async () => Object.values((await right(page)).outlines ?? {}).map(e => e.outline);
             const before = await entries();
+            await page.ev(`[...document.querySelectorAll('label')].find(l => l.textContent === ${JSON.stringify(name)}).scrollIntoView({block: 'center'})`);
             await page.click(await page.center(`[...document.querySelectorAll('label')].find(l => l.textContent === ${JSON.stringify(name)})`));
             await page.until(`Object.values(jsyaml.load(${config}).pcbs.ergo_cai_right.outlines).some(e => e.outline === ${JSON.stringify(name)})`, 30, `${name} in the board edge`);
             await page.until(`[...document.querySelectorAll('label')].some(l => l.textContent === ${JSON.stringify(name)} && l.querySelector('input').checked)`, 120, 'its box checked');
+            await page.ev(`[...document.querySelectorAll('label')].find(l => l.textContent === ${JSON.stringify(name)}).scrollIntoView({block: 'center'})`);
             await page.click(await page.center(`[...document.querySelectorAll('label')].find(l => l.textContent === ${JSON.stringify(name)})`));
             await page.until(`!Object.values(jsyaml.load(${config}).pcbs.ergo_cai_right.outlines).some(e => e.outline === ${JSON.stringify(name)})`, 30, `${name} out of the board edge`);
             assert(JSON.stringify(await entries()) === JSON.stringify(before), 'the board edge should be back as it was');
-            await page.ev(`[...document.querySelectorAll('button')].find(b => b.textContent.startsWith('▾ Board edge'))?.click()`);
+            await page.ev(`document.querySelector('button[title="Fold the card away"]').click()`);
             await page.until(`![...document.querySelectorAll('label')].some(l => l.querySelector('input[type=checkbox]'))`, 10, 'the list to fold');
-            await page.ev(`[...document.querySelectorAll('button')].find(b => b.textContent.startsWith('▸ Board edge'))?.click()`);
+            await page.ev(`document.querySelector('button[title="Show the card"]').click()`);
             await page.until(`[...document.querySelectorAll('label')].some(l => l.querySelector('input[type=checkbox]'))`, 10, 'the list to open again');
         },
     },
@@ -140,11 +145,11 @@ export const tests = [
         async run(page, {url}) {
             await freshApp(page, url);
             await editParts(page, 'Footprints');
-            await page.click(await page.titled('footprints.diodes'));
+            await page.click(await reachableTitled(page, 'footprints.diodes'));
             const box = label => `[...document.querySelectorAll('label.field')].find(l => l.textContent.startsWith(${JSON.stringify(label)}))?.querySelector('input')`;
-            await page.until(`!!${box('x')}`, 10, 'the x box');
-            assert(await page.ev(`${box('x')}.value`) === String((await right(page)).footprints.diodes.adjust.shift[0]), 'the x box should show the shift as written');
-            for (const [label, value] of [['x', '1.5'], ['°', '90']]) {
+            await page.until(`!!${box('Shift X')}`, 10, 'the x box');
+            assert(await page.ev(`${box('Shift X')}.value`) === String((await right(page)).footprints.diodes.adjust.shift[0]), 'the x box should show the shift as written');
+            for (const [label, value] of [['Shift X', '1.5'], ['Rotate', '90']]) {
                 await page.ev(`(() => { const i = ${box(label)}; i.focus(); i.select(); })()`);
                 await page.type(value);
                 await page.key('Enter', 'Enter', 13);

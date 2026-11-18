@@ -1,7 +1,7 @@
 import {useMemo, useState} from "react";
 import yaml from "js-yaml";
 import {useConfigContext} from "../context/ConfigContext";
-import Dialog from "../atoms/Dialog";
+import {Button, Dialog, Field} from "../ui";
 import {mirrorName} from "./NewCase";
 import {appendEntry, entryLines, mirrorCaseLines} from "../utils/layoutEdit";
 
@@ -58,45 +58,40 @@ const NewPcb = ({onCreated, onCancel}: Props): JSX.Element | null => {
 
     return (
         <Dialog title="New PCB" onClose={onCancel}>
-            <label className="field">
-                <span>Name</span>
+            <Field label="Name">
                 <input autoFocus placeholder="pcb name" value={form.name}
                        onChange={e => setForm({...form, name: e.target.value})} onKeyDown={e => e.key === 'Enter' && create()}/>
-            </label>
-            <label className="field">
-                <span>Starts as</span>
+            </Field>
+            <Field label="Starts as">
                 <select value={form.start} title="how it starts" onChange={e => setForm({...form, start: e.target.value as 'copy' | 'empty'})}>
                     {ownPcbs.length > 0 && <option value="copy">a copy of a pcb</option>}
                     <option value="empty">an empty board</option>
                 </select>
-            </label>
+            </Field>
             {form.start === 'copy'
-                ? <label className="field">
-                    <span>PCB</span>
+                ? <Field label="PCB">
                     <select value={form.copy} title="the pcb whose outlines, footprints and modules it starts with"
                             onChange={e => setForm({...form, copy: e.target.value})}>
                         {ownPcbs.map(p => <option key={p} value={p}>{p}</option>)}
                     </select>
-                </label>
-                : <label className="field">
-                    <span>Edge</span>
+                </Field>
+                : <Field label="Edge">
                     <select value={form.outline} title="the outline its board edge is" onChange={e => setForm({...form, outline: e.target.value})}>
                         {outlines.map(o => <option key={o} value={o}>{o}</option>)}
                     </select>
-                </label>}
-            <div className="field">
-                <span>Mirrored</span>
+                </Field>}
+            <Field label="Mirrored">
                 <div className="controls">
                     <input type="checkbox" checked={form.mirror} title="A mirrored pcb for the other half of a split board"
                            onChange={e => setForm({...form, mirror: e.target.checked})}/>
                     <input value={other} disabled={!form.mirror} title="the mirrored pcb's name" placeholder="its mirrored name"
                            onChange={e => setForm({...form, mirrorName: e.target.value})}/>
                 </div>
-            </div>
+            </Field>
             {note && <div className="note">{note}</div>}
             <div className="buttons">
-                <button onClick={onCancel}>Cancel</button>
-                <button className="add" onClick={create}>Add</button>
+                <Button onClick={onCancel}>Cancel</Button>
+                <Button $variant="go" onClick={create}>Add</Button>
             </div>
         </Dialog>
     );

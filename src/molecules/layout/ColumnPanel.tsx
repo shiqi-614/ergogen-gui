@@ -7,8 +7,8 @@ import {
 } from "../../utils/layoutEdit";
 import {Column, Meta, Site, Units, editableLength, format} from "./geometry";
 import styled from "styled-components";
-import {Panel} from "./styles";
-import Dialog from "../../atoms/Dialog";
+import {About, Actions, Button, CardHead, CardShell, CardTabs, Check, Chips, Field, Gap, Section, Status} from "../../ui";
+import {Dialog} from "../../ui";
 
 const UNITS: Record<Attr, string> = {stagger: 'mm', spread: 'mm', splay: '°'};
 
@@ -40,189 +40,11 @@ export type Tab = 'key' | 'column' | 'row' | 'zone';
 const TABS: [Tab, string][] = [['key', 'Key'], ['column', 'Column'], ['row', 'Row'], ['zone', 'Zone']];
 let lastTab: Tab = 'column';
 
-const Card = styled(Panel)`
+// at the layout editor's top right
+const Card = styled(CardShell)`
+  top: 0.75rem;
+  right: 0.75rem;
   width: 16rem;
-  padding: 0;
-  overflow-x: hidden;
-  border: 1px solid #444444;
-  box-shadow: 0 0.3rem 1.2rem rgba(0, 0, 0, 0.4);
-
-  .head {
-    display: flex;
-    align-items: flex-start;
-    gap: 0.4rem;
-    padding: 0.6rem 0.75rem 0.5rem;
-  }
-
-  .head .names {
-    flex-grow: 1;
-    min-width: 0;
-  }
-
-  .head strong {
-    display: block;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  .head small {
-    color: #8a8a8a;
-  }
-
-  .head button {
-    padding: 0;
-    border: none;
-    background: transparent;
-    color: #bdbdbd;
-    font: inherit;
-    cursor: pointer;
-  }
-
-  .tabs {
-    display: flex;
-    margin: 0 0.75rem;
-    border-radius: 0.3rem;
-    background: #1e1e1e;
-  }
-
-  .tabs button {
-    flex: 1;
-    padding: 0.3rem 0;
-    border: none;
-    border-radius: 0.3rem;
-    background: transparent;
-    color: #a0a0a0;
-    font: inherit;
-    font-size: 0.8rem;
-    cursor: pointer;
-  }
-
-  .tabs button.on {
-    background: #ff9f1c;
-    color: #1e1e1e;
-    font-weight: bold;
-  }
-
-  .tabs button:disabled {
-    color: #555555;
-    cursor: default;
-  }
-
-  .body {
-    padding: 0.7rem 0.75rem 0.75rem;
-  }
-
-  label.field {
-    display: grid;
-    grid-template-columns: 4.6rem 1fr 1.6rem;
-    align-items: center;
-    gap: 0.4rem;
-    margin-bottom: 0.4rem;
-  }
-
-  label.field input {
-    width: 100%;
-    min-width: 0;
-    box-sizing: border-box;
-  }
-
-  .label {
-    color: #bdbdbd;
-  }
-
-  .unit {
-    color: #8a8a8a;
-    font-size: 0.8rem;
-  }
-
-  .about {
-    margin-bottom: 0.6rem;
-    color: #8a8a8a;
-    font-size: 0.8rem;
-  }
-
-  .chips {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 0.3rem;
-    margin: 0.5rem 0 0.2rem;
-    color: #bdbdbd;
-    font-size: 0.8rem;
-  }
-
-  .actions {
-    display: flex;
-    gap: 0.35rem;
-    margin-top: 0.7rem;
-    padding-top: 0.6rem;
-    border-top: 1px solid #3c3c3c;
-  }
-
-  .actions .gap {
-    flex-grow: 1;
-  }
-
-  .actions button, .chips button {
-    padding: 0.2rem 0.55rem;
-    border: none;
-    border-radius: 0.2rem;
-    background: #4a4a4a;
-    color: #ffffff;
-    font: inherit;
-    font-size: 0.8rem;
-    cursor: pointer;
-  }
-
-  .actions button:hover, .chips button:hover {
-    background: #5c5c5c;
-  }
-
-  .actions button.danger {
-    background: transparent;
-    color: #ff8a80;
-    box-shadow: inset 0 0 0 1px #7a3a3a;
-  }
-
-  .actions button.danger:hover {
-    background: #a33a3a;
-    color: #ffffff;
-  }
-
-  .note {
-    margin-top: 0.5rem;
-  }
-
-  .section {
-    margin: 0.9rem 0 0.4rem;
-    padding-top: 0.6rem;
-    border-top: 1px solid #3c3c3c;
-    color: #bdbdbd;
-    font-weight: bold;
-    font-size: 0.8rem;
-  }
-
-  label.check {
-    display: flex;
-    justify-content: flex-start;
-    align-items: center;
-    gap: 0.4rem;
-    margin-bottom: 0.4rem;
-    color: #bdbdbd;
-    font-size: 0.8rem;
-  }
-
-  label.field select {
-    grid-column: 2 / 4;
-    width: 100%;
-    min-width: 0;
-  }
-
-  label.check input {
-    width: auto;
-    margin: 0;
-  }
 `;
 
 const ColumnPanel = ({column, text, units, effective, next, onCommit, folded, onFold, keysOf, onSelect, keyMeta, onTab, boardKeys = []}: PanelProps) => {
@@ -406,11 +228,9 @@ const ColumnPanel = ({column, text, units, effective, next, onCommit, folded, on
     // a label, a box, and the unit after it
     const field = (label: string, key: string, value: string, placeholder: string, disabled: string | false,
                    commit: () => void, unit = '', title?: string) => (
-        <label key={key} className="field" title={title}>
-            <span className="label">{label}</span>
+        <Field key={key} label={label} unit={unit} title={title}>
             {input(key, value, placeholder, disabled, commit)}
-            <span className="unit">{unit}</span>
-        </label>
+        </Field>
     );
     const rawOf = (site: Site) => typeof site === 'string' ? '' : site.raw ?? '';
     const reason = (site: Site) => typeof site === 'string' && site;
@@ -420,132 +240,117 @@ const ColumnPanel = ({column, text, units, effective, next, onCommit, folded, on
 
     return (
         <Card onPointerDown={e => e.stopPropagation()}>
-            <div className="head">
-                <div className="names">
-                    <strong title={keyMeta?.name}>{keyMeta?.name ?? `${column.zone} / ${column.col}`}</strong>
-                    <small>zone {column.zone} · {column.col}{column.row ? ` · ${column.row}` : ''}{column.mirrored ? ' · mirrored' : ''}</small>
-                </div>
-                <button title={folded ? 'Show the panel' : 'Fold the panel away'} onClick={() => onFold(!folded)}>{folded ? '▸' : '▾'}</button>
-            </div>
+            <CardHead title={keyMeta?.name ?? `${column.zone} / ${column.col}`} folded={folded} onFold={onFold}
+                      subtitle={`zone ${column.zone} · ${column.col}${column.row ? ` · ${column.row}` : ''}${column.mirrored ? ' · mirrored' : ''}`}/>
             {!folded && <>
-                <div className="tabs" role="tablist">
-                    {TABS.map(([value, label]) => (
-                        <button key={value} role="tab" aria-selected={shown === value} className={shown === value ? 'on' : ''}
-                                disabled={(value === 'key' && !keySites) || (value === 'row' && !isZoneRow)}
-                                onClick={() => setTab(value)}>{label}</button>
-                    ))}
-                </div>
+                <CardTabs value={shown} onChange={setTab} tabs={TABS.map(([value, label]) => ({
+                    value, label, disabled: (value === 'key' && !keySites) || (value === 'row' && !isZoneRow)}))}/>
                 <div className="body">
                     {shown === 'key' && keySites && <>
-                        <div className="about">This key only{column.mirrored ? ', on both halves' : ''}. Empty boxes show what it gets from its column and zone.</div>
+                        <About>This key only{column.mirrored ? ', on both halves' : ''}. Empty boxes show what it gets from its column and zone.</About>
                         {field('Width', 'key.width', rawOf(keySites.width), keyMeta ? format(keyMeta.width) : '', reason(keySites.width), () => commitKey('width'), 'mm')}
                         {field('Height', 'key.height', rawOf(keySites.height), keyMeta ? format(keyMeta.height) : '', reason(keySites.height), () => commitKey('height'), 'mm')}
                         {field('Rotate', 'key.rotate', rawOf(keySites.rotate), keyMeta ? format(keyMeta.rotate) : '', reason(keySites.rotate), () => commitKey('rotate'), '°')}
                         {(['X', 'Y'] as const).map((axis, i) => field(`Shift ${axis}`, `key.shift${axis}`, shiftRaw?.[i] ?? '',
                             keyMeta ? format(keyMeta.shift?.[i] ?? 0) : '0', reason(keySites.shift), commitShift, 'mm', "in the key's own frame"))}
-                        <div className="actions">
-                            <span className="gap"/>
-                            <button className="danger" title="Skip this key: ergogen leaves it out" onClick={() => setKey(column.row!, 'skip', 'true', keySites.skip)}>Hide key</button>
-                        </div>
+                        <Actions>
+                            <Gap/>
+                            <Button $variant="danger" title="Skip this key: ergogen leaves it out" onClick={() => setKey(column.row!, 'skip', 'true', keySites.skip)}>Hide key</Button>
+                        </Actions>
                     </>}
                     {shown === 'column' && <>
                         {ATTRS.map(attr => field(attr[0].toUpperCase() + attr.slice(1), attr, rawOf(sites[attr]),
                             effective ? format(effective[attr]) : '', reason(sites[attr]), () => commitAttr(attr), UNITS[attr]))}
                         {hidden.length > 0 && (
-                            <div className="chips">
+                            <Chips>
                                 Hidden keys
                                 {hidden.map(row => (
-                                    <button key={row} title={`Bring back the key in ${row}: skip: false`} onClick={() => setKey(row, 'skip', 'false')}>{row} ↺</button>
+                                    <Button key={row} title={`Bring back the key in ${row}: skip: false`} onClick={() => setKey(row, 'skip', 'false')}>{row} ↺</Button>
                                 ))}
-                            </div>
+                            </Chips>
                         )}
-                        <div className="actions">
-                            <button title="A new column to the left of this one" onClick={() => addColumn(false)}>+ Left</button>
-                            <button title="A new column to the right of this one" onClick={() => addColumn(true)}>+ Right</button>
-                            <span className="gap"/>
-                            <button className="danger" title={`Delete column ${column.col}`} onClick={removeColumn}>Delete</button>
-                        </div>
+                        <Actions>
+                            <Button title="A new column to the left of this one" onClick={() => addColumn(false)}>+ Left</Button>
+                            <Button title="A new column to the right of this one" onClick={() => addColumn(true)}>+ Right</Button>
+                            <Gap/>
+                            <Button $variant="danger" title={`Delete column ${column.col}`} onClick={removeColumn}>Delete</Button>
+                        </Actions>
                     </>}
                     {shown === 'row' && <>
-                        <div className="about">Row {column.row} runs through every column of zone {column.zone}.</div>
-                        <div className="actions">
-                            <button title="A new row above this one, in every column" onClick={() => addRow(true)}>+ Above</button>
-                            <button title="A new row below this one, in every column" onClick={() => addRow(false)}>+ Below</button>
-                            <span className="gap"/>
-                            <button className="danger" title={`Delete row ${column.row}`} onClick={removeRow}>Delete</button>
-                        </div>
+                        <About>Row {column.row} runs through every column of zone {column.zone}.</About>
+                        <Actions>
+                            <Button title="A new row above this one, in every column" onClick={() => addRow(true)}>+ Above</Button>
+                            <Button title="A new row below this one, in every column" onClick={() => addRow(false)}>+ Below</Button>
+                            <Gap/>
+                            <Button $variant="danger" title={`Delete row ${column.row}`} onClick={removeRow}>Delete</Button>
+                        </Actions>
                     </>}
                     {shown === 'zone' && <>
-                        <div className="about">Where zone {column.zone} starts (a key of an earlier zone, and a shift from it) and how it turns.</div>
-                        <label className="field" title="the key it starts from; its shift and rotate are in that key's frame">
-                            <span className="label">From key</span>
+                        <About>Where zone {column.zone} starts (a key of an earlier zone, and a shift from it) and how it turns.</About>
+                        <Field label="From key" title="the key it starts from; its shift and rotate are in that key's frame">
                             <select value={rawOf(zoneSites.ref)} disabled={typeof zoneSites.ref === 'string'}
                                     onChange={e => e.target.value && setSite(zoneSites.ref, e.target.value, 'the anchor key')}>
                                 {!rawOf(zoneSites.ref) && <option value="">the origin</option>}
                                 {rawOf(zoneSites.ref) && !anchorKeys.includes(rawOf(zoneSites.ref)) && <option value={rawOf(zoneSites.ref)}>{rawOf(zoneSites.ref)}</option>}
                                 {anchorKeys.map(k => <option key={k} value={k}>{k}</option>)}
                             </select>
-                        </label>
+                        </Field>
                         {(['X', 'Y'] as const).map((axis, i) => field(`Shift ${axis}`, `anchor${axis}`,
                             typeof anchor === 'string' ? '' : anchor.raw[i] ?? '', '0', typeof anchor === 'string' && anchor, commitAnchor, 'mm'))}
                         {field('Turn', 'zone.anchorRotate', rawOf(zoneSites.anchorRotate), '0', reason(zoneSites.anchorRotate),
                             () => commitDraft('zone.anchorRotate', zoneSites.anchorRotate, 'the anchor rotate'), '°', "the anchor's rotate: the zone turns about where it starts")}
                         {field('Rotate', 'zone.rotate', rawOf(zoneSites.rotate), '0', reason(zoneSites.rotate),
                             () => commitDraft('zone.rotate', zoneSites.rotate, 'the zone rotate'), '°', 'the zone\'s rotate: its keys turn about the origin')}
-                        <div className="actions">
-                            <button title="A new zone of one key, starting from this key" onClick={() => setNewZone({
-                                name: nextName(zone.zones, 'zone'), ref: keyMeta?.name.replace(/^mirror_/, '') ?? anchorKeys[0] ?? '', x: '0', y: '-1.5u'})}>+ Zone</button>
-                            <span className="gap"/>
-                            <button className="danger" title={`Delete zone ${column.zone}`} onClick={removeZone}>Delete</button>
-                        </div>
-                        <div className="section">Mirror, for the other half</div>
-                        <label className="check">
+                        <Actions>
+                            <Button title="A new zone of one key, starting from this key" onClick={() => setNewZone({
+                                name: nextName(zone.zones, 'zone'), ref: keyMeta?.name.replace(/^mirror_/, '') ?? anchorKeys[0] ?? '', x: '0', y: '-1.5u'})}>+ Zone</Button>
+                            <Gap/>
+                            <Button $variant="danger" title={`Delete zone ${column.zone}`} onClick={removeZone}>Delete</Button>
+                        </Actions>
+                        <Section>Mirror, for the other half</Section>
+                        <Check className="check">
                             <input type="checkbox" checked={zone.mirrored} onChange={e => toggleMirror(e.target.checked)}/>
                             {zone.mirrored ? 'the board is mirrored' : 'mirror the board (a split or a unibody with two halves)'}
-                        </label>
+                        </Check>
                         {zone.mirrored && <>
-                            <label className="field" title="the key the mirror's axis is lined up with">
-                                <span className="label">Axis key</span>
+                            <Field label="Axis key" title="the key the mirror's axis is lined up with">
                                 <select value={rawOf(zoneSites.mirrorRef)} disabled={typeof zoneSites.mirrorRef === 'string'}
                                         onChange={e => e.target.value && setSite(zoneSites.mirrorRef, e.target.value, 'the mirror key')}>
                                     {rawOf(zoneSites.mirrorRef) && !boardKeys.some(k => k.name === rawOf(zoneSites.mirrorRef)) &&
                                         <option value={rawOf(zoneSites.mirrorRef)}>{rawOf(zoneSites.mirrorRef)}</option>}
                                     {boardKeys.map(k => <option key={k.name} value={k.name}>{k.name}</option>)}
                                 </select>
-                            </label>
+                            </Field>
                             {field('Distance', 'mirror.distance', rawOf(zoneSites.mirrorDistance), '0', reason(zoneSites.mirrorDistance),
                                 () => commitDraft('mirror.distance', zoneSites.mirrorDistance, 'the mirror distance'), 'mm',
                                 'between the axis key and its mirror image; negative brings the halves together')}
                         </>}
                     </>}
-                    {note && <div className="note">{note}</div>}
+                    {note && <Status>{note}</Status>}
                 </div>
             </>}
             {newZone && (
                 <Dialog title="New zone" onClose={() => setNewZone(null)}>
-                    <label className="field">
-                        <span>Name</span>
+                    <Field label="Name">
                         <input autoFocus value={newZone.name} onChange={e => setNewZone({...newZone, name: e.target.value})}
                                onKeyDown={e => e.key === 'Enter' && createZone()}/>
-                    </label>
-                    <label className="field">
-                        <span>Starts at</span>
+                    </Field>
+                    <Field label="Starts at">
                         <select value={newZone.ref} onChange={e => setNewZone({...newZone, ref: e.target.value})}>
                             {boardKeys.map(k => <option key={k.name} value={k.name}>{k.name}</option>)}
                         </select>
-                    </label>
-                    <div className="field">
-                        <span>Shift</span>
+                    </Field>
+                    <Field label="Shift" unit="mm">
                         <div className="controls">
                             x <input className="short" value={newZone.x} onChange={e => setNewZone({...newZone, x: e.target.value})}/>
                             y <input className="short" value={newZone.y} onChange={e => setNewZone({...newZone, y: e.target.value})}/>
                         </div>
-                    </div>
+                    </Field>
                     <div className="hint">one key (col0, row0) to start with: add columns and rows on the panel, Alt-drag it into place</div>
                     {note && <div className="note">{note}</div>}
                     <div className="buttons">
-                        <button onClick={() => setNewZone(null)}>Cancel</button>
-                        <button className="add" onClick={createZone}>Add</button>
+                        <Button onClick={() => setNewZone(null)}>Cancel</Button>
+                        <Button $variant="go" onClick={createZone}>Add</Button>
                     </div>
                 </Dialog>
             )}

@@ -4,7 +4,7 @@ import {assert, config, freshApp, openPcb, parsed, pressNew, deleteFromList} fro
 const openCase = async (page, name) => {
     await page.ev(`[...document.querySelectorAll('button')].find(b => b.textContent.startsWith('▸ Cases'))?.click()`);
     await page.ev(`[...document.querySelectorAll('button')].find(b => b.textContent.trim() === ${JSON.stringify(`${name}.stl`)})?.click()`);
-    await page.until(`[...document.querySelectorAll('span')].some(s => s.textContent.startsWith(${JSON.stringify(`${name}: `)}) && s.textContent.includes('in order'))`, 120, `${name}'s parts`);
+    await page.until(`[...document.querySelectorAll('strong')].some(s => s.textContent.startsWith(${JSON.stringify(`${name}: `)}) && s.textContent.includes('in order'))`, 120, `${name}'s parts`);
 };
 const lines = `document.querySelectorAll('.line').length`;
 const line = i => `document.querySelectorAll('.line')[${i}]`;
@@ -38,8 +38,8 @@ export const tests = [
             // a part added at the end opens, and is deleted from its settings
             await page.press('+ outline', 120);
             await page.until(`jsyaml.load(${config}).cases.right_top.length === ${before.length + 1}`, 30, 'a new part');
-            await page.until(`${lines} === ${before.length + 1} && !!document.querySelector('.settings button.remove')`, 120, 'it open');
-            await page.ev(`document.querySelector('.settings button.remove').click()`);
+            await page.until(`${lines} === ${before.length + 1} && !!document.querySelector('.settings button[title="Delete this part"]')`, 120, 'it open');
+            await page.ev(`document.querySelector('.settings button[title="Delete this part"]').click()`);
             await page.until(`jsyaml.load(${config}).cases.right_top.length === ${before.length}`, 30, 'the new part to go');
         },
     },
@@ -92,7 +92,7 @@ export const tests = [
             assert(c.assemblies.ergocai_right.stack.at(-1) === 'right_lid', `right_lid should top ergocai_right: ${c.assemblies.ergocai_right.stack}`);
             assert(c.assemblies.ergocai_left.stack.at(-1) === 'left_lid', `left_lid should top ergocai_left: ${c.assemblies.ergocai_left.stack}`);
             // it opens, once it is made
-            await page.until(`[...document.querySelectorAll('span')].some(s => s.textContent.startsWith('right_lid: ${top} parts'))`, 120, "right_lid's parts");
+            await page.until(`document.body.innerText.includes('right_lid: ${top} parts')`, 120, "right_lid's parts");
 
             const said = await deleteFromList(page, 'Cases', 'right_lid');
             await page.until(`!jsyaml.load(${config}).cases.right_lid`, 30, 'right_lid to go');

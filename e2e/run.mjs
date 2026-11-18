@@ -121,7 +121,7 @@ const main = async () => {
         stop(chrome);
         stop(server);
         await wait(500);
-        await rm(profile, {recursive: true, force: true});
+        await rm(profile, {recursive: true, force: true, maxRetries: 10, retryDelay: 200});
     }
     console.log(`\n${tests.length - failed.length} passed, ${failed.length} failed`);
     if (failed.length) process.exit(1);

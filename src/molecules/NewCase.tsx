@@ -1,7 +1,7 @@
 import {useMemo, useState} from "react";
 import yaml from "js-yaml";
 import {useConfigContext} from "../context/ConfigContext";
-import Dialog from "../atoms/Dialog";
+import {Button, Dialog, Field} from "../ui";
 import {appendEntry, caseLines, insertIntoStack, mirrorCaseLines} from "../utils/layoutEdit";
 
 // A new case (cases.<name>), from the "+" on the Downloads list's Cases: a copy of another case's parts, or an
@@ -89,27 +89,24 @@ const NewCase = ({onCreated, onCancel}: Props): JSX.Element | null => {
 
     return (
         <Dialog title="New case" onClose={onCancel}>
-            <label className="field">
-                <span>Name</span>
+            <Field label="Name">
                 <input autoFocus placeholder="case name" value={form.name}
                        onChange={e => setForm({...form, name: e.target.value})} onKeyDown={e => e.key === 'Enter' && create()}/>
-            </label>
-            <div className="field">
-                <span>Starts as</span>
+            </Field>
+            <Field label="Starts as">
                 <div className="controls">
                     <select value={form.start} title="how it starts" onChange={e => setForm({...form, start: e.target.value as 'copy' | 'outline'})}>
                         <option value="copy">a copy of a case</option>
                         <option value="outline">an outline, extruded</option>
                     </select>
                 </div>
-            </div>
+            </Field>
             {form.start === 'copy'
-                ? <label className="field">
-                    <span>Case</span>
+                ? <Field label="Case">
                     <select value={form.copy} onChange={e => setForm({...form, copy: e.target.value})} title="the case whose parts it starts with">
                         {ownCases.map(c => <option key={c} value={c}>{c}</option>)}
                     </select>
-                </label>
+                </Field>
                 : <div className="field">
                     <span>Outline</span>
                     <div className="controls">
@@ -119,18 +116,16 @@ const NewCase = ({onCreated, onCancel}: Props): JSX.Element | null => {
                         <input className="short" value={form.thick} title="how thick, in mm" onChange={e => setForm({...form, thick: e.target.value})}/> mm
                     </div>
                 </div>}
-            <div className="field">
-                <span>Mirrored</span>
+            <Field label="Mirrored">
                 <div className="controls">
                     <input type="checkbox" checked={form.mirror} title="A mirrored case for the other half of a split board"
                            onChange={e => setForm({...form, mirror: e.target.checked})}/>
                     <input value={other} disabled={!form.mirror} title="the mirrored case's name" placeholder="its mirrored name"
                            onChange={e => setForm({...form, mirrorName: e.target.value})}/>
                 </div>
-            </div>
+            </Field>
             {assemblies.length > 0 && (
-                <div className="field">
-                    <span>Assembly</span>
+                <Field label="Assembly">
                     <div className="controls">
                         <select value={form.assembly} onChange={e => {
                             const stack = stackOf(e.target.value);
@@ -146,12 +141,12 @@ const NewCase = ({onCreated, onCancel}: Props): JSX.Element | null => {
                             </select>
                         )}
                     </div>
-                </div>
+                </Field>
             )}
             {note && <div className="note">{note}</div>}
             <div className="buttons">
-                <button onClick={onCancel}>Cancel</button>
-                <button className="add" onClick={create}>Add</button>
+                <Button onClick={onCancel}>Cancel</Button>
+                <Button $variant="go" onClick={create}>Add</Button>
             </div>
         </Dialog>
     );

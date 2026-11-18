@@ -2,6 +2,7 @@ import styled, {css} from "styled-components";
 import {Dispatch, SetStateAction} from "react";
 import DownloadIcon from "./DownloadIcon";
 import TrashIcon from "./TrashIcon";
+import {colors} from "../ui";
 
 type Props = {
     fileName: string,
@@ -73,12 +74,12 @@ const DownloadLink = styled.a`
     margin-left: 0.5em;
     padding: 0.3rem;
     border-radius: 0.25rem;
-    background-color: #28a745;
-    color: #ffffff;
+    background-color: ${colors.go};
+    color: ${colors.strong};
     transition: background-color .15s ease-in-out;
 
     &:hover {
-      background-color: #218838;
+      background-color: ${colors.goHover};
     }
 `;
 
@@ -90,15 +91,15 @@ const DeleteButton = styled.button`
     padding: 0.3rem;
     border: none;
     border-radius: 0.25rem;
-    background-color: #4a4a4a;
-    color: #d0d0d0;
+    background-color: ${colors.button};
+    color: ${colors.text};
     font: inherit;
     cursor: pointer;
     transition: background-color .15s ease-in-out;
 
     &:hover {
-      background-color: #a33a3a;
-      color: #ffffff;
+      background-color: ${colors.danger};
+      color: ${colors.strong};
     }
 `;
 
@@ -109,7 +110,7 @@ const Failed = styled.div`
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    color: #ff8a80;
+    color: ${colors.dangerInk};
     cursor: help;
 `;
 

@@ -1,7 +1,7 @@
 import {useMemo, useState} from "react";
 import yaml from "js-yaml";
 import {useConfigContext} from "../context/ConfigContext";
-import Dialog from "../atoms/Dialog";
+import {Button, Dialog, Field} from "../ui";
 
 // A new outline (outlines.<name>), from the "+" on the Downloads list's Outlines: a name and how it starts. The
 // layout editor makes it, with its keys at hand, and opens it there (or starts drawing its points).
@@ -51,32 +51,29 @@ const NewOutline = ({onCreate, onCancel}: Props): JSX.Element | null => {
 
     return (
         <Dialog title="New outline" onClose={onCancel}>
-            <label className="field">
-                <span>Name</span>
+            <Field label="Name">
                 <input autoFocus placeholder="outline name" value={name}
                        onChange={e => setName(e.target.value)} onKeyDown={e => e.key === 'Enter' && create()}/>
-            </label>
-            <label className="field">
-                <span>Starts as</span>
+            </Field>
+            <Field label="Starts as">
                 <select value={template} onChange={e => setTemplate(e.target.value as Template)} title="how it starts">
                     {TEMPLATES.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
                 </select>
-            </label>
+            </Field>
             {template === 'draw' && <div className="hint">in the layout editor: click its points, Enter to finish</div>}
             {mirrors && template !== 'draw' && (
-                <label className="field">
-                    <span>Covers</span>
+                <Field label="Covers">
                     <select value={(both ?? !looksSplit) ? 'both' : 'half'} onChange={e => setBoth(e.target.value === 'both')}
                             title="A split board's outline covers one half, a unibody's covers both">
                         <option value="half">one half (split)</option>
                         <option value="both">both halves (unibody)</option>
                     </select>
-                </label>
+                </Field>
             )}
             {note && <div className="note">{note}</div>}
             <div className="buttons">
-                <button onClick={onCancel}>Cancel</button>
-                <button className="add" onClick={create}>{template === 'draw' ? 'Draw' : 'Add'}</button>
+                <Button onClick={onCancel}>Cancel</Button>
+                <Button $variant="go" onClick={create}>{template === 'draw' ? 'Draw' : 'Add'}</Button>
             </div>
         </Dialog>
     );

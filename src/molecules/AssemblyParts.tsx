@@ -1,5 +1,6 @@
 import {useEffect, useMemo, useState} from "react";
 import styled from "styled-components";
+import {Actions, Button, CardHead, CardShell, Field, Gap, Status, colors} from "../ui";
 import yaml from "js-yaml";
 import {useConfigContext} from "../context/ConfigContext";
 import {EditSite, addAssemblyPart, applyEdits, deleteListItem, findItemSites} from "../utils/layoutEdit";
@@ -11,94 +12,19 @@ import {EditSite, addAssemblyPart, applyEdits, deleteListItem, findItemSites} fr
 const ATTRS = ['name', 'model', 'module', 'z'] as const;
 type Attr = typeof ATTRS[number];
 
-const Panel = styled.div`
-  position: absolute;
+// at the 3D view's bottom right
+const Card = styled(CardShell)`
   right: 0.5rem;
   bottom: 0.5rem;
   z-index: 1;
-  width: min(22rem, calc(100% - 1rem));
+  width: min(20rem, calc(100% - 1rem));
   max-height: 45%;
-  overflow: auto;
-  padding: 0.45rem 0.55rem;
-  border-radius: 0.25rem;
-  background: rgba(0, 0, 0, 0.7);
-  color: #dddddd;
-  font-size: 0.8rem;
 
-  .title {
-    display: flex;
-    align-items: center;
-    gap: 0.4rem;
-    color: #ffffff;
-  }
-
-  .title span {
-    flex-grow: 1;
-  }
-
-  .part {
-    margin-top: 0.4rem;
-    padding-top: 0.4rem;
-    border-top: 1px solid #444444;
-  }
-
-  .row {
-    display: flex;
-    align-items: center;
-    gap: 0.3rem;
-    margin-bottom: 0.25rem;
-  }
-
-  input, select {
-    min-width: 0;
-    padding: 0.1rem 0.3rem;
-    border: 1px solid #595959;
-    border-radius: 0.2rem;
-    background: #1e1e1e;
-    color: #ffffff;
-    font: inherit;
-  }
-
-  input.name {
-    width: 5.5rem;
-  }
-
-  select {
-    flex-grow: 1;
-  }
-
-  input.z {
-    width: 3rem;
-  }
-
-  input.model {
-    width: 100%;
-    box-sizing: border-box;
-  }
-
-  button {
-    padding: 0.1rem 0.5rem;
-    border: none;
-    border-radius: 0.2rem;
-    background: #595959;
-    color: #ffffff;
-    font: inherit;
-    cursor: pointer;
-  }
-
-  button.fold, button.remove {
-    padding: 0 0.2rem;
-    background: transparent;
-    color: #bbbbbb;
-  }
-
-  button.remove:hover {
-    color: #ff6d6d;
-  }
-
-  .note {
-    margin-top: 0.3rem;
-    color: #999999;
+  /* one part: a rule above all but the first */
+  .part + .part {
+    margin-top: 0.6rem;
+    padding-top: 0.6rem;
+    border-top: 1px solid ${colors.rule};
   }
 `;
 
@@ -170,40 +96,42 @@ const AssemblyParts = ({assembly}: Props): JSX.Element | null => {
     };
 
     return (
-        <Panel onPointerDown={e => e.stopPropagation()}>
-            <div className="title">
-                <button className="fold" title={folded ? 'Show the parts' : 'Fold the parts away'} onClick={() => setFolded(!folded)}>{folded ? '▸' : '▾'}</button>
-                <span>Parts of {assembly}: {parts.length}</span>
-                {!folded && (
-                    <button title="Another 3D model on the board, e.g. a module board on standoffs"
-                            onClick={() => write(() => addAssemblyPart(text, assembly, {name: `part${parts.length + 1}`, model: '', module: modules[0], z: '0'}),
-                                'a part added: give it a model')}>+ Part</button>
-                )}
-            </div>
-            {!folded && parts.map((part, index) => {
-                const module = rawOf(part.sites.module);
-                return (
-                    <div key={String(part.key)} className="part">
-                        <div className="row">
-                            {box(index, 'name', 'name', 'name', 'what it is called in the view')}
-                            <select value={module ?? ''} title="the module of the pcb it sits at, turned with it"
-                                    disabled={typeof part.sites.module === 'string'}
-                                    onChange={e => e.target.value && set(index, 'module', e.target.value)}>
-                                {!module && <option value="">at the board's origin</option>}
-                                {module && !modules.includes(module) && <option value={module}>at {module}</option>}
-                                {modules.map(m => <option key={m} value={m}>at {m}</option>)}
-                            </select>
-                            z {box(index, 'z', 'z', '0', "the height of the model's z = 0, in mm")}
-                            <button className="remove" title={`Delete part #${index}`}
-                                    onClick={() => window.confirm(`Delete part #${index} of ${assembly}?`) && write(() => deleteListItem(text, path, index), `#${index} deleted`)}>×</button>
+        <Card onPointerDown={e => e.stopPropagation()}>
+            <CardHead title={`Parts of ${assembly}: ${parts.length}`} subtitle="other 3D models on the board" folded={folded} onFold={setFolded} foldAt="left"
+                      actions={!folded && (
+                          <Button $variant="go" title="Another 3D model on the board, e.g. a module board on standoffs"
+                                  onClick={() => write(() => addAssemblyPart(text, assembly, {name: `part${parts.length + 1}`, model: '', module: modules[0], z: '0'}),
+                                      'a part added: give it a model')}>+ Part</Button>
+                      )}/>
+            {!folded && <div className="body">
+                {parts.map((part, index) => {
+                    const module = rawOf(part.sites.module);
+                    return (
+                        <div key={String(part.key)} className="part">
+                            <Field label="Name">{box(index, 'name', 'name', 'name', 'what it is called in the view')}</Field>
+                            <Field label="At">
+                                <select value={module ?? ''} title="the module of the pcb it sits at, turned with it"
+                                        disabled={typeof part.sites.module === 'string'}
+                                        onChange={e => e.target.value && set(index, 'module', e.target.value)}>
+                                    {!module && <option value="">the board's origin</option>}
+                                    {module && !modules.includes(module) && <option value={module}>{module}</option>}
+                                    {modules.map(m => <option key={m} value={m}>{m}</option>)}
+                                </select>
+                            </Field>
+                            <Field label="Z" unit="mm">{box(index, 'z', 'z', '0', "the height of the model's z = 0, in mm")}</Field>
+                            <Field label="Model">{box(index, 'model', 'model', 'github:owner/repo/model.glb, https://…, or ${VAR}/…',
+                                'its model: a path as footprints name them (glb, step, wrl), a URL, or github:owner/repo/file')}</Field>
+                            <Actions>
+                                <Gap/>
+                                <Button $variant="danger" title={`Delete part #${index}`}
+                                        onClick={() => window.confirm(`Delete part #${index} of ${assembly}?`) && write(() => deleteListItem(text, path, index), `#${index} deleted`)}>Delete</Button>
+                            </Actions>
                         </div>
-                        {box(index, 'model', 'model', 'github:owner/repo/model.glb, https://…, or ${VAR}/…',
-                            'its model: a path as footprints name them (glb, step, wrl), a URL, or github:owner/repo/file')}
-                    </div>
-                );
-            })}
-            {!folded && note && <div className="note">{note}</div>}
-        </Panel>
+                    );
+                })}
+                {note && <Status>{note}</Status>}
+            </div>}
+        </Card>
     );
 };
 

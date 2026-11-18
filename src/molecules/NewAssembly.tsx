@@ -1,7 +1,7 @@
 import {useMemo, useState} from "react";
 import yaml from "js-yaml";
 import {useConfigContext} from "../context/ConfigContext";
-import Dialog from "../atoms/Dialog";
+import {Button, Dialog, Field} from "../ui";
 import {mirrorName} from "./NewCase";
 import {AssemblyPart, appendEntry, assemblyLines} from "../utils/layoutEdit";
 
@@ -81,19 +81,16 @@ const NewAssembly = ({onCreated, onCancel}: Props): JSX.Element | null => {
 
     return (
         <Dialog title="New assembly" onClose={onCancel}>
-            <label className="field">
-                <span>Name</span>
+            <Field label="Name">
                 <input autoFocus placeholder="assembly name" value={form.name}
                        onChange={e => setForm({...form, name: e.target.value})} onKeyDown={e => e.key === 'Enter' && create()}/>
-            </label>
-            <label className="field">
-                <span>Board</span>
+            </Field>
+            <Field label="Board">
                 <select value={form.pcb} title="the pcb it holds" onChange={e => setForm({...form, pcb: e.target.value})}>
                     {pcbs.map(([p]) => <option key={p} value={p}>{p}</option>)}
                 </select>
-            </label>
-            <div className="field">
-                <span>Stack</span>
+            </Field>
+            <Field label="Stack">
                 <div className="controls checks" title="the cases stacked around the board, from the bottom up">
                     {cases.map(([c]) => (
                         <label key={c}>
@@ -102,22 +99,20 @@ const NewAssembly = ({onCreated, onCancel}: Props): JSX.Element | null => {
                         </label>
                     ))}
                 </div>
-            </div>
+            </Field>
             <div className="hint">tick them from the bottom up: {form.stack.length ? form.stack.join(' → ') : 'none yet'}</div>
-            <label className="field">
-                <span>Board level</span>
+            <Field label="Board level">
                 <select value={form.top} title="the case whose top the board's top is level with" onChange={e => setForm({...form, top: e.target.value})}>
                     <option value="">at the bottom (z 0)</option>
                     {form.stack.map(c => <option key={c} value={c}>top with {c}'s top</option>)}
                 </select>
-            </label>
-            <div className="field">
-                <span>Parts</span>
+            </Field>
+            <Field label="Parts">
                 <div className="controls">
-                    <button title="Another 3D model on the board, e.g. a module board on standoffs"
-                            onClick={() => setForm({...form, parts: [...form.parts, {name: '', model: '', module: modules[0] ?? '', z: '0'}]})}>+ Part</button>
+                    <Button title="Another 3D model on the board, e.g. a module board on standoffs"
+                            onClick={() => setForm({...form, parts: [...form.parts, {name: '', model: '', module: modules[0] ?? '', z: '0'}]})}>+ Part</Button>
                 </div>
-            </div>
+            </Field>
             {form.parts.map((part, i) => (
                 <div key={i} className="part">
                     <div className="row">
@@ -127,7 +122,7 @@ const NewAssembly = ({onCreated, onCancel}: Props): JSX.Element | null => {
                             {modules.map(m => <option key={m} value={m}>at {m}</option>)}
                         </select>
                         z <input className="short" value={part.z ?? ''} title="the height of the model's z = 0, in mm" onChange={e => setPart(i, {z: e.target.value})}/>
-                        <button className="remove" title="Leave this part out" onClick={() => setForm({...form, parts: form.parts.filter((_, j) => j !== i)})}>×</button>
+                        <Button $variant="ghost" title="Leave this part out" onClick={() => setForm({...form, parts: form.parts.filter((_, j) => j !== i)})}>×</Button>
                     </div>
                     <input className="model" placeholder="github:owner/repo/model.glb, https://…, or ${VAR}/…" value={part.model}
                            title="its model: a path as footprints name them (glb, step, wrl), a URL, or github:owner/repo/file"
@@ -135,20 +130,19 @@ const NewAssembly = ({onCreated, onCancel}: Props): JSX.Element | null => {
                 </div>
             ))}
             {canMirror && (
-                <div className="field">
-                    <span>Other half</span>
+                <Field label="Other half">
                     <div className="controls">
                         <input type="checkbox" checked={form.mirror} title={`The same with ${otherPcb} and the mirrored cases`}
                                onChange={e => setForm({...form, mirror: e.target.checked})}/>
                         <input value={other} disabled={!form.mirror} title="the other half's assembly" placeholder="its name"
                                onChange={e => setForm({...form, mirrorName: e.target.value})}/>
                     </div>
-                </div>
+                </Field>
             )}
             {note && <div className="note">{note}</div>}
             <div className="buttons">
-                <button onClick={onCancel}>Cancel</button>
-                <button className="add" onClick={create}>Add</button>
+                <Button onClick={onCancel}>Cancel</Button>
+                <Button $variant="go" onClick={create}>Add</Button>
             </div>
         </Dialog>
     );

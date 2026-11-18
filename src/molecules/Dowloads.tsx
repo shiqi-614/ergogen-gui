@@ -4,6 +4,7 @@ import NewPcb from "./NewPcb";
 import NewAssembly from "./NewAssembly";
 import {NewUnit, UnitList, useUnits} from "./Units";
 import {ConfirmDelete, Deletable} from "./DeleteItem";
+import {colors} from "../ui";
 import DownloadRow from "../atoms/DownloadRow";
 import Loading, {Spinner} from "../atoms/Loading";
 import yaml from 'js-yaml';
@@ -39,11 +40,11 @@ const SectionHeader = styled.div`
   margin-bottom: 0.5em;
   padding: 0 0.5rem 0 0;
   border-radius: 0.25rem;
-  background: #595959;
+  background: ${colors.header};
   transition: background-color 150ms ease-in-out;
 
   &:hover {
-    background: #525252;
+    background: ${colors.headerHover};
   }
 
   button {
@@ -72,7 +73,7 @@ const SectionHeader = styled.div`
   }
 
   button.new:hover, button.new[aria-pressed="true"] {
-    background: #28a745;
+    background: ${colors.go};
   }
 `;
 

@@ -1,5 +1,6 @@
 import {useEffect, useMemo, useState} from "react";
 import styled from "styled-components";
+import {Actions, Button, CardHead, CardShell, Field, Gap, Status, Tip, colors} from "../ui";
 import yaml from "js-yaml";
 import {useConfigContext} from "../context/ConfigContext";
 import {EditSite, appendListItem, applyEdits, deleteListItem, findItemSites, moveListItem} from "../utils/layoutEdit";
@@ -25,52 +26,30 @@ const SIGN: Record<string, string> = {add: '+', subtract: '−', intersect: '∩
 export const OPERATION_COLOURS: Record<string, number> = {add: 0x4dabf7, subtract: 0xff4d4d, intersect: 0xffd43b};
 const css = (colour: number) => `#${colour.toString(16).padStart(6, '0')}`;
 
-const Panel = styled.div`
-  position: absolute;
+// at the case preview's top left, under its file name
+const Card = styled(CardShell)`
   top: 2.6rem;
   left: 0.5rem;
   width: min(21rem, calc(100% - 1rem));
-  max-height: calc(100% - 4rem);
-  overflow: auto;
-  padding: 0.4rem 0.5rem;
-  border-radius: 0.25rem;
-  background: rgba(0, 0, 0, 0.65);
-  color: #dddddd;
-  font-size: 0.8rem;
 
-  .title {
-    display: flex;
-    align-items: baseline;
-    gap: 0.3rem;
-    color: #ffffff;
-  }
-
-  .title button {
-    padding: 0;
-    background: transparent;
-    color: #bbbbbb;
-  }
-
-  .title span {
-    flex-grow: 1;
-  }
-
+  /* a part on one line: what it does, what it is made of, how thick, how much it matched */
   .line {
     display: grid;
     grid-template-columns: 1.1rem 1fr auto auto;
     align-items: center;
     gap: 0.4rem;
-    padding: 0.1rem 0.25rem;
+    margin: 0 -0.3rem;
+    padding: 0.15rem 0.3rem;
     border-radius: 0.2rem;
     cursor: pointer;
   }
 
   .line:hover, .line.lit {
-    background: rgba(255, 255, 255, 0.1);
+    background: rgba(255, 159, 28, 0.12);
   }
 
   .line.open {
-    background: rgba(255, 255, 255, 0.16);
+    background: rgba(255, 159, 28, 0.2);
   }
 
   .sign {
@@ -85,77 +64,18 @@ const Panel = styled.div`
   }
 
   .thick, .count {
-    color: #999999;
+    color: ${colors.muted};
   }
 
   .count.none {
-    color: #ff8a80;
+    color: ${colors.dangerInk};
   }
 
   .settings {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.25rem 0.5rem;
-    margin: 0.15rem 0 0.35rem 1.5rem;
-    color: #aaaaaa;
-  }
-
-  .settings span {
-    display: flex;
-    align-items: center;
-    gap: 0.2rem;
-  }
-
-  .settings .wide {
-    flex-basis: 100%;
-  }
-
-  .settings .wide select, .settings .wide input {
-    flex-grow: 1;
-    min-width: 0;
-  }
-
-  input, select {
-    padding: 0 0.2rem;
-    border: 1px solid #666666;
-    border-radius: 0.2rem;
-    background: #2b2b2b;
-    color: #ffffff;
-    font: inherit;
-  }
-
-  input.short {
-    width: 3rem;
-  }
-
-  button {
-    padding: 0 0.4rem;
-    border: none;
-    border-radius: 0.2rem;
-    background: #595959;
-    color: #ffffff;
-    font: inherit;
-    cursor: pointer;
-  }
-
-  button:disabled {
-    color: #888888;
-    cursor: default;
-  }
-
-  button.remove:hover {
-    background: #a33a3a;
-  }
-
-  .add {
-    display: flex;
-    gap: 0.3rem;
-    margin-top: 0.35rem;
-  }
-
-  .note {
-    margin-top: 0.25rem;
-    color: #999999;
+    margin: 0.35rem 0 0.6rem;
+    padding: 0.5rem 0.55rem 0.1rem;
+    border-radius: 0.25rem;
+    background: rgba(0, 0, 0, 0.2);
   }
 `;
 
@@ -195,7 +115,8 @@ const CaseParts = ({caseName, made, onLight}: Props): JSX.Element | null => {
     const outlines = Object.keys(config?.outlines ?? {});
 
     if (!configContext) return null;
-    if (typeof parts === 'string') return <Panel><span className="note">{parts}</span></Panel>;
+    // a case written in a way the panel can't edit: why
+    if (typeof parts === 'string') return <Card><CardHead title={caseName} folded={folded} onFold={setFolded} foldAt="left"/>{!folded && <div className="body"><Tip>{parts}</Tip></div>}</Card>;
 
     const write = (next: string, message: string) => {
         configContext.setConfigInput(next);
@@ -269,62 +190,59 @@ const CaseParts = ({caseName, made, onLight}: Props): JSX.Element | null => {
     };
 
     return (
-        <Panel onMouseLeave={() => setHover(null)}>
-            <div className="title">
-                <button title={folded ? 'Show the parts' : 'Fold the parts away'} onClick={() => setFolded(!folded)}>{folded ? '▸' : '▾'}</button>
-                <span>{caseName}: {parts.length} part{parts.length === 1 ? '' : 's'}, in order</span>
-            </div>
-            {!folded && source !== caseName && <div className="note">{`${caseName} is ${source} mirrored: these are ${source}'s parts`}</div>}
-            {!folded && parts.map((part, index) => {
-                const key = String(part.key);
-                const result = made.find(m => m.part === key);
-                const operation = rawOf(part.sites.operation) ?? 'add';
-                const name = rawOf(part.sites.name) ?? '';
-                const isOpen = open === key;
-                return (
-                    <div key={key}>
-                        <div className={`line${lit === key ? ' lit' : ''}${isOpen ? ' open' : ''}`}
-                             title={`#${index} ${part.what} ${name}: click for its settings`}
-                             onMouseEnter={() => setHover(key)} onClick={() => setOpen(isOpen ? null : key)}>
-                            <span className="sign" style={{color: css(OPERATION_COLOURS[operation] ?? 0xdddddd)}}>{SIGN[operation] ?? '?'}</span>
-                            <span className="name">{name}</span>
-                            <span className="thick">{rawOf(part.sites.extrude) ?? (part.what === 'case' ? '' : '1')}{part.what === 'case' ? '' : ' mm'}</span>
-                            <span className={`count${result && !result.matched ? ' none' : ''}`}>
-                                {result ? (result.matched ? `×${result.matched}` : 'none') : 'off'}
-                            </span>
-                        </div>
-                        {isOpen && (
-                            <div className="settings">
-                                <span className="wide">
-                                    {part.what}
-                                    {part.what === 'outline' && outlines.includes(name)
-                                        ? select(index, 'name', outlines, name, 'the outline it is made from')
-                                        : box(index, 'name', '', part.what === 'pcb' ? '/footprints.keys/' : '')}
+        <Card onMouseLeave={() => setHover(null)}>
+            <CardHead title={`${caseName}: ${parts.length} part${parts.length === 1 ? '' : 's'}, in order`} folded={folded} onFold={setFolded} foldAt="left"
+                      subtitle={source !== caseName ? `${caseName} is ${source} mirrored: these are ${source}'s parts` : undefined}/>
+            {!folded && <div className="body">
+                {parts.map((part, index) => {
+                    const key = String(part.key);
+                    const result = made.find(m => m.part === key);
+                    const operation = rawOf(part.sites.operation) ?? 'add';
+                    const name = rawOf(part.sites.name) ?? '';
+                    const isOpen = open === key;
+                    return (
+                        <div key={key}>
+                            <div className={`line${lit === key ? ' lit' : ''}${isOpen ? ' open' : ''}`}
+                                 title={`#${index} ${part.what} ${name}: click for its settings`}
+                                 onMouseEnter={() => setHover(key)} onClick={() => setOpen(isOpen ? null : key)}>
+                                <span className="sign" style={{color: css(OPERATION_COLOURS[operation] ?? 0xdddddd)}}>{SIGN[operation] ?? '?'}</span>
+                                <span className="name">{name}</span>
+                                <span className="thick">{rawOf(part.sites.extrude) ?? (part.what === 'case' ? '' : '1')}{part.what === 'case' ? '' : ' mm'}</span>
+                                <span className={`count${result && !result.matched ? ' none' : ''}`}>
+                                    {result ? (result.matched ? `×${result.matched}` : 'none') : 'off'}
                                 </span>
-                                <span>{select(index, 'operation', OPERATIONS, 'add', 'how it joins the parts before it')}</span>
-                                {part.what !== 'case' && <span>thick {box(index, 'extrude', 'short', '1')}</span>}
-                                {part.what !== 'case' && <span>expand {box(index, 'expand', 'short', '0')}</span>}
-                                {part.what === 'pcb' && <span>layers {box(index, 'layers', 'short', '[F.CrtYd]')}</span>}
-                                <span>{select(index, 'asym', ASYMS, 'both', 'which halves it is on: both, the source one, or the mirrored one')}</span>
-                                <span>
-                                    <button disabled={index === 0} title="Move it up" onClick={() => move(index, -1)}>↑</button>
-                                    <button disabled={index === parts.length - 1} title="Move it down" onClick={() => move(index, 1)}>↓</button>
-                                    <button className="remove" title="Delete this part" onClick={() => remove(index)}>×</button>
-                                </span>
-                                {!result && <span className="note wide">not on this half (its asym leaves it off)</span>}
                             </div>
-                        )}
-                    </div>
-                );
-            })}
-            {!folded && (
-                <div className="add">
-                    <button onClick={() => add('outline')} title="A part made from an outline, at the end">+ outline</button>
-                    <button onClick={() => add('pcb')} title="A part made from footprints' shapes, at the end">+ footprints</button>
-                </div>
-            )}
-            {!folded && note && <div className="note">{note}</div>}
-        </Panel>
+                            {isOpen && (
+                                <div className="settings">
+                                    <Field label={part.what === 'outline' ? 'Outline' : part.what === 'pcb' ? 'Footprints' : 'Case'}>
+                                        {part.what === 'outline' && outlines.includes(name)
+                                            ? select(index, 'name', outlines, name, 'the outline it is made from')
+                                            : box(index, 'name', '', part.what === 'pcb' ? '/footprints.keys/' : '')}
+                                    </Field>
+                                    <Field label="Operation">{select(index, 'operation', OPERATIONS, 'add', 'how it joins the parts before it')}</Field>
+                                    {part.what !== 'case' && <Field label="Thick" unit="mm">{box(index, 'extrude', '', '1')}</Field>}
+                                    {part.what !== 'case' && <Field label="Expand" unit="mm">{box(index, 'expand', '', '0')}</Field>}
+                                    {part.what === 'pcb' && <Field label="Layers">{box(index, 'layers', '', '[F.CrtYd]')}</Field>}
+                                    <Field label="Halves">{select(index, 'asym', ASYMS, 'both', 'which halves it is on: both, the source one, or the mirrored one')}</Field>
+                                    {!result && <Tip>Not on this half (its asym leaves it off).</Tip>}
+                                    <Actions>
+                                        <Button disabled={index === 0} title="Move it up" onClick={() => move(index, -1)}>↑</Button>
+                                        <Button disabled={index === parts.length - 1} title="Move it down" onClick={() => move(index, 1)}>↓</Button>
+                                        <Gap/>
+                                        <Button $variant="danger" title="Delete this part" onClick={() => remove(index)}>Delete</Button>
+                                    </Actions>
+                                </div>
+                            )}
+                        </div>
+                    );
+                })}
+                <Actions>
+                    <Button $variant="go" onClick={() => add('outline')} title="A part made from an outline, at the end">+ outline</Button>
+                    <Button $variant="go" onClick={() => add('pcb')} title="A part made from footprints' shapes, at the end">+ footprints</Button>
+                </Actions>
+                {note && <Status>{note}</Status>}
+            </div>}
+        </Card>
     );
 };
 

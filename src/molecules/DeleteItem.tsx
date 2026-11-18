@@ -1,6 +1,6 @@
 import {useState} from "react";
 import {useConfigContext} from "../context/ConfigContext";
-import Dialog from "../atoms/Dialog";
+import {Button, Dialog, Field} from "../ui";
 import {caseReferences, deleteCase, deleteEntry, deleteOutline, deletePcb, outlineReferences, pcbReferences} from "../utils/layoutEdit";
 
 // Deleting an outline, a pcb, a case or an assembly, from its row in the Downloads list: what goes with it, and a
@@ -61,8 +61,8 @@ export const ConfirmDelete = ({kind, name, onDone}: Props): JSX.Element | null =
             <div className="hint-plain">Undo in the config editor brings it back.</div>
             {note && <div className="note">{note}</div>}
             <div className="buttons">
-                <button onClick={() => onDone(false)}>Cancel</button>
-                <button className="danger" autoFocus onClick={remove}>Delete</button>
+                <Button onClick={() => onDone(false)}>Cancel</Button>
+                <Button $variant="destructive" autoFocus onClick={remove}>Delete</Button>
             </div>
         </Dialog>
     );

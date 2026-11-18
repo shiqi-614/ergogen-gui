@@ -1,5 +1,6 @@
 import React, {useEffect, useMemo, useRef, useState} from "react";
 import styled from "styled-components";
+import {About, Actions, Button, CardHead, CardShell, CardTabs, Check, Field, Gap, List, ListRow, Status, Tip, colors} from "../ui";
 import yaml from "js-yaml";
 import {useConfigContext} from "../context/ConfigContext";
 import {
@@ -58,6 +59,13 @@ const Layer = styled.svg<{ active: boolean }>`
     stroke-width: 1;
     stroke-dasharray: 4 3;
     cursor: move;
+  }
+
+  /* pointed at in the card's list */
+  polygon.module.lit, polygon.footprint.lit {
+    fill: rgba(255, 159, 28, 0.25);
+    stroke: #ff9f1c;
+    stroke-width: 2;
   }
 
   polygon.module.chosen {
@@ -149,130 +157,38 @@ const Layer = styled.svg<{ active: boolean }>`
   }
 `;
 
-// the outlines the board edge can be made of, under the toolbar
-const OutlineList = styled.div`
-  position: absolute;
-  top: 5.2rem;
-  left: 0.5rem;
-  max-height: calc(100% - 7rem);
-  overflow-y: auto;
-  padding: 0.5rem 0.7rem;
-  border-radius: 0.25rem;
-  background: rgba(30, 30, 30, 0.92);
-  color: #dddddd;
-  font-size: 0.85rem;
-
-  label {
-    display: flex;
-    align-items: center;
-    gap: 0.4rem;
-    padding: 0.15rem 0;
-    cursor: pointer;
-  }
-
-  label:hover {
-    color: #ffffff;
-  }
-
-  /* folds the list down to its title, out of the way of the board */
-  button.fold {
-    padding: 0;
-    border: none;
-    background: transparent;
-    color: #bdbdbd;
-    font: inherit;
-    cursor: pointer;
-  }
-
-  .note {
-    max-width: 16rem;
-    margin-top: 0.4rem;
-    color: #8a8a8a;
-    font-size: 0.8rem;
-  }
-`;
-
-// below the Preview / Layout switch at the top of the pane
-const Toolbar = styled.div`
+// the "Edit parts" button, below the 2D / 3D switch, while the card is closed
+const OpenButton = styled(Button)`
   position: absolute;
   top: 2.75rem;
   left: 0.5rem;
-  right: 3.5rem;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.5rem;
+  padding: 0.25rem 0.7rem;
   font-size: 0.85rem;
-  color: #dddddd;
+`;
 
-  button {
-    padding: 0.25rem 0.7rem;
-    border: none;
-    border-radius: 0.2rem;
-    background: #595959;
-    color: #ffffff;
-    font: inherit;
-    cursor: pointer;
+// the card the parts are edited in, below the 2D / 3D switch
+const Card = styled(CardShell)`
+  top: 2.75rem;
+  left: 0.5rem;
+`;
+
+// the picked module or footprint: its name, and its file and where it is
+const PickedName = styled.div`
+  margin-bottom: 0.5rem;
+
+  strong {
+    color: ${colors.strong};
   }
 
-  button.on {
-    background: #4dabf7;
-  }
-
-  button.add {
-    background: #28a745;
-  }
-
-  button.danger {
-    background: #a33a3a;
-  }
-
-  .tabs {
-    display: flex;
-    border-radius: 0.2rem;
-    overflow: hidden;
-  }
-
-  .tabs button {
-    border-radius: 0;
-  }
-
-  span {
-    padding: 0.2rem 0.5rem;
-    border-radius: 0.2rem;
-    background: rgba(30, 30, 30, 0.85);
-  }
-
-  input, select {
-    padding: 0.2rem 0.4rem;
-    border: 1px solid #595959;
-    border-radius: 0.2rem;
-    background: #1e1e1e;
-    color: #ffffff;
-    font: inherit;
-  }
-
-  input {
-    width: 8rem;
-  }
-
-  input.number {
-    width: 5.5rem;
-  }
-
-  label.field {
-    display: flex;
-    align-items: center;
-    gap: 0.3rem;
-    padding: 0.15rem 0.4rem;
-    border-radius: 0.2rem;
-    background: rgba(30, 30, 30, 0.85);
-  }
-
-  select {
-    max-width: 14rem;
+  small {
+    display: block;
+    color: ${colors.muted};
   }
 `;
+
+const Picked = ({name, detail}: { name: string, detail: string }): JSX.Element => (
+    <PickedName><strong>{name}</strong><small>{detail}</small></PickedName>
+);
 
 const round = (value: number, step: number) => Math.round(value / step) * step;
 const short = (value: number) => String(Number(value.toFixed(2)));
@@ -302,6 +218,8 @@ const PcbEditor = ({viewer, pcb}: Props): JSX.Element | null => {
     // the outline under the pointer in the board outline list, drawn on the board
     const [hoverOutline, setHoverOutline] = useState<string | null>(null);
     const [listFolded, setListFolded] = useState(false);
+    // the module or footprint entry pointed at in the card's list, lit on the board
+    const [lit, setLit] = useState<string | null>(null);
     // bumped whenever KiCanvas' camera moves, so the boxes follow a pan or zoom
     const [, setFrame] = useState(0);
     const layer = useRef<SVGSVGElement>(null);
@@ -517,21 +435,26 @@ const PcbEditor = ({viewer, pcb}: Props): JSX.Element | null => {
             fail(`set ${target.name}`, err);
         }
     };
-    const field = (key: 'x' | 'y' | 'rotate', label: string) => {
+    const field = (key: 'x' | 'y' | 'rotate', label: string, unit: string) => {
         const p = typedPlacement;
         const site = key === 'rotate' ? p?.rotate : p?.shift;
         const raw = !site || typeof site === 'string' ? undefined : key === 'rotate' ? (site as EditSite).raw : (site as AnchorShift).raw[key === 'x' ? 0 : 1];
         return (
-            <label className="field" key={key}>
-                {label}
-                <input className="number" value={fields[key] ?? raw ?? ''} placeholder="0" disabled={!site || typeof site === 'string'}
+            <Field key={key} label={label} unit={unit}>
+                <input value={fields[key] ?? raw ?? ''} placeholder="0" disabled={!site || typeof site === 'string'}
                        title={typeof site === 'string' ? site : undefined}
                        onChange={e => setFields({...fields, [key]: e.target.value})}
                        onKeyDown={e => { if (e.key === 'Enter') commitFields(); else if (e.key === 'Escape') setFields({}); }}
                        onBlur={commitFields}/>
-            </label>
+            </Field>
         );
     };
+    // where the picked part is: its shift from what it is placed at, and its turn
+    const placementFields = () => !target || moving ? null : <>
+        {field('x', 'Shift X', 'mm')}
+        {field('y', 'Shift Y', 'mm')}
+        {field('rotate', 'Rotate', '°')}
+    </>;
 
     const start = (e: React.PointerEvent, next: Moving) => {
         if (e.button !== 0) return;
@@ -751,20 +674,12 @@ const PcbEditor = ({viewer, pcb}: Props): JSX.Element | null => {
                     const label = shift ? {x: rect.x + shift.x, y: rect.y + shift.y} : rect;
                     return (
                         <g key={module}>
-                            <polygon className={`module target${module === chosenModule ? ' chosen' : ''}`} points={shape.points}
+                            <polygon className={`module target${module === chosenModule ? ' chosen' : ''}${module === lit ? ' lit' : ''}`} points={shape.points}
                                      onPointerDown={e => start(e, {kind: 'module', module, start: toWorld(e), delta: {x: 0, y: 0}})}>
                                 <title>{`modules.${module}: drag to move it, click to pick it`}</title>
                             </polygon>
                             {shift && <polygon className="ghost" points={shape.points} transform={`translate(${shift.x} ${shift.y})`}/>}
-                            <text x={label.x + (moving || adding ? 3 : 15)} y={label.y - 4}>{module}</text>
-                            {!moving && !adding && (
-                                <g className="remove target" transform={`translate(${rect.x + 6} ${rect.y - 8})`}
-                                   onPointerDown={e => { e.stopPropagation(); remove('modules', module); }}>
-                                    <title>{`Delete module ${module}`}</title>
-                                    <circle r={6}/>
-                                    <text x={-3} y={4}>×</text>
-                                </g>
-                            )}
+                            <text x={label.x + 3} y={label.y - 4}>{module}</text>
                         </g>
                     );
                 })}
@@ -774,7 +689,7 @@ const PcbEditor = ({viewer, pcb}: Props): JSX.Element | null => {
                     const isChosen = instance.name === chosen;
                     return (
                         <g key={instance.key}>
-                            <polygon className={`footprint target${isChosen ? ' chosen' : ''}`} points={shape.points}
+                            <polygon className={`footprint target${isChosen ? ' chosen' : ''}${instance.name === lit ? ' lit' : ''}`} points={shape.points}
                                   onPointerDown={e => {
                                       setChosenInstance(instance.key);
                                       if (!isChosen) {
@@ -834,105 +749,135 @@ const PcbEditor = ({viewer, pcb}: Props): JSX.Element | null => {
                 })()}
                 {adding?.placing && <rect className="catcher" x={0} y={0} width="100%" height="100%" onPointerDown={place}/>}
             </Layer>
-            <Toolbar>
-                <button className={active ? 'on' : ''} onClick={() => { setActive(!active); setNote(null); setAdding(null); setChoosingKeys(false); }}>
-                    {active ? 'Done' : 'Edit parts'}
-                </button>
-                {active && (
-                    <div className="tabs">
-                        {(['modules', 'footprints', 'outline'] as Tab[]).map(t => (
-                            <button key={t} className={tab === t ? 'on' : ''} onClick={() => { setTab(t); setAdding(null); setChoosingKeys(false); setNote(null); }}>
-                                {t === 'modules' ? 'Modules' : t === 'footprints' ? 'Footprints' : 'Board outline'}
-                            </button>
-                        ))}
-                    </div>
-                )}
-                {active && !adding && !choosingKeys && tab !== 'outline' && (
-                    <button className="add" onClick={() => setAdding({tab, name: '', file: (tab === 'modules' ? moduleFiles : footprintFiles)[0] ?? '', onKeys: true, placing: false})}>
-                        {tab === 'modules' ? '+ Add module' : '+ Add footprint'}
-                    </button>
-                )}
-                {adding && !adding.placing && (
-                    <>
-                        <input autoFocus placeholder={`${adding.tab === 'modules' ? 'module' : 'footprint'} name`} value={adding.name}
-                               onChange={e => setAdding({...adding, name: e.target.value})}
-                               onKeyDown={e => e.key === 'Enter' ? startAdding() : e.key === 'Escape' && setAdding(null)}/>
-                        <select value={adding.file} onChange={e => setAdding({...adding, file: e.target.value})} title={adding.file.replace('|', '/')}>
-                            {(adding.tab === 'modules' ? moduleFiles : footprintFiles).map(f =>
-                                <option key={f} value={f}>{f.split('|')[1].split('/').slice(-2).join('/')}</option>)}
-                        </select>
-                        {adding.tab === 'footprints' && (
-                            <select value={adding.onKeys ? 'keys' : 'point'} onChange={e => setAdding({...adding, onKeys: e.target.value === 'keys'})}>
-                                <option value="keys">on keys</option>
-                                <option value="point">at a point</option>
-                            </select>
-                        )}
-                        <button className="add" onClick={startAdding}>{adding.tab === 'footprints' && adding.onKeys ? 'Add' : 'Place'}</button>
-                        <button onClick={() => setAdding(null)}>Cancel</button>
-                    </>
-                )}
-                {adding?.placing && (
-                    <>
-                        <span>Click on the board where {adding.name} goes</span>
-                        <button onClick={() => setAdding(null)}>Cancel</button>
-                    </>
-                )}
-                {active && tab === 'footprints' && chosen && !adding && (
-                    <>
-                        <span>{`${chosen} (${String(chosenConfig?.what?.github?.file ?? '').split('/').pop()}), ${describeWhere(chosenConfig?.where)}`}</span>
-                        <select value={String(chosenConfig?.side ?? 'front').toLowerCase()} onChange={e => setSide(e.target.value)}>
-                            <option value="front">front</option>
-                            <option value="back">back</option>
-                        </select>
-                        {keyList && typeof keyList !== 'string' && (
-                            <button className={choosingKeys ? 'on' : ''} onClick={() => setChoosingKeys(!choosingKeys)}>
-                                {choosingKeys ? 'Keys chosen' : 'Choose keys'}
-                            </button>
-                        )}
-                        <button className="danger" onClick={() => remove('footprints', chosen)}>Delete</button>
-                        <button onClick={() => { setChosen(null); setChoosingKeys(false); }}>Deselect</button>
-                    </>
-                )}
-                {active && target && !adding && !moving && (
-                    <>
-                        {tab === 'modules' && <span>{target.name}</span>}
-                        {field('x', 'x')}
-                        {field('y', 'y')}
-                        {field('rotate', '°')}
-                        {tab === 'modules' && <button onClick={() => { setChosenModule(null); setFields({}); }}>Deselect</button>}
-                    </>
-                )}
-                {moving && moving.kind !== 'turn' && (
-                    <span>{`${moving.kind === 'module' ? moving.module : moving.name}: ${moving.delta.x.toFixed(1)}, ${(-moving.delta.y).toFixed(1)} mm`}</span>
-                )}
-                {!moving && note && <span>{note}</span>}
-                {!moving && !note && active && !adding && tab === 'modules' && !chosenModule && <span>Drag a module's box to move it, click to pick it, × deletes it</span>}
-                {!moving && !note && active && !adding && target && (
-                    <span>Arrow keys move it 0.1 mm (Shift: 1 mm), [ and ] turn it 5°; type exact values in the boxes</span>
-                )}
-                {!moving && !note && active && !adding && tab === 'footprints' && !chosen && <span>Click a footprint to pick it and the others like it</span>}
-                {!moving && !note && active && tab === 'footprints' && chosen && !choosingKeys && (
-                    <span>{followsKeys(chosen) ? 'Drag one to move them all on their keys, the knob turns them' : 'Drag it to move it, the knob turns it'}</span>
-                )}
-                {!moving && !note && active && choosingKeys && <span>Click keys to put {chosen} on them or take it off</span>}
-            </Toolbar>
-            {active && tab === 'outline' && (
-                <OutlineList onMouseLeave={() => setHoverOutline(null)}>
-                    <button className="fold" title={listFolded ? 'Show the list' : 'Fold the list away'} onClick={() => setListFolded(!listFolded)}>
-                        {listFolded ? '▸' : '▾'} Board edge of {outlineTarget}
-                    </button>
-                    {listFolded ? null : typeof boardOutlines === 'string' ? <span>{boardOutlines}</span> : outlineNames.map(name => (
-                        <label key={name} onMouseEnter={() => setHoverOutline(name)}>
-                            <input type="checkbox" checked={boardOutlines.some(e => e.outline === name)} onChange={() => toggleOutline(name)}/>
-                            {name}
-                        </label>
-                    ))}
-                    {!listFolded && <div className="note">
-                        {`The board edge of ${outlineTarget} is the checked outlines stacked; a closed shape inside the board becomes a cut-out.`}
-                        {outlineTarget !== pcb && ` ${pcb} takes them from ${outlineTarget}, mirrored.`}
-                        {half === 'source' ? ' Point at one to see it on the board.' : ''}
-                    </div>}
-                </OutlineList>
+            {!active && (
+                <OpenButton onClick={() => { setActive(true); setNote(null); }}>Edit parts</OpenButton>
+            )}
+            {active && (
+                <Card onPointerDown={e => e.stopPropagation()} onMouseLeave={() => { setLit(null); setHoverOutline(null); }}>
+                    <CardHead title={`Parts of ${pcb}`} subtitle={source !== pcb ? `mirrored from ${source}: its parts are edited` : undefined}
+                              folded={listFolded} onFold={setListFolded} foldAt="left"
+                              actions={<Button $variant="go" onClick={() => { setActive(false); setNote(null); setAdding(null); setChoosingKeys(false); }}>Done</Button>}/>
+                    {!listFolded && <>
+                        <CardTabs value={tab} onChange={t => { setTab(t); setAdding(null); setChoosingKeys(false); setNote(null); }}
+                                  tabs={[{value: 'modules', label: 'Modules'}, {value: 'footprints', label: 'Footprints'}, {value: 'outline', label: 'Board edge'}]}/>
+                        <div className="body">
+                            {/* a new part: named and given its file, then placed with a click (or put on keys) */}
+                            {adding && !adding.placing && <>
+                                <Field label="Name">
+                                    <input autoFocus placeholder={`${adding.tab === 'modules' ? 'module' : 'footprint'} name`} value={adding.name}
+                                           onChange={e => setAdding({...adding, name: e.target.value})}
+                                           onKeyDown={e => e.key === 'Enter' ? startAdding() : e.key === 'Escape' && setAdding(null)}/>
+                                </Field>
+                                <Field label="File">
+                                    <select value={adding.file} onChange={e => setAdding({...adding, file: e.target.value})} title={adding.file.replace('|', '/')}>
+                                        {(adding.tab === 'modules' ? moduleFiles : footprintFiles).map(f =>
+                                            <option key={f} value={f}>{f.split('|')[1].split('/').slice(-2).join('/')}</option>)}
+                                    </select>
+                                </Field>
+                                {adding.tab === 'footprints' && (
+                                    <Field label="Where">
+                                        <select value={adding.onKeys ? 'keys' : 'point'} onChange={e => setAdding({...adding, onKeys: e.target.value === 'keys'})}>
+                                            <option value="keys">on keys</option>
+                                            <option value="point">at a point</option>
+                                        </select>
+                                    </Field>
+                                )}
+                                <Actions>
+                                    <Gap/>
+                                    <Button onClick={() => setAdding(null)}>Cancel</Button>
+                                    <Button $variant="go" onClick={startAdding}>{adding.tab === 'footprints' && adding.onKeys ? 'Add' : 'Place'}</Button>
+                                </Actions>
+                            </>}
+                            {adding?.placing && <>
+                                <About>Click on the board where {adding.name} goes.</About>
+                                <Actions><Gap/><Button onClick={() => setAdding(null)}>Cancel</Button></Actions>
+                            </>}
+
+                            {!adding && tab === 'modules' && (chosenModule ? <>
+                                <Picked name={chosenModule} detail={String(config()?.pcbs?.[source]?.modules?.[chosenModule]?.what?.github?.file ?? '').split('/').pop()}/>
+                                {placementFields()}
+                                <Tip>Drag its box to move it; ←↑→↓ 0.1 mm (Shift 1 mm), [ ] turn 5°.</Tip>
+                                <Actions>
+                                    <Button onClick={() => { setChosenModule(null); setFields({}); }}>Deselect</Button>
+                                    <Gap/>
+                                    <Button $variant="danger" title={`Delete module ${chosenModule}`} onClick={() => { remove('modules', chosenModule); setChosenModule(null); }}>Delete</Button>
+                                </Actions>
+                            </> : <>
+                                <About>Point at one to find it; drag its box on the board to move it, click it to pick it.</About>
+                                <List>
+                                    {modules.map(({module}) => (
+                                        <ListRow key={module} onMouseEnter={() => setLit(module)}
+                                                 onClick={() => { setChosenModule(module); setFields({}); setNote(null); }}>
+                                            <span>{module}</span>
+                                            <small>{String(config()?.pcbs?.[source]?.modules?.[module]?.what?.github?.file ?? '').split('/').slice(-2, -1)[0] ?? ''}</small>
+                                        </ListRow>
+                                    ))}
+                                </List>
+                                <Actions>
+                                    <Button $variant="go" onClick={() => setAdding({tab, name: '', file: moduleFiles[0] ?? '', onKeys: true, placing: false})}>+ Add module</Button>
+                                </Actions>
+                            </>)}
+
+                            {!adding && tab === 'footprints' && (chosen ? <>
+                                <Picked name={chosen} detail={`${String(chosenConfig?.what?.github?.file ?? '').split('/').pop()}, ${describeWhere(chosenConfig?.where)}`}/>
+                                <Field label="Side">
+                                    <select value={String(chosenConfig?.side ?? 'front').toLowerCase()} onChange={e => setSide(e.target.value)}>
+                                        <option value="front">front</option>
+                                        <option value="back">back</option>
+                                    </select>
+                                </Field>
+                                {target && placementFields()}
+                                <Tip>
+                                    {choosingKeys ? `Click keys on the board to put ${chosen} on them or take it off.`
+                                        : `${followsKeys(chosen) ? 'Drag one to move them all on their keys' : 'Drag it to move it'}, the knob turns it; ←↑→↓ 0.1 mm (Shift 1 mm), [ ] 5°.`}
+                                </Tip>
+                                <Actions>
+                                    {keyList && typeof keyList !== 'string' && (
+                                        <Button $variant={choosingKeys ? 'accent' : 'plain'} onClick={() => setChoosingKeys(!choosingKeys)}>{choosingKeys ? 'Keys chosen' : 'Choose keys'}</Button>
+                                    )}
+                                    <Button onClick={() => { setChosen(null); setChoosingKeys(false); }}>Deselect</Button>
+                                    <Gap/>
+                                    <Button $variant="danger" title={`Delete footprint ${chosen}`} onClick={() => { remove('footprints', chosen); setChosen(null); }}>Delete</Button>
+                                </Actions>
+                            </> : <>
+                                <About>Point at one to find it; click it, here or on the board, to pick it and the others like it.</About>
+                                <List>
+                                    {Object.keys(config()?.pcbs?.[source]?.footprints ?? {}).map(name => (
+                                        <ListRow key={name} onMouseEnter={() => setLit(name)}
+                                                 onClick={() => { setChosen(name); setChosenInstance(instances.find(i => i.name === name)?.key ?? null); setFields({}); setNote(null); }}>
+                                            <span>{name}</span>
+                                            <small>{describeWhere(config()?.pcbs?.[source]?.footprints?.[name]?.where)}</small>
+                                        </ListRow>
+                                    ))}
+                                </List>
+                                <Actions>
+                                    <Button $variant="go" onClick={() => setAdding({tab, name: '', file: footprintFiles[0] ?? '', onKeys: true, placing: false})}>+ Add footprint</Button>
+                                </Actions>
+                            </>)}
+
+                            {!adding && tab === 'outline' && <>
+                                <About>
+                                    {`The board edge of ${outlineTarget} is the checked outlines stacked; a closed shape inside the board becomes a cut-out.`}
+                                    {outlineTarget !== pcb && ` ${pcb} takes them from ${outlineTarget}, mirrored.`}
+                                    {half === 'source' ? ' Point at one to see it on the board.' : ''}
+                                </About>
+                                <List>
+                                    {typeof boardOutlines === 'string' ? <span>{boardOutlines}</span> : outlineNames.map(name => (
+                                        <Check key={name} onMouseEnter={() => setHoverOutline(name)}>
+                                            <input type="checkbox" checked={boardOutlines.some(e => e.outline === name)} onChange={() => toggleOutline(name)}/>
+                                            {name}
+                                        </Check>
+                                    ))}
+                                </List>
+                            </>}
+
+                            {moving && moving.kind !== 'turn' && (
+                                <Status>{`${moving.kind === 'module' ? moving.module : moving.name}: ${moving.delta.x.toFixed(1)}, ${(-moving.delta.y).toFixed(1)} mm`}</Status>
+                            )}
+                            {!moving && note && <Status>{note}</Status>}
+                        </div>
+                    </>}
+                </Card>
             )}
         </>
     );

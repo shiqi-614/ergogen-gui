@@ -1,29 +1,32 @@
-import {ReactNode, useEffect} from "react";
-import ReactDOM from "react-dom";
+import {ReactNode} from "react";
+import * as RadixDialog from "@radix-ui/react-dialog";
 import styled from "styled-components";
+import {colors, shadow} from "./theme";
 
-// A form over the page: a title, labelled fields, and the buttons at the bottom. Escape, the × or a click
-// beside it closes it.
+// A form over the page: a title, labelled fields, and the buttons at the bottom. Radix keeps the focus inside while
+// it is open and gives it back after; Escape, the × or a click beside it closes it.
 
-const Overlay = styled.div`
+const Overlay = styled(RadixDialog.Overlay)`
   position: fixed;
   inset: 0;
   z-index: 1000;
-  display: flex;
-  align-items: center;
-  justify-content: center;
   background: rgba(0, 0, 0, 0.55);
 `;
 
-const Box = styled.div`
+const Box = styled(RadixDialog.Content)`
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  z-index: 1001;
+  transform: translate(-50%, -50%);
   width: min(28rem, calc(100vw - 2rem));
   max-height: calc(100vh - 2rem);
   overflow: auto;
   padding: 1rem 1.2rem;
   border-radius: 0.4rem;
   background: #2b2b2b;
-  box-shadow: 0 0.5rem 2rem rgba(0, 0, 0, 0.5);
-  color: #dddddd;
+  box-shadow: ${shadow};
+  color: ${colors.text};
   font-size: 0.9rem;
 
   .head {
@@ -38,14 +41,18 @@ const Box = styled.div`
 
   .head button {
     padding: 0 0.3rem;
+    border: none;
+    border-radius: 0.2rem;
     background: transparent;
     color: #aaaaaa;
+    font: inherit;
     font-size: 1.2rem;
+    cursor: pointer;
   }
 
   .field {
     display: grid;
-    grid-template-columns: 6.5rem 1fr;
+    grid-template-columns: 6.5rem 1fr auto;
     align-items: center;
     gap: 0.6rem;
     margin-bottom: 0.6rem;
@@ -127,16 +134,6 @@ const Box = styled.div`
     box-sizing: border-box;
   }
 
-  .part button.remove {
-    padding: 0.1rem 0.45rem;
-    background: transparent;
-    color: #bdbdbd;
-  }
-
-  .part button.remove:hover {
-    color: #ff6d6d;
-  }
-
   .hint {
     margin: -0.3rem 0 0.6rem 7.1rem;
     color: #888888;
@@ -155,28 +152,6 @@ const Box = styled.div`
   input.short {
     width: 4rem;
     flex-grow: 0 !important;
-  }
-
-  button {
-    padding: 0.3rem 0.9rem;
-    border: none;
-    border-radius: 0.2rem;
-    background: #595959;
-    color: #ffffff;
-    font: inherit;
-    cursor: pointer;
-  }
-
-  button.add {
-    background: #28a745;
-  }
-
-  button.danger {
-    background: #a33a3a;
-  }
-
-  button.danger:hover {
-    background: #c24444;
   }
 
   .message {
@@ -215,24 +190,25 @@ type Props = {
     children: ReactNode,
 };
 
-const Dialog = ({title, onClose, children}: Props): JSX.Element => {
-    useEffect(() => {
-        const listener = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
-        window.addEventListener('keydown', listener);
-        return () => window.removeEventListener('keydown', listener);
-    }, [onClose]);
-    return ReactDOM.createPortal(
-        <Overlay onMouseDown={e => e.target === e.currentTarget && onClose()}>
-            <Box role="dialog" aria-label={title}>
+const Dialog = ({title, onClose, children}: Props): JSX.Element => (
+    <RadixDialog.Root open onOpenChange={open => !open && onClose()}>
+        <RadixDialog.Portal>
+            <Overlay/>
+            <Box aria-describedby={undefined}
+                 // the box asked for with autoFocus, else the first one, rather than the × in the head
+                 onOpenAutoFocus={e => {
+                     const content = e.currentTarget as HTMLElement;
+                     const first = content.querySelector<HTMLElement>('input, select, textarea, .buttons button:last-child');
+                     if (first) { e.preventDefault(); first.focus(); }
+                 }}>
                 <div className="head">
-                    {title}
-                    <button title="Close" onClick={onClose}>×</button>
+                    <RadixDialog.Title asChild><span>{title}</span></RadixDialog.Title>
+                    <RadixDialog.Close asChild><button title="Close">×</button></RadixDialog.Close>
                 </div>
                 {children}
             </Box>
-        </Overlay>,
-        document.body,
-    );
-};
+        </RadixDialog.Portal>
+    </RadixDialog.Root>
+);
 
 export default Dialog;

@@ -16,7 +16,9 @@ export const tests = [
             await page.type('30');
             await page.key('Enter', 'Enter', 13);
             await page.until(`jsyaml.load(${config}).units.funnelWide === 30`, 30, 'funnelWide to be written');
-            await page.until(`${row('funnelWide')}.querySelector('.value').textContent === '= 30'`, 60, 'ergogen to work it out');
+            // a plain number needs no worked-out value beside it; kx (written u) has one
+            assert(await page.ev(`${row('funnelWide')}.querySelector('.value').textContent`) === '', 'a plain number should show no value beside it');
+            assert(await page.ev(`${row('kx')}.querySelector('.value').textContent`) === '= 19', 'kx should show what u comes to');
             // ↑ nudges by 0.1, keeping it a plain number
             await page.ev(`${box('screwSize')}.focus()`);
             await page.key('ArrowUp', 'ArrowUp', 38);
