@@ -214,6 +214,8 @@ const Downloads = ({setPreview, label, previewKey, onNewOutline}: Props) => {
     // what ergogen could not make, in its section: e.g. "pcbs.left" under PCBs
     for (const [item, message] of Object.entries((results?.errors ?? {}) as Record<string, string>)) {
         const [kind, ...rest] = item.split('.');
+        // a part of an item (pcbs.right.footprints.diodes) is in the error box: the item itself was made
+        if (rest.length !== 1) continue;
         const found = sections.find(s => s.title === SECTION_OF[kind]);
         if (found) found.items.push({fileName: rest.join('.'), extension: '', content: '', label: rest.join('.'), error: message});
     }

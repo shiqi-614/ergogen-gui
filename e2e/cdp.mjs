@@ -55,6 +55,7 @@ const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
 // branch's head, a file of main) is fetched again after an hour, and an old copy serves while GitHub doesn't answer.
 const GITHUB_CACHE = new URL('./.cache/github/', import.meta.url);
 const FRESH_MS = 60 * 60 * 1000;
+const RUN_START = Date.now();
 
 const githubCache = async () => {
     const {mkdir, readFile, writeFile} = await import('node:fs/promises');
@@ -79,7 +80,11 @@ const serveGithub = async (cdp, cache, {requestId, request}) => {
         requestId, responseCode: entry.status, body: entry.body,
         responseHeaders: [{name: 'Content-Type', value: entry.type}, {name: 'Access-Control-Allow-Origin', value: '*'}],
     });
-    if (kept && (fixed(request.url) || Date.now() - kept.at < FRESH_MS)) return fulfill(kept);
+    // a repo's head commit is asked once a run (2 API calls), so a library pushed since the last run is seen; the rest
+    // stays for an hour
+    const head = /\/commits\/main/.test(request.url);
+    const fresh = kept && (head ? kept.at >= RUN_START : Date.now() - kept.at < FRESH_MS);
+    if (kept && (fixed(request.url) || fresh)) return fulfill(kept);
     try {
         // some connections to GitHub hang: give each try 10 s
         let response;

@@ -31,7 +31,7 @@
     "yaml-js": "^0.2.3"
   },
   "scripts": {
-    "build-ergogen": "cd node_modules/ergogen && yarn install && yarn run build && cp dist/ergogen.js ../../public/dependencies/ergogen.js",
+    "build-ergogen": "cd node_modules/ergogen && yarn install && yarn run build && (cp dist/ergogen.min.js ../../public/dependencies/ergogen.js || cp dist/ergogen.js ../../public/dependencies/ergogen.js)",
     "postinstall": "yarn upgrade ergogen && yarn run build-ergogen",
     "start": "vite",
     "build": "tsc && vite build",
