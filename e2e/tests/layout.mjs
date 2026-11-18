@@ -154,4 +154,56 @@ export const tests = [
             assert(before.mirror_matrix_col3_row2[0] - after.mirror_matrix_col3_row2[0] > 15, 'the dragged key should move left');
         },
     },
+    {
+        name: "layout: a zone's anchor and turn, a new zone, and the mirror are set on the Zone tab",
+        async run(page, {url}) {
+            await freshApp(page, url);
+            await openLayout(page);
+            const points = `jsyaml.load(window.monaco.editor.getModels()[0].getValue()).points`;
+            const box = name => `[...document.querySelectorAll('label.field')].find(l => l.querySelector('.label')?.textContent === '${name}').querySelector('input, select')`;
+            const before = await keyCenters(page);
+            await page.click(before.thumbs_col0_row5);
+            await page.press('Zone');
+            // the thumbs turn 5° more about their anchor
+            await page.ev(`${box('Turn')}.select()`);
+            await page.type('30');
+            await page.key('Enter', 'Enter', 13);
+            await page.until(`${points}.zones.thumbs.anchor.rotate === 30`, 30, 'the anchor rotate');
+            await page.until(`(() => { const t = [...document.querySelectorAll('svg title')].find(t => t.textContent === 'thumbs_col3_row5'); return !!t })()`, 30, 'the thumbs');
+            await new Promise(r => setTimeout(r, 1500));
+            const turned = await keyCenters(page);
+            assert(Math.hypot(turned.thumbs_col3_row5[0] - before.thumbs_col3_row5[0], turned.thumbs_col3_row5[1] - before.thumbs_col3_row5[1]) > 3, 'the thumbs should turn');
+            assert(Math.hypot(turned.matrix_col3_row2[0] - before.matrix_col3_row2[0], turned.matrix_col3_row2[1] - before.matrix_col3_row2[1]) < 1, 'the matrix should stay');
+            await page.choose(box('From key'), 'matrix_col2_row3');
+            await page.until(`${points}.zones.thumbs.anchor.ref === 'matrix_col2_row3'`, 30, 'the anchor key');
+
+            // a new zone of one key, starting from the picked key, and deleted again
+            await page.press('+ Zone');
+            await page.press('Add');
+            await page.until(`'zone2' in ${points}.zones`, 30, 'the new zone');
+            await page.until(`[...document.querySelectorAll('svg title')].some(t => t.textContent === 'zone2_col0_row0')`, 60, 'its key');
+            await page.press('Zone');
+            await page.ev(`document.querySelector('button[title="Delete zone zone2"]').click()`);
+            await page.until(`!('zone2' in ${points}.zones)`, 30, 'the zone to go');
+
+            // the mirror: the halves 1 kx further apart, then off and on again
+            await page.click((await keyCenters(page)).matrix_col3_row2);
+            await page.press('Zone');
+            const mirrored = (await keyCenters(page)).mirror_matrix_col3_row2;
+            await page.ev(`${box('Distance')}.select()`);
+            await page.type('-1kx');
+            await page.key('Enter', 'Enter', 13);
+            await page.until(`${points}.mirror.distance === '-1kx'`, 30, 'the distance');
+            await page.until(`(() => { const t = [...document.querySelectorAll('svg title')].find(t => t.textContent === 'mirror_matrix_col3_row2'); return t && t.parentElement.getBoundingClientRect().left > ${mirrored[0]} })()`, 60, 'the mirrored half to move out');
+            await page.ev(`document.querySelector('label.check input').click()`);
+            await page.until(`${points}.mirror === undefined`, 30, 'the mirror to go');
+            await page.until(`![...document.querySelectorAll('svg title')].some(t => t.textContent.startsWith('mirror_'))`, 60, 'the mirrored keys to go');
+            await page.ev(`document.querySelector('label.check input').click()`);
+            await page.until(`${points}.mirror?.ref === 'matrix_col3_row2'`, 30, 'the mirror back');
+            await page.ev(`${box('Distance')}.select()`);
+            await page.type('-2kx');
+            await page.key('Enter', 'Enter', 13);
+            await page.until(`${points}.mirror.distance === '-2kx'`, 30, 'the distance back');
+        },
+    },
 ];

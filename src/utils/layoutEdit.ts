@@ -334,10 +334,10 @@ export type NewPoint = { ref: string, shift: [string, string] };
 // Adds <name> with the given lines (relative to the name's indentation) as the last entry of the
 // map at path, before the blank lines that separate it from what follows. A missing top-level map
 // is started at the end of the config.
-export const appendEntry = (text: string, path: string[], name: string, lines: string[]): string => {
+export const appendEntry = (text: string, path: string[], name: string, lines: string[], value?: string): string => {
     const doc = parseDocument(text, {keepCstNodes: true});
     if (doc.errors.length) throw new Error('the config has YAML errors');
-    if (!/^[A-Za-z_][\w-]*$/.test(name)) throw new Error(`"${name}" can't be a name here: use letters, digits, _ or -`);
+    if (!/^[A-Za-z_$][\w$-]*$/.test(name)) throw new Error(`"${name}" can't be a name here: use letters, digits, _ or -`);
     const map = doc.getIn(path, true);
     if (map !== undefined && map !== null && !isBlockMap(map)) throw new Error(`${path.join('.')} is not a plain map`);
     if (isBlockMap(map) && findPair(map, name)) throw new Error(`there already is a ${path.join('.')}.${name}`);
@@ -346,7 +346,7 @@ export const appendEntry = (text: string, path: string[], name: string, lines: s
     const first = isBlockMap(map) ? (map.items[0] as Pair | undefined)?.key : undefined;
     const indent = first instanceof Scalar && first.range ? columnOf(text, first.range[0]) : 2;
     const pad = (n: number) => ' '.repeat(indent + n);
-    const body = [`${pad(0)}${name}:`, ...lines.map(line => `${pad(2)}${line}`)].join('\n') + '\n';
+    const body = [`${pad(0)}${name}:${value === undefined ? '' : ` ${value}`}`, ...lines.map(line => `${pad(2)}${line}`)].join('\n') + '\n';
 
     if (isBlockMap(map) && map.range) {
         // after the last entry, but before the blank lines that separate it from what follows
@@ -837,6 +837,81 @@ export const deletePcb = (text: string, name: string): string => {
     for (const assembly of assemblies) out = deleteEntry(out, ['assemblies'], assembly);
     for (const mirror of mirrors) out = deleteEntry(out, ['pcbs'], mirror);
     return deleteEntry(out, ['pcbs'], name);
+};
+
+// --- zones and the mirror ---
+
+// A new zone after <after>: one key, its anchor a key of the board and a shift from it
+export const addZone = (text: string, name: string, after: string, ref: string, shift: [string, string]): string =>
+    insertEntry(text, ['points', 'zones'], name, [
+        'anchor:', `  ref: ${ref}`, `  shift: [${shift[0]}, ${shift[1]}]`,
+        'columns:', '  col0:',
+        'rows:', '  row0:',
+    ], after, true);
+
+// Deletes points.zones.<zone>, unless it is the only one
+export const deleteZone = (text: string, zone: string): string => {
+    const doc = parseDocument(text, {keepCstNodes: true});
+    const zones = doc.getIn(['points', 'zones'], true);
+    if (isBlockMap(zones) && zones.items.length < 2) throw new Error(`${zone} is the only zone`);
+    return deleteEntry(text, ['points', 'zones'], zone);
+};
+
+// The whole board's mirror (points.mirror): its anchor's key and the distance between the halves
+export const addMirror = (text: string, ref: string, distance: string): string =>
+    appendEntry(text, ['points'], 'mirror', [`ref: ${ref}`, `distance: ${distance}`]);
+
+export const deleteMirror = (text: string): string => deleteEntry(text, ['points'], 'mirror');
+
+// --- units ---
+
+// A unit (or variable) the config defines, in the order ergogen works them out: how it is written, where, and the
+// comment lines right above it (they say what it is for)
+export type UnitEntry = { name: string, section: 'units' | 'variables', raw: string, site: EditSite | string, comment: string };
+
+export const unitEntries = (text: string): UnitEntry[] => {
+    const doc = parseDocument(text, {keepCstNodes: true});
+    if (doc.errors.length) return [];
+    return (['units', 'variables'] as const).flatMap(section => {
+        const map = doc.get(section, true);
+        if (!isBlockMap(map)) return [];
+        return (map.items as Pair[]).map(pair => {
+            const keyStart = (pair.key as Scalar).range?.[0] ?? 0;
+            const lineStart = lineStartOf(text, keyStart);
+            const comment = text.slice(withComments(text, lineStart), lineStart).split('\n')
+                .map(line => line.replace(/^\s*#\s?/, '')).filter(Boolean).join(' ');
+            const site = replaceScalar(text, pair.value);
+            return {name: String((pair.key as Scalar).value), section, raw: typeof site === 'string' ? '' : site.raw ?? '', site, comment};
+        });
+    });
+};
+
+// The lines that use unit <name> (in a number like 1.5kx or an expression like funnelWide + 2), as "line: text",
+// leaving out the line that defines it and comments
+export const unitMentions = (text: string, name: string): string[] => {
+    const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const use = new RegExp(`(^|[^A-Za-z_$])${escaped}(?![\\w$])`);
+    const own = new RegExp(`^\\s*${escaped}\\s*:`);
+    let section = '';
+    return text.split('\n').flatMap((line, i) => {
+        if (/^\S/.test(line)) section = line.split(':')[0];
+        const code = line.replace(/#.*/, '');
+        const value = code.includes(':') ? code.slice(code.indexOf(':') + 1) : code.replace(/^\s*-\s*/, '');
+        if ((section === 'units' || section === 'variables') && own.test(code)) return [];
+        return use.test(value) ? [`${i + 1}: ${line.trim()}`] : [];
+    });
+};
+
+// Deletes units.<name> (or variables.<name>) with the comment lines right above it
+export const deleteUnit = (text: string, section: 'units' | 'variables', name: string): string => {
+    const doc = parseDocument(text, {keepCstNodes: true});
+    if (doc.errors.length) throw new Error('the config has YAML errors');
+    const map = doc.get(section, true);
+    const pairs = isBlockMap(map) ? map.items as Pair[] : [];
+    const index = pairs.findIndex(pair => pair.key instanceof Scalar && String(pair.key.value) === name);
+    if (index < 0) throw new Error(`there is no ${section}.${name}`);
+    const range = itemLines(text, pairs[index], pairs[index + 1]);
+    return removeRanges(text, [{start: withComments(text, range.start), end: range.end}]);
 };
 
 // One of an assembly's other 3D models: its model path (or address), at a module of the pcb, its z = 0 at z

@@ -2,6 +2,7 @@ import NewCase from "./NewCase";
 import NewOutline, {OutlineRequest} from "./NewOutline";
 import NewPcb from "./NewPcb";
 import NewAssembly from "./NewAssembly";
+import {NewUnit, UnitList, useUnits} from "./Units";
 import DownloadRow from "../atoms/DownloadRow";
 import Loading, {Spinner} from "../atoms/Loading";
 import yaml from 'js-yaml';
@@ -109,6 +110,7 @@ const Downloads = ({setPreview, label, previewKey, onNewOutline}: Props) => {
     const [open, setOpen] = useState<Record<string, boolean>>({});
     // the section whose new-item form is open
     const [adding, setAdding] = useState<string | null>(null);
+    const units = useUnits();
     if(!configContext) return null;
 
     const {configInput, results, error, running} = configContext;
@@ -244,6 +246,21 @@ const Downloads = ({setPreview, label, previewKey, onNewOutline}: Props) => {
               {running && results && <Spinner $size="0.9rem" title="Generating…" role="status" aria-label="Generating"/>}
           </Title>
           {!results && !error && <Loading text="Generating…"/>}
+          {/* the config's own units: not a download, but what everything below is measured in */}
+          {results && (
+              <SectionContainer>
+                  <SectionHeader>
+                      <button className="toggle" aria-expanded={!!open.Units} onClick={() => setOpen({...open, Units: !open.Units})}>
+                          <span>{open.Units ? '▾' : '▸'} Units</span>
+                          <span>{units.length}</span>
+                      </button>
+                      <button className="new" title="A new unit" aria-pressed={adding === 'Units'}
+                              onClick={() => { setAdding('Units'); setOpen({...open, Units: true}); }}>+</button>
+                  </SectionHeader>
+                  {adding === 'Units' && <NewUnit onClose={() => setAdding(null)}/>}
+                  {open.Units && <UnitList/>}
+              </SectionContainer>
+          )}
           {
               sections.map(({title, items}) => {
                   const shown = items.filter(download => !download.fileName.startsWith("_"));

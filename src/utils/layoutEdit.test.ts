@@ -1,6 +1,6 @@
 import {expect, it} from "vitest";
 import yaml from "js-yaml";
-import {addAssemblyPart, assemblyLines, deletePcb, entryLines, pcbReferences, findKeySite, splitShift, deleteColumn, deleteRow, insertEntry, keyMentions, nextName, addOutline, caseLines, caseReferences, deleteCase, insertIntoStack, mirrorCaseLines, stacksWith, addPcbOutline, appendEntry, appendListItem, appendOutline, applyEdits, deleteEntry, deleteListItem, deleteOutline, deleteOutlinePart, findAnchorShift, findChildShift, findChildValue, findItemSites, findPartSites, findShift, findSite, findValue, findWhereList, formatLength, insertPolygonPoint, moveListItem, nudge, outlineReferences, parseLength, partLines, pcbOutlines, plateLines, removePolygonPoint, EditSite} from "./layoutEdit";
+import {addMirror, addZone, deleteMirror, deleteZone, deleteUnit, unitEntries, unitMentions, addAssemblyPart, assemblyLines, deletePcb, entryLines, pcbReferences, findKeySite, splitShift, deleteColumn, deleteRow, insertEntry, keyMentions, nextName, addOutline, caseLines, caseReferences, deleteCase, insertIntoStack, mirrorCaseLines, stacksWith, addPcbOutline, appendEntry, appendListItem, appendOutline, applyEdits, deleteEntry, deleteListItem, deleteOutline, deleteOutlinePart, findAnchorShift, findChildShift, findChildValue, findItemSites, findPartSites, findShift, findSite, findValue, findWhereList, formatLength, insertPolygonPoint, moveListItem, nudge, outlineReferences, parseLength, partLines, pcbOutlines, plateLines, removePolygonPoint, EditSite} from "./layoutEdit";
 
 const config = `points:
   zones:
@@ -672,4 +672,49 @@ it('adds a part to an assembly, with or without parts already', () => {
     expect(loaded(two).a_left).toEqual({stack: ['y'], pcb: 'left'});
     const empty = BOARDS.replace('    stack: []\n    pcb: other\n', '    stack: []\n    pcb: other\n    parts: []\n');
     expect(loaded(addAssemblyPart(empty, 'a_other', part)).a_other.parts).toHaveLength(1);
+});
+
+const UNITS = `units:
+  kx: u
+  # the funnel's half width
+  # at the far end
+  funnelWide: 25
+  lip: funnelWide / 10
+variables:
+  extra: 2
+points:
+  zones:
+    matrix:
+      columns:
+        a:
+          key.spread: 1.5kx   # not lipx
+          rows.r.shift: [kx, -lip + 1]
+`;
+
+it('lists the units with their comments, finds their uses and deletes one', () => {
+    const entries = unitEntries(UNITS);
+    expect(entries.map(e => [e.name, e.section, e.raw])).toEqual([['kx', 'units', 'u'], ['funnelWide', 'units', '25'], ['lip', 'units', 'funnelWide / 10'], ['extra', 'variables', '2']]);
+    expect(entries[1].comment).toBe("the funnel's half width at the far end");
+    expect(unitMentions(UNITS, 'kx')).toEqual(['14: key.spread: 1.5kx   # not lipx', '15: rows.r.shift: [kx, -lip + 1]']);
+    expect(unitMentions(UNITS, 'funnelWide')).toEqual(['6: lip: funnelWide / 10']);
+    expect(unitMentions(UNITS, 'u')).toEqual(['2: kx: u']);
+    const left = deleteUnit(UNITS, 'units', 'funnelWide');
+    expect(left).not.toContain('far end');
+    expect(Object.keys((yaml.load(left) as any).units)).toEqual(['kx', 'lip']);
+    expect((yaml.load(appendEntry(UNITS, ['units'], 'screw', [], '1.05')) as any).units.screw).toBe(1.05);
+    expect((yaml.load(appendEntry(UNITS, ['units'], '$default_spread', [], 'u')) as any).units.$default_spread).toBe('u');
+});
+
+it('adds and deletes a zone, and the mirror', () => {
+    const two = addZone(ZONE, 'thumbs', 'matrix', 'matrix_col0_row0', ['0', '-1.5u']);
+    const zones = (yaml.load(two) as any).points.zones;
+    expect(Object.keys(zones)).toEqual(['matrix', 'thumbs']);
+    expect(zones.thumbs).toEqual({anchor: {ref: 'matrix_col0_row0', shift: [0, '-1.5u']}, columns: {col0: null}, rows: {row0: null}});
+    expect(Object.keys((yaml.load(deleteZone(two, 'matrix')) as any).points.zones)).toEqual(['thumbs']);
+    expect(() => deleteZone(ZONE, 'matrix')).toThrow(/only zone/);
+    const mirrored = addMirror(ZONE, 'matrix_col0_row0', '-2kx');
+    expect((yaml.load(mirrored) as any).points.mirror).toEqual({ref: 'matrix_col0_row0', distance: '-2kx'});
+    expect((yaml.load(deleteMirror(mirrored)) as any).points.mirror).toBeUndefined();
+    expect(applyEdits(ZONE, [{site: findChildValue(ZONE, ['points', 'zones', 'matrix'], 'anchor', 'rotate') as EditSite, value: '10'}]))
+        .toContain('      anchor.rotate: 10\n      columns:');
 });

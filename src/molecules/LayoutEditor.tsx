@@ -809,6 +809,7 @@ const LayoutEditor = ({request, onRequestDone}: Props): JSX.Element | null => {
                         .map(([name]) => name)}
                     onSelect={setSelected}
                     onTab={setPanelTab}
+                    boardKeys={Object.entries(points ?? {}).filter(([, p]) => !p.meta.mirrored).map(([name, p]) => ({zone: p.meta.zone.name, name}))}
                     keyMeta={Object.values(points ?? {}).find(p => sameColumn(p, selected) && p.meta.row === selected.row
                         && !!p.meta.mirrored === !!selected.mirrored)?.meta}
                 />
