@@ -243,7 +243,7 @@ const Ergogen = () => {
                               <DownloadIcon/>
                             </IconButton>
                         </GenerateContainer>
-                        {configContext?.error && <Error>{configContext?.error?.toString()}</Error>}
+                        {configContext?.error && <Error role="alert">{configContext?.error?.toString()}</Error>}
                     </EditorContainer>
                 </LeftSplitPane>
 

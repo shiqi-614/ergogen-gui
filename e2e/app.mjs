@@ -60,3 +60,13 @@ export const outlineMenu = `[...document.querySelectorAll('select')].find(s => [
 // the "+" on a Downloads section's header, which opens its new-item form
 export const pressNew = (page, section) =>
     page.ev(`[...document.querySelectorAll('button[title="A new ${section}"]')][0].click()`);
+
+// After a test: the config it leaves has to make ergogen run without an error. The layout editor pauses the full
+// run, so this goes back to the preview (which runs it again when the config changed) and waits for it to finish.
+export const settled = async page => {
+    await page.ev(`[...document.querySelectorAll('button')].find(b => b.textContent === 'Preview')?.click()`);
+    await new Promise(r => setTimeout(r, 600));
+    await page.until(`!document.querySelector('[aria-label="Generating"]')`, 180, 'the last ergogen run to finish');
+    const error = await page.ev(`document.querySelector('[role="alert"]')?.textContent ?? null`);
+    if (error) throw new Error(`the config the test left makes ergogen fail: ${error.slice(0, 300)}`);
+};

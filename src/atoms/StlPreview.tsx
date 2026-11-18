@@ -69,7 +69,9 @@ const StlPreview = ({stl, caseName, made}: Props): JSX.Element => {
         camera.up.set(0, 0, 1);
         const controls = new OrbitControls(camera, renderer.domElement);
 
+        // nothing once the renderer is gone: the highlight's clean-up, which runs after this effect's, still redraws
         const render = () => {
+            if (disposed) return;
             light.position.copy(camera.position);
             renderer.render(scene, camera);
         };

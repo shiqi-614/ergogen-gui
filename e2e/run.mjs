@@ -17,6 +17,7 @@ import {homedir, tmpdir} from 'node:os';
 import {dirname, join} from 'node:path';
 import {fileURLToPath, pathToFileURL} from 'node:url';
 import {Page, wait} from './cdp.mjs';
+import {settled} from './app.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const root = join(here, '..');
@@ -102,6 +103,8 @@ const main = async () => {
             const began = Date.now();
             try {
                 await test.run(page, {url});
+                // a test meant to end on an error says so; any other leaves a config ergogen makes without one
+                if (!test.allowsError) await settled(page);
                 if (page.errors.length) throw new Error(`the page threw: ${page.errors.join(' | ')}`);
                 console.log(`  ✓ ${test.name} (${((Date.now() - began) / 1000).toFixed(1)} s)`);
             } catch (err) {
