@@ -3,6 +3,7 @@ import styled from "styled-components";
 import KicanvasPreview from "../atoms/KicanvasPreview";
 import Pcb3dPreview, {Stack} from "../atoms/Pcb3dPreview";
 import {useConfigContext} from "../context/ConfigContext";
+import AssemblyParts from "./AssemblyParts";
 import {StackEdit, writeStack} from "../utils/assemblyEdit";
 import {deleteEntry, deletePcb, pcbReferences} from "../utils/layoutEdit";
 
@@ -136,6 +137,7 @@ const PcbPreview = ({pcb, board, initialView, assembly}: Props): JSX.Element => 
             {view === '2d'
                 ? <KicanvasPreview pcb={pcb} name={`${board}_preview.kicad_pcb`} pcbName={board}/>
                 : <Pcb3dPreview pcb={pcb} fileName={`${board}.glb`} stack={stack} onSave={save}/>}
+            {view === '3d' && assembly && <AssemblyParts assembly={assembly}/>}
         </Wrapper>
     );
 };

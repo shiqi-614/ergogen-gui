@@ -1,6 +1,6 @@
 import {expect, it} from "vitest";
 import yaml from "js-yaml";
-import {assemblyLines, deletePcb, entryLines, pcbReferences, findKeySite, splitShift, deleteColumn, deleteRow, insertEntry, keyMentions, nextName, addOutline, caseLines, caseReferences, deleteCase, insertIntoStack, mirrorCaseLines, stacksWith, addPcbOutline, appendEntry, appendListItem, appendOutline, applyEdits, deleteEntry, deleteListItem, deleteOutline, deleteOutlinePart, findAnchorShift, findChildShift, findChildValue, findItemSites, findPartSites, findShift, findSite, findValue, findWhereList, formatLength, insertPolygonPoint, moveListItem, nudge, outlineReferences, parseLength, partLines, pcbOutlines, plateLines, removePolygonPoint, EditSite} from "./layoutEdit";
+import {addAssemblyPart, assemblyLines, deletePcb, entryLines, pcbReferences, findKeySite, splitShift, deleteColumn, deleteRow, insertEntry, keyMentions, nextName, addOutline, caseLines, caseReferences, deleteCase, insertIntoStack, mirrorCaseLines, stacksWith, addPcbOutline, appendEntry, appendListItem, appendOutline, applyEdits, deleteEntry, deleteListItem, deleteOutline, deleteOutlinePart, findAnchorShift, findChildShift, findChildValue, findItemSites, findPartSites, findShift, findSite, findValue, findWhereList, formatLength, insertPolygonPoint, moveListItem, nudge, outlineReferences, parseLength, partLines, pcbOutlines, plateLines, removePolygonPoint, EditSite} from "./layoutEdit";
 
 const config = `points:
   zones:
@@ -661,4 +661,15 @@ it('copies a pcb, and deletes one with its mirror and their assemblies', () => {
     expect(lines).toEqual(['stack: [b]', 'pcb: right', 'parts:', '  - name: e-paper', '    model: "${M}/e.glb"', '    module: e-paper', '    z: 30',
         '  - model: "https://x/y.glb"']);
     expect((yaml.load(lines.join('\n')) as any).parts[0]).toEqual({name: 'e-paper', model: '${M}/e.glb', module: 'e-paper', z: 30});
+});
+
+it('adds a part to an assembly, with or without parts already', () => {
+    const part = {name: 'p', model: 'github:o/r/m.glb', module: 'e-paper', z: '30'};
+    const loaded = (t: string) => (yaml.load(t) as any).assemblies;
+    expect(loaded(addAssemblyPart(BOARDS, 'a_left', part)).a_left.parts).toEqual([{name: 'p', model: 'github:o/r/m.glb', module: 'e-paper', z: 30}]);
+    const two = addAssemblyPart(addAssemblyPart(BOARDS, 'a_right', part), 'a_right', {name: '', model: 'https://x/y.glb'});
+    expect(loaded(two).a_right.parts.map((p: any) => p.model)).toEqual(['github:o/r/m.glb', 'https://x/y.glb']);
+    expect(loaded(two).a_left).toEqual({stack: ['y'], pcb: 'left'});
+    const empty = BOARDS.replace('    stack: []\n    pcb: other\n', '    stack: []\n    pcb: other\n    parts: []\n');
+    expect(loaded(addAssemblyPart(empty, 'a_other', part)).a_other.parts).toHaveLength(1);
 });

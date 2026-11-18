@@ -79,4 +79,28 @@ export const tests = [
             assert(after.assemblies.test_left && after.pcbs.ergo_cai_right && after.cases.right_top, 'only the assembly should go');
         },
     },
+    {
+        name: "boards: an assembly's parts are set, added and deleted in its 3D view",
+        async run(page, {url}) {
+            await freshApp(page, url);
+            await page.ev(`[...document.querySelectorAll('button')].find(b => b.textContent.startsWith('▸ Assemblies'))?.click()`);
+            await page.ev(`[...document.querySelectorAll('button')].find(b => b.textContent.trim() === 'ergocai_right')?.click()`);
+            await page.until(`document.body.textContent.includes('Parts of ergocai_right: 1')`, 120, 'the parts panel');
+            const parts = `jsyaml.load(${config}).assemblies.ergocai_right.parts`;
+            const box = (i, cls) => `document.querySelectorAll('.part')[${i}].querySelector('input.${cls}')`;
+            await page.ev(`${box(0, 'z')}.select()`);
+            await page.type('31');
+            await page.key('Enter', 'Enter', 13);
+            await page.until(`${parts}[0].z === 31`, 30, 'the height to be written');
+            await page.press('+ Part');
+            await page.until(`${parts}.length === 2`, 30, 'a second part');
+            await page.until(`document.querySelectorAll('.part').length === 2`, 30, 'its line');
+            await page.ev(`${box(1, 'model')}.focus()`);
+            await page.type('github:shiqi-614/ErgoCai.modules/e-paper/2.13inch/2.13inch.glb');
+            await page.key('Enter', 'Enter', 13);
+            await page.until(`${parts}[1].model === 'github:shiqi-614/ErgoCai.modules/e-paper/2.13inch/2.13inch.glb'`, 30, 'its model');
+            await page.ev(`document.querySelector('button[title="Delete part #1"]').click()`);
+            await page.until(`${parts}.length === 1 && ${parts}[0].name === 'e-paper'`, 30, 'the second part to go');
+        },
+    },
 ];

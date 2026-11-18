@@ -847,12 +847,34 @@ export type AssemblyPart = { name: string, model: string, module?: string, z?: s
 export const assemblyLines = (stack: string[], pcb: string, top?: string, parts: AssemblyPart[] = []) => [
     `stack: [${stack.join(', ')}]`,
     ...(top ? ['pcb:', `  name: ${pcb}`, `  top: ${top}`] : [`pcb: ${pcb}`]),
-    ...(parts.length ? ['parts:', ...parts.flatMap(part => [
-        ...(part.name ? [`  - name: ${part.name}`, `    model: ${JSON.stringify(part.model)}`] : [`  - model: ${JSON.stringify(part.model)}`]),
-        ...(part.module ? [`    module: ${part.module}`] : []),
-        ...(part.z ? [`    z: ${part.z}`] : []),
-    ])] : []),
+    ...(parts.length ? ['parts:', ...parts.flatMap(part => partItemLines(part).map((line, i) => (i ? '    ' : '  - ') + line))] : []),
 ];
+
+// an assembly part's lines, relative to its "- "
+const partItemLines = (part: AssemblyPart) => [
+    ...(part.name ? [`name: ${part.name}`] : []),
+    `model: ${JSON.stringify(part.model)}`,
+    ...(part.module ? [`module: ${part.module}`] : []),
+    ...(part.z ? [`z: ${part.z}`] : []),
+];
+
+// Adds a part at the end of assemblies.<assembly>.parts, starting the list when the assembly has none
+export const addAssemblyPart = (text: string, assembly: string, part: AssemblyPart): string => {
+    const doc = parseDocument(text, {keepCstNodes: true});
+    if (doc.errors.length) throw new Error('the config has YAML errors');
+    const parts = doc.getIn(['assemblies', assembly, 'parts'], true);
+    if (parts instanceof YAMLSeq && parts.type === 'SEQ' && parts.items.length) return appendListItem(text, ['assemblies', assembly, 'parts'], partItemLines(part));
+    const lines = partItemLines(part).map((line, i) => (i ? '  ' : '- ') + line);
+    if (parts === undefined) return appendEntry(text, ['assemblies', assembly], 'parts', lines);
+    if (parts !== null && !(parts instanceof YAMLSeq && !parts.items.length)) throw new Error(`assemblies.${assembly}.parts is not a list`);
+    // "parts:" (or "parts: []") with nothing in it: the list goes in its place
+    const map = doc.getIn(['assemblies', assembly], true) as YAMLMap;
+    const pair = findPair(map, 'parts') as Pair;
+    const keyStart = (pair.key as Scalar).range?.[0] ?? 0;
+    const pad = ' '.repeat(columnOf(text, keyStart) + 2);
+    const end = endOfLine(text, keyStart);
+    return text.slice(0, keyStart) + 'parts:\n' + lines.map(line => pad + line).join('\n') + text.slice(end);
+};
 
 // A case mirrored from another (for the other half of a split board)
 export const mirrorCaseLines = (from: string) => ['mirror:', `  from: ${from}`];
