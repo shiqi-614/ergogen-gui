@@ -476,10 +476,13 @@ const LayoutEditor = (): JSX.Element | null => {
                 onDoubleClick={e => { if (e.target === e.currentTarget && points) setView(fitView(points)); }}
             >
                 {/* the part pointed at in the panel: its polygon, filled and drawn over the rest */}
-                {litPart && outlineInfo?.polygons.filter(p => p.id === litPart || litPart.startsWith(`${p.id}.points[`)).map(p => (
-                    <polygon key={p.id} points={p.handles.map(h => { const v = handlePosition(h); return `${v.x},${v.y}`; }).join(' ')}
-                             fill="rgba(255, 159, 28, 0.28)" stroke="#ffffff" strokeWidth={0.6} strokeDasharray="2 1" pointerEvents="none"/>
-                ))}
+                {/* the handles' positions are the board's, y up: flipped like the keys */}
+                <g transform="scale(1 -1)">
+                    {litPart && outlineInfo?.polygons.filter(p => p.id === litPart || litPart.startsWith(`${p.id}.points[`)).map(p => (
+                        <polygon key={p.id} points={p.handles.map(h => { const v = handlePosition(h); return `${v.x},${v.y}`; }).join(' ')}
+                                 fill="rgba(255, 159, 28, 0.28)" stroke="#ffffff" strokeWidth={0.6} strokeDasharray="2 1" pointerEvents="none"/>
+                    ))}
+                </g>
                 {outline && paths[outline] && (
                     // ergogen's own result for the outline, already in the view's flipped coordinates
                     <path d={paths[outline]} fill="rgba(255, 159, 28, 0.08)" stroke="#ff9f1c" strokeWidth={0.5}

@@ -1,5 +1,5 @@
 // Outlines in the layout editor
-import {assert, config, freshApp, openLayout, outlineMenu, parsed, pressNew} from '../app.mjs';
+import {assert, config, freshApp, near, openLayout, outlineMenu, parsed, pressNew} from '../app.mjs';
 
 // an outline from the menu, once the layout editor has it (it reads the config again after an edit)
 const pick = async (page, name) => {
@@ -142,6 +142,25 @@ export const tests = [
             await page.until(`jsyaml.load(${config}).outlines.pcb_stud_mounting.$args[1] === 'screwSize'`, 30, 'its arg to be written');
             await page.ev(`[...document.querySelectorAll('button')].find(b => b.textContent === '_pcb_mounts').click()`);
             await page.until(`${outlineMenu}.value === '_pcb_mounts'`, 10, 'the template to open');
+        },
+    },
+    {
+        name: 'outlines: a part pointed at in the panel lights up where its points are, not mirrored',
+        async run(page, {url}) {
+            await freshApp(page, url);
+            await openLayout(page);
+            await pick(page, 'board');
+            await page.until(`[...document.querySelectorAll('svg title')].some(t => /^board\\.0\\.points\\[\\d+\\]$/.test(t.textContent))`, 60, 'its points');
+            await page.ev(`[...document.querySelectorAll('div')].find(d => d.querySelector(':scope > div > span[title="board.0"]'))
+                .dispatchEvent(new MouseEvent('mouseover', {bubbles: true}))`);
+            const lit = `document.querySelector('polygon[stroke-dasharray="2 1"]')`;
+            await page.until(`!!${lit}`, 10, 'the part to light up');
+            const [litBox, pointsBox] = await page.ev(`(() => {
+                const r = e => { const b = e.getBoundingClientRect(); return [b.left, b.top, b.right, b.bottom]; };
+                const hs = [...document.querySelectorAll('svg title')].filter(t => /^board\\.0\\.points\\[\\d+\\]$/.test(t.textContent)).map(t => r(t.parentElement));
+                return [r(${lit}), [Math.min(...hs.map(h => h[0])), Math.min(...hs.map(h => h[1])), Math.max(...hs.map(h => h[2])), Math.max(...hs.map(h => h[3]))]];
+            })()`);
+            for (let i = 0; i < 4; i++) near(litBox[i], pointsBox[i], 4, `the lit part's edge ${i} should be at its points'`);
         },
     },
     {
