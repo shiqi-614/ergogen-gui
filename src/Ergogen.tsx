@@ -92,7 +92,40 @@ const downloadConfig = (fileName: string, content: string) => {
 const StyledSelect = styled(Select)`
     color: black;
     white-space: nowrap;
+    flex-grow: 1;
 `;
+
+// the example menu, and the button that hides the config editor
+const EditorHead = styled.div`
+  display: flex;
+  gap: 0.4rem;
+`;
+
+// hides the config editor, or (in the strip it leaves) shows it again
+const FoldButton = styled.button`
+  flex: none;
+  width: 2rem;
+  border: none;
+  border-radius: 0.25rem;
+  background: #595959;
+  color: #ffffff;
+  font: inherit;
+  cursor: pointer;
+
+  &:hover {
+    background: #6f6f6f;
+  }
+
+  &.show {
+    width: 100%;
+    height: calc(100vh - 6rem);
+    writing-mode: vertical-rl;
+    letter-spacing: 0.05em;
+  }
+`;
+
+// the strip the hidden editor leaves, in px
+const FOLDED_WIDTH = 32;
 
 // @ts-ignore
 const StyledSplit = styled(Split)`
@@ -153,6 +186,10 @@ const Ergogen = () => {
         }
     }, [selectedOption]);
 
+    // the config editor, hidden down to a strip at the left; the split's sizes it goes back to
+    const [editorHidden, setEditorHidden] = useState(false);
+    const [openSizes, setOpenSizes] = useState([30, 70]);
+
     if (!configContext) return null;
 
 
@@ -170,20 +207,28 @@ const Ergogen = () => {
         <FlexContainer>
             <StyledSplit
                 direction={"horizontal"}
-                sizes={[30, 70]}
-                minSize={100}
+                // hidden, the editor's pane shrinks to its minimum: the strip with the button that shows it
+                sizes={editorHidden ? [0, 100] : openSizes}
+                minSize={[FOLDED_WIDTH, 100]}
                 gutterSize={10}
                 snapOffset={0}
+                // dragging the strip out shows the editor again, at the width it is dragged to
+                onDragEnd={(sizes: number[]) => { setEditorHidden(false); setOpenSizes(sizes); }}
             >
                 <LeftSplitPane>
-                    <EditorContainer>
-                        <StyledSelect
-                            options={exampleOptions}
-                            value={selectedOption}
-                            // @ts-ignore
-                            onChange={(newValue: ConfigOption|null) => setSelectedOption(newValue)}
-                            placeholder={"Paste your config below, or select an example here!"}
-                        />
+                    {editorHidden && <FoldButton className="show" title="Show the config editor" onClick={() => setEditorHidden(false)}>▸ Config</FoldButton>}
+                    {/* hidden, not unmounted: the editor keeps its undo history */}
+                    <EditorContainer style={editorHidden ? {display: 'none'} : undefined}>
+                        <EditorHead>
+                            <FoldButton title="Hide the config editor, for more room" onClick={() => setEditorHidden(true)}>◂</FoldButton>
+                            <StyledSelect
+                                options={exampleOptions}
+                                value={selectedOption}
+                                // @ts-ignore
+                                onChange={(newValue: ConfigOption|null) => setSelectedOption(newValue)}
+                                placeholder={"Paste your config below, or select an example here!"}
+                            />
+                        </EditorHead>
                         <ErrorBoundary area="the config editor"><StyledConfigEditor/></ErrorBoundary>
 
                         <GenerateContainer>

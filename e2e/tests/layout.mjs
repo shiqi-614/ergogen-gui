@@ -221,4 +221,19 @@ export const tests = [
             await page.until(`${box} === ${JSON.stringify(fitted)}`, 10, 'the double click to show the whole board again');
         },
     },
+    {
+        name: 'layout: the config editor hides to a strip for more room, and comes back with its text',
+        async run(page, {url}) {
+            await freshApp(page, url);
+            await openLayout(page);
+            const width = `([...document.querySelectorAll('svg')].find(s => s.querySelectorAll('title').length > 60)?.getBoundingClientRect().width ?? 0)`;
+            const before = await page.ev(width);
+            await page.ev(`document.querySelector('button[title="Hide the config editor, for more room"]').click()`);
+            await page.until(`${width} > ${before} + 100`, 10, 'the layout to get the room');
+            assert(!(await page.ev(`!!document.querySelector('.monaco-editor')?.offsetParent`)), 'the editor should be hidden');
+            await page.ev(`document.querySelector('button[title="Show the config editor"]').click()`);
+            await page.until(`!!document.querySelector('.monaco-editor')?.offsetParent && Math.abs(${width} - ${before}) < 5`, 10, 'the editor back, at its width');
+            assert((await page.ev(`window.monaco.editor.getModels()[0].getValue()`)).includes('points:'), 'the config should still be there');
+        },
+    },
 ];
