@@ -17,12 +17,15 @@ export const tests = [
             await openLayout(page);
             await pick(page, 'board');
             await page.until(`!!document.querySelector('svg path[fill-rule="evenodd"]')`, 60, 'the board outline');
-            // a point that is level with the next one, and not under a panel
+            // a point that is level with the next one, not under a panel, and whose other neighbour is well off that
+            // level: within snapping reach it would win (the drag ends 2-3 mm down, the reach is 6 px)
             const index = await page.ev(`(() => {
                 const handles = [...document.querySelectorAll('svg title')].filter(t => /^board\\.0\\.points\\[\\d+\\]$/.test(t.textContent)).map(t => t.parentElement);
                 const y = h => +h.getAttribute('y');
                 const visible = h => { const r = h.getBoundingClientRect(); return document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2) === h; };
-                return handles.findIndex((h, i) => visible(h) && Math.abs(y(h) - y(handles[(i + 1) % handles.length])) < 0.01);
+                const n = handles.length;
+                return handles.findIndex((h, i) => visible(h) && Math.abs(y(h) - y(handles[(i + 1) % n])) < 0.01
+                    && Math.abs(y(h) - y(handles[(i + n - 1) % n])) > 12);
             })()`);
             assert(index >= 0, 'the board outline should have a visible point level with the next one');
             const before = (await points(page, 'board'))[index].shift;

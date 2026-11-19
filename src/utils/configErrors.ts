@@ -18,10 +18,18 @@ export const configErrors = (text: string, error: string | null | undefined, ite
 // The config editor, once it is there: the error rows and the error box move its cursor to a line
 let editor: any = null;
 export const setConfigEditor = (instance: any) => { editor = instance; };
+// what shows the editor when it is hidden (the page starts with it hidden)
+let showEditor: (() => void) | null = null;
+export const setShowConfigEditor = (show: (() => void) | null) => { showEditor = show; };
 
 export const revealLine = (line: number, column = 1) => {
     if (!editor) return;
-    editor.revealLineInCenter(line);
-    editor.setPosition({lineNumber: line, column});
-    editor.focus();
+    showEditor?.();
+    // a frame later, once a hidden editor is shown and has its size again
+    requestAnimationFrame(() => {
+        editor.layout();
+        editor.revealLineInCenter(line);
+        editor.setPosition({lineNumber: line, column});
+        editor.focus();
+    });
 };

@@ -1,6 +1,6 @@
 import {useEffect, useState} from "react";
 import ErrorBoundary from "./atoms/ErrorBoundary";
-import {configErrors, revealLine} from "./utils/configErrors";
+import {configErrors, revealLine, setShowConfigEditor} from "./utils/configErrors";
 import styled from "styled-components";
 import Split from "react-split";
 
@@ -186,9 +186,14 @@ const Ergogen = () => {
         }
     }, [selectedOption]);
 
-    // the config editor, hidden down to a strip at the left; the split's sizes it goes back to
-    const [editorHidden, setEditorHidden] = useState(false);
+    // the config editor, hidden down to a strip at the left, as the page starts: the preview has the room until ▸
+    // Config, or a jump to an error's line, shows it. The split's sizes it goes back to
+    const [editorHidden, setEditorHidden] = useState(true);
     const [openSizes, setOpenSizes] = useState([30, 70]);
+    useEffect(() => {
+        setShowConfigEditor(() => setEditorHidden(false));
+        return () => setShowConfigEditor(null);
+    }, []);
 
     if (!configContext) return null;
 

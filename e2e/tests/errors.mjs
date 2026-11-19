@@ -57,6 +57,8 @@ export const tests = [
             await page.until(`window.monaco.editor.getModelMarkers({owner: 'ergogen'}).some(m => m.startLineNumber === ${line})`, 30, 'the error marked on its line');
             await page.ev(`document.querySelector('[data-failed="e2e_broken"]').click()`);
             await page.until(`window.monaco.editor.getEditors()[0].getPosition().lineNumber === ${line}`, 10, 'the editor to show that line');
+            // the page starts with the editor hidden: the jump shows it
+            assert(await page.ev(`!!document.querySelector('.monaco-editor')?.offsetParent`), 'the jump should show the editor');
             await page.ev(`[...document.querySelectorAll('button')].find(b => b.textContent.startsWith('▸ Cases'))?.click()`);
             assert(await page.ev(`[...document.querySelectorAll('button')].some(b => b.textContent === 'right_top.stl')`), 'the cases should still be made');
             // deleted from its row, the error goes

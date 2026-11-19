@@ -564,9 +564,10 @@ const LayoutEditor = (): JSX.Element | null => {
                     })()}
                     {handles.map(({side, pivot, handle}) => (
                         <g key={side}>
+                            {/* the line and the pivot only show the turn: a key under them still drags */}
                             <line x1={pivot.x} y1={pivot.y} x2={handle.x} y2={handle.y}
-                                  stroke="#28a745" strokeWidth={0.4} strokeDasharray="1 1"/>
-                            <circle cx={pivot.x} cy={pivot.y} r={0.8} fill="#28a745"/>
+                                  stroke="#28a745" strokeWidth={0.4} strokeDasharray="1 1" pointerEvents="none"/>
+                            <circle cx={pivot.x} cy={pivot.y} r={0.8} fill="#28a745" pointerEvents="none"/>
                             <RotateHandle cx={handle.x} cy={handle.y} r={2.2} onPointerDown={e => startRotate(e, side)}>
                                 <title>Drag to change the splay</title>
                             </RotateHandle>

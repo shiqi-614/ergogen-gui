@@ -222,18 +222,19 @@ export const tests = [
         },
     },
     {
-        name: 'layout: the config editor hides to a strip for more room, and comes back with its text',
+        name: 'layout: the config editor starts hidden to a strip, shows with its text, and hides again',
         async run(page, {url}) {
             await freshApp(page, url);
             await openLayout(page);
+            const shown = `!!document.querySelector('.monaco-editor')?.offsetParent`;
+            assert(!(await page.ev(shown)), 'the editor should start hidden');
             const width = `([...document.querySelectorAll('svg')].find(s => s.querySelectorAll('title').length > 60)?.getBoundingClientRect().width ?? 0)`;
-            const before = await page.ev(width);
-            await page.ev(`document.querySelector('button[title="Hide the config editor, for more room"]').click()`);
-            await page.until(`${width} > ${before} + 100`, 10, 'the layout to get the room');
-            assert(!(await page.ev(`!!document.querySelector('.monaco-editor')?.offsetParent`)), 'the editor should be hidden');
+            const hidden = await page.ev(width);
             await page.ev(`document.querySelector('button[title="Show the config editor"]').click()`);
-            await page.until(`!!document.querySelector('.monaco-editor')?.offsetParent && Math.abs(${width} - ${before}) < 5`, 10, 'the editor back, at its width');
-            assert((await page.ev(`window.monaco.editor.getModels()[0].getValue()`)).includes('points:'), 'the config should still be there');
+            await page.until(`${shown} && ${width} < ${hidden} - 100`, 10, 'the editor shown, the layout narrower');
+            assert((await page.ev(`window.monaco.editor.getModels()[0].getValue()`)).includes('points:'), 'the config should be there');
+            await page.ev(`document.querySelector('button[title="Hide the config editor, for more room"]').click()`);
+            await page.until(`!(${shown}) && Math.abs(${width} - ${hidden}) < 5`, 10, 'the editor hidden again, the layout back at its width');
         },
     },
 ];
