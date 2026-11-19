@@ -64,7 +64,7 @@ const NewAssembly = ({onCreated, onCancel}: Props): JSX.Element | null => {
         if (!form.pcb) return setNote('An assembly needs a board');
         const mirror = form.mirror && canMirror;
         if (mirror && (config?.assemblies?.[other] || other === name || !other)) return setNote('Give the other half\'s assembly a name of its own');
-        const parts = form.parts.map(p => ({name: p.name.trim(), model: p.model.trim(), module: p.module || undefined, z: p.z?.trim() || undefined}));
+        const parts = form.parts.map(p => ({name: p.name.trim(), model: p.model.trim(), at_module: p.at_module || undefined, z: p.z?.trim() || undefined}));
         if (parts.some(p => !p.model)) return setNote('Every part needs a model: github:owner/repo/file, a URL, or a path like ${ERGOCAI_MODULES}/…');
         try {
             let next = appendEntry(text, ['assemblies'], name, assemblyLines(form.stack, form.pcb, form.top || undefined, parts));
@@ -110,14 +110,14 @@ const NewAssembly = ({onCreated, onCancel}: Props): JSX.Element | null => {
             <Field label="Parts">
                 <div className="controls">
                     <Button title="Another 3D model on the board, e.g. a module board on standoffs"
-                            onClick={() => setForm({...form, parts: [...form.parts, {name: '', model: '', module: modules[0] ?? '', z: '0'}]})}>+ Part</Button>
+                            onClick={() => setForm({...form, parts: [...form.parts, {name: '', model: '', at_module: modules[0] ?? '', z: '0'}]})}>+ Part</Button>
                 </div>
             </Field>
             {form.parts.map((part, i) => (
                 <div key={i} className="part">
                     <div className="row">
                         <input placeholder="name" value={part.name} title="what it is called in the view" onChange={e => setPart(i, {name: e.target.value})}/>
-                        <select value={part.module ?? ''} title="the module of the pcb it sits at, turned with it" onChange={e => setPart(i, {module: e.target.value})}>
+                        <select value={part.at_module ?? ''} title="where it goes: at this module of the pcb, turned with it" onChange={e => setPart(i, {at_module: e.target.value})}>
                             <option value="">at the board's origin</option>
                             {modules.map(m => <option key={m} value={m}>at {m}</option>)}
                         </select>

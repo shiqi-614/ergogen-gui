@@ -4,18 +4,18 @@ import {PcbParts} from "./usePcbParts";
 
 // The card the parts are edited in: Modules / Footprints / Board edge, the picked part, or the list to pick from.
 
-// the "Edit parts" button, below the 2D / 3D switch, while the card is closed
+// the "Edit parts" button, in the top left corner, while the card is closed
 const OpenButton = styled(Button)`
   position: absolute;
-  top: 2.75rem;
+  top: 0.5rem;
   left: 0.5rem;
   padding: 0.25rem 0.7rem;
   font-size: 0.85rem;
 `;
 
-// the card the parts are edited in, below the 2D / 3D switch
+// the card the parts are edited in, in the top left corner
 const Card = styled(CardShell)`
-  top: 2.75rem;
+  top: 0.5rem;
   left: 0.5rem;
 `;
 

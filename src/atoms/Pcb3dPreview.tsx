@@ -1,6 +1,6 @@
-import {useEffect, useRef, useState} from "react";
+import {ReactNode, useEffect, useRef, useState} from "react";
 import styled from "styled-components";
-import {Actions, Button, CardHead, CardShell, Gap, Status as StatusText, Tip, colors, fontSize} from "../ui";
+import {Actions, Button, CardHead, CardShell, CardTabs, Gap, Status as StatusText, Tip, colors, fontSize} from "../ui";
 import * as THREE from "three";
 import {OrbitControls} from "three/examples/jsm/controls/OrbitControls";
 import {STLLoader} from "three/examples/jsm/loaders/STLLoader";
@@ -29,7 +29,9 @@ type Props = {
     // the case parts around the board, if an assembly in the config holds it
     stack?: Stack | null,
     // writes moved parts back into the config
-    onSave?: (edit: StackEdit) => void
+    onSave?: (edit: StackEdit) => void,
+    // the assembly's other parts, edited in a tab beside its case's heights
+    partsTab?: ReactNode,
 };
 
 // where the panel has the board and each case part (their bottoms' heights), and the other parts (their origins')
@@ -125,12 +127,12 @@ const Download = styled(Button)`
   }
 `;
 
-// the case parts and the collision check, under the 2D / 3D switch
+// the case parts and the collision check, in the top left corner
 const Card = styled(CardShell)`
-  top: 2.6rem;
+  top: 0.5rem;
   left: 0.5rem;
   width: min(22rem, calc(100% - 1rem));
-  max-height: calc(100% - 6rem);
+  max-height: calc(100% - 4rem);
 
   label {
     display: flex;
@@ -243,13 +245,14 @@ const PARALLEL = 4;
 // A board in 3D: its body, holes and pads, and every footprint's 3D models (from the addresses in ErgoCaiLib's
 // 3dmodels/sources.yaml); in an assembly, also its case parts and other parts. Left drag orbits, right drag pans,
 // the wheel zooms.
-const Pcb3dPreview = ({pcb, fileName, stack, onSave}: Props): JSX.Element => {
+const Pcb3dPreview = ({pcb, fileName, stack, onSave, partsTab}: Props): JSX.Element => {
     const container = useRef<HTMLDivElement>(null);
     const view = useRef<Built | null>(null);
     // case parts switched off, by name; a ref too, for parts that load after a switch
     const [hidden, setHidden] = useState<Record<string, boolean>>({});
-    // the heights card, folded down to its title
+    // the heights card, folded down to its title, and the tab it shows
     const [panelFolded, setPanelFolded] = useState(false);
+    const [cardTab, setCardTab] = useState<'case' | 'parts'>('case');
     const hiddenNow = useRef(hidden);
     hiddenNow.current = hidden;
     const [check, setCheck] = useState<CheckState>({state: 'idle'});
@@ -642,7 +645,10 @@ const Pcb3dPreview = ({pcb, fileName, stack, onSave}: Props): JSX.Element => {
                 <Card>
                     <CardHead title={`Case (${stack.name})`} subtitle="from the bottom up: each part's bottom – its top, in mm"
                               folded={panelFolded} onFold={setPanelFolded} foldAt="left"/>
-                    {!panelFolded && <div className="body">
+                    {!panelFolded && partsTab && <CardTabs value={cardTab} onChange={v => setCardTab(v as 'case' | 'parts')}
+                                                           tabs={[{value: 'case', label: 'Case'}, {value: 'parts', label: 'Parts'}]}/>}
+                    {!panelFolded && partsTab && cardTab === 'parts' && <div className="body">{partsTab}</div>}
+                    {!panelFolded && (!partsTab || cardTab === 'case') && <div className="body">
                     {stack.parts.map(p => {
                         const z = positions.parts[p.name] ?? p.z;
                         return (

@@ -5,3 +5,4 @@ export type {ButtonVariant} from "./Button";
 export {CardShell, CardHead, CardTabs} from "./Card";
 export {Field, About, Tip, Status, Section, Check, Actions, Gap, List, ListRow, Chips} from "./Field";
 export {default as Dialog} from "./Dialog";
+export {usePanZoom} from "./panZoom";

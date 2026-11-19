@@ -12,7 +12,7 @@ assemblies:
     parts:
       - name: e-paper
         model: "\${ERGOCAI_MODULES}/e-paper/2.13inch/2.13inch.glb"
-        module: e-paper
+        at_module: e-paper
         z: 30
       - {model: "\${ERGOCAI_LIB}/3dmodels/knob.step"}
   other:

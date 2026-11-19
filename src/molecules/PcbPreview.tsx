@@ -23,11 +23,12 @@ const Wrapper = styled.div`
   position: relative;
 `;
 
-// like the Preview / Layout switch, in the pane's top left corner
+// at the top of the pane, in the middle
 const Switch = styled.div`
   position: absolute;
   top: 0.5rem;
-  left: 0.5rem;
+  left: 50%;
+  transform: translateX(-50%);
   z-index: 1;
   display: flex;
   border-radius: 0.25rem;
@@ -50,7 +51,9 @@ let lastView: View = '2d';
 
 // A board in KiCanvas (2D, the layers as KiCad draws them) or in 3D with the footprints' models.
 const PcbPreview = ({pcb, board, initialView, assembly}: Props): JSX.Element => {
-    const [view, setView] = useState<View>(initialView || lastView);
+    const [chosen, setView] = useState<View>(initialView || lastView);
+    // an assembly is shown in 3D only
+    const view: View = assembly ? '3d' : chosen;
     const configContext = useConfigContext();
     const results = configContext?.results as any;
     // the case parts around this board, when it is shown as one of config.assemblies
@@ -80,16 +83,20 @@ const PcbPreview = ({pcb, board, initialView, assembly}: Props): JSX.Element => 
     };
     return (
         <Wrapper>
-            <Switch role="group" aria-label="Board view">
-                <SwitchButton $active={view === '2d'} aria-pressed={view === '2d'} onClick={() => choose('2d')}>2D</SwitchButton>
-                <SwitchButton $active={view === '3d'} aria-pressed={view === '3d'} onClick={() => choose('3d')}>3D</SwitchButton>
-            </Switch>
+            {/* an assembly is a 3D thing: only a board has its 2D view too */}
+            {!assembly && (
+                <Switch role="group" aria-label="Board view">
+                    <SwitchButton $active={view === '2d'} aria-pressed={view === '2d'} onClick={() => choose('2d')}>2D</SwitchButton>
+                    <SwitchButton $active={view === '3d'} aria-pressed={view === '3d'} onClick={() => choose('3d')}>3D</SwitchButton>
+                </Switch>
+            )}
             <ErrorBoundary area={view === '2d' ? 'the board' : 'the board in 3D'} resetKey={`${view} ${pcb.length}`}>
                 {view === '2d'
                     ? <KicanvasPreview pcb={pcb} name={`${board}_preview.kicad_pcb`} pcbName={board}/>
-                    : <Pcb3dPreview pcb={pcb} fileName={`${board}.glb`} stack={stack} onSave={save}/>}
+                    : <Pcb3dPreview pcb={pcb} fileName={`${board}.glb`} stack={stack} onSave={save}
+                                    partsTab={assembly && <ErrorBoundary area="the assembly's parts" resetKey={configContext?.configInput}>
+                                        <AssemblyParts assembly={assembly} embedded/></ErrorBoundary>}/>}
             </ErrorBoundary>
-            {view === '3d' && assembly && <ErrorBoundary area="the assembly's parts" resetKey={configContext?.configInput}><AssemblyParts assembly={assembly}/></ErrorBoundary>}
         </Wrapper>
     );
 };

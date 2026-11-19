@@ -1,5 +1,5 @@
 import {parseDocument} from "yaml";
-import {Alias, Pair, Scalar, YAMLMap, YAMLSeq} from "yaml/types";
+import {Alias, Node, Pair, Scalar, YAMLMap, YAMLSeq} from "yaml/types";
 
 // Column attributes the layout editor can change
 export type Attr = 'stagger' | 'spread' | 'splay';
@@ -224,8 +224,9 @@ export const formatLength = (mm: number, like?: Length | null) =>
     like?.unit && like.scale ? `${trim(mm / like.scale)}${like.unit}` : trim(mm);
 
 // The settings of an outline part the layout editor can change
-export type PartAttr = 'operation' | 'expand' | 'joints' | 'fillet';
-export const PART_ATTRS: PartAttr[] = ['operation', 'expand', 'joints', 'fillet'];
+// name: the outline an outline part is made of
+export type PartAttr = 'name' | 'operation' | 'expand' | 'joints' | 'fillet';
+export const PART_ATTRS: PartAttr[] = ['name', 'operation', 'expand', 'joints', 'fillet'];
 
 export type PartSites = { key: string | number, what: string, sites: Record<PartAttr, EditSite | string> };
 
@@ -240,6 +241,28 @@ const replaceValue = (text: string, node: unknown): EditSite | string => {
     const range = (node instanceof YAMLSeq || node instanceof YAMLMap) && node.type?.startsWith('FLOW') ? node.cstNode?.valueRange : null;
     if (!range) return 'it is not written on one line';
     return {start: range.start, end: range.end, raw: text.slice(range.start, range.end), render: v => v};
+};
+
+// <key> of the map at path, written on one line (a value, or a flow list like [a, b]): its site, or where a
+// missing one goes
+export const findLineValue = (text: string, path: (string | number)[], key: string): EditSite | string => {
+    const doc = parseDocument(text, {keepCstNodes: true});
+    if (doc.errors.length) return 'the config has YAML errors';
+    const node = doc.getIn(path, true);
+    if (!isBlockMap(node)) return `${path.join('.')} is not a plain map`;
+    const pair = findPair(node, key);
+    return pair ? replaceValue(text, pair.value) : insertInto(text, node, key);
+};
+
+// The items of the list at path ([a, b], or one a line), each a plain value: their sites
+export const findListValues = (text: string, path: (string | number)[]): EditSite[] | string => {
+    const doc = parseDocument(text, {keepCstNodes: true});
+    if (doc.errors.length) return 'the config has YAML errors';
+    const node = doc.getIn(path, true);
+    if (!(node instanceof YAMLSeq)) return `${path.join('.')} is not a list`;
+    const sites = node.items.map(item => replaceScalar(text, item));
+    const bad = sites.find(site => typeof site === 'string');
+    return typeof bad === 'string' ? bad : sites as EditSite[];
 };
 
 // The items of a list (or map) at path and where each of the given keys is written in them; a
@@ -598,9 +621,10 @@ export const findChildShift = (text: string, path: (string | number)[], child: s
     return insertShift(insertInto(text, found.node, `${child}.shift`));
 };
 
-// The keys a footprint is on, when its where is a list of key names (or one name): where to
-// write a new list, in the same flow style
-export const findWhereList = (text: string, path: (string | number)[]): { names: string[], site: EditSite } | string => {
+// The keys a footprint is on, when its where is a list of key names (or one name), and where to
+// write a new list, in the same flow style. Any other where (true, a regex, a filter) gives no names,
+// the keys it picks being known only from the run, and a site that writes the list over it.
+export const findWhereList = (text: string, path: (string | number)[]): { names: string[] | null, site: EditSite } | string => {
     const doc = parseDocument(text, {keepCstNodes: true});
     if (doc.errors.length) return 'the config has YAML errors';
     const node = doc.getIn(path, true);
@@ -611,13 +635,22 @@ export const findWhereList = (text: string, path: (string | number)[]): { names:
         const site = replaceScalar(text, value);
         return typeof site === 'string' ? site : {names: [value.value], site};
     }
-    const range = value instanceof YAMLSeq ? value.cstNode?.valueRange : null;
-    if (value instanceof YAMLSeq && value.type === 'FLOW_SEQ' && range && value.items.every(i => i instanceof Scalar && typeof i.value === 'string')) {
-        // just the [ ... ], not a comment after it
-        const {start, end} = range;
-        return {names: value.items.map(i => String((i as Scalar).value)), site: {start, end, raw: text.slice(start, end), render: v => v}};
+    const range = (value as Node | undefined)?.cstNode?.valueRange;
+    if (!pair || !range) return 'it has no where to write keys into';
+    // just the value, not a comment after it
+    const {start, end} = range;
+    const site = {start, end, raw: text.slice(start, end), render: (v: string) => v};
+    if (value instanceof YAMLSeq && value.type === 'FLOW_SEQ' && value.items.every(i => i instanceof Scalar && typeof i.value === 'string')) {
+        return {names: value.items.map(i => String((i as Scalar).value)), site};
     }
-    return 'its where is not a list of key names written like [a, b]';
+    // a block value starts on the line after "where:": the list goes right after it instead
+    if (!(value instanceof Scalar) && value?.type !== 'FLOW_SEQ' && value?.type !== 'FLOW_MAP') {
+        const keyEnd = (pair.key as Scalar).cstNode?.valueRange?.end;
+        const colon = keyEnd === undefined ? -1 : text.indexOf(':', keyEnd);
+        if (colon < 0) return 'its where is written in a way this can not edit';
+        return {names: null, site: {start: colon + 1, end, raw: text.slice(colon + 1, end), render: v => ` ${v}`}};
+    }
+    return {names: null, site};
 };
 
 // a footprint placed on keys: what it is and the keys it is on
@@ -956,7 +989,7 @@ export const deleteUnit = (text: string, section: 'units' | 'variables', name: s
 };
 
 // One of an assembly's other 3D models: its model path (or address), at a module of the pcb, its z = 0 at z
-export type AssemblyPart = { name: string, model: string, module?: string, z?: string };
+export type AssemblyPart = { name: string, model: string, at_module?: string, z?: string };
 
 // A new assembly's lines: its stack from the bottom up, its board (its top level with one of the stack's), and
 // its other parts
@@ -970,7 +1003,7 @@ export const assemblyLines = (stack: string[], pcb: string, top?: string, parts:
 const partItemLines = (part: AssemblyPart) => [
     ...(part.name ? [`name: ${part.name}`] : []),
     `model: ${JSON.stringify(part.model)}`,
-    ...(part.module ? [`module: ${part.module}`] : []),
+    ...(part.at_module ? [`at_module: ${part.at_module}`] : []),
     ...(part.z ? [`z: ${part.z}`] : []),
 ];
 

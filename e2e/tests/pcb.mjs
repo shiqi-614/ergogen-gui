@@ -94,6 +94,25 @@ export const tests = [
         },
     },
     {
+        name: 'pcb: a footprint on every key (where: true) has its keys chosen too, written out as a list',
+        async run(page, {url}) {
+            await freshApp(page, url);
+            await editParts(page, 'Footprints');
+            assert((await right(page)).footprints.keys1.where === true, 'the example should have keys1 on every key');
+            // from the list: on the board, a mounting hole sits on one of its keys
+            await page.ev(`[...document.querySelectorAll('span')].find(e => e.textContent === 'keys1').click()`);
+            await page.until(`[...document.querySelectorAll('button')].some(b => b.textContent === 'Choose keys')`, 10, 'keys1 to be picked');
+            await page.press('Choose keys');
+            await page.until(`document.querySelectorAll('svg circle.key.member').length > 10`, 10, 'the keys keys1 is on');
+            const members = await page.ev(`[...document.querySelectorAll('svg circle.key.member')].map(c => c.querySelector('title').textContent.split(':')[0])`);
+            const off = members[0];
+            await page.click(await page.titled(`${off}:`));
+            await page.until(`Array.isArray(jsyaml.load(${config}).pcbs.ergo_cai_right.footprints.keys1.where)`, 30, 'the keys to be written as a list');
+            const where = (await right(page)).footprints.keys1.where;
+            assert(!where.includes(off) && where.length === members.length - 1, `keys1 should be on all but ${off}: ${where}`);
+        },
+    },
+    {
         name: 'pcb: an outline is checked into the board edge and out again',
         async run(page, {url}) {
             await freshApp(page, url);

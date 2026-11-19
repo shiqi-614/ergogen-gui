@@ -206,4 +206,19 @@ export const tests = [
             await page.until(`${points}.mirror.distance === '-2kx'`, 30, 'the distance back');
         },
     },
+    {
+        name: 'layout: the wheel zooms, and a double click goes back to the whole board',
+        async run(page, {url}) {
+            await freshApp(page, url);
+            await openLayout(page);
+            const svg = `[...document.querySelectorAll('svg')].find(s => s.querySelectorAll('title').length > 60)`;
+            const box = `${svg}.getAttribute('viewBox')`;
+            const fitted = await page.ev(box);
+            await page.ev(`(() => { const s = ${svg}; const r = s.getBoundingClientRect();
+                for (let i = 0; i < 3; i++) s.dispatchEvent(new WheelEvent('wheel', {deltaY: -100, clientX: r.left + r.width / 2, clientY: r.top + r.height / 2, bubbles: true, cancelable: true})); })()`);
+            await page.until(`${box} !== ${JSON.stringify(fitted)}`, 10, 'the view to zoom');
+            await page.ev(`${svg}.dispatchEvent(new MouseEvent('dblclick', {bubbles: true}))`);
+            await page.until(`${box} === ${JSON.stringify(fitted)}`, 10, 'the double click to show the whole board again');
+        },
+    },
 ];

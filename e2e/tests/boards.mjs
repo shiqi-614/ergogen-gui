@@ -68,7 +68,7 @@ export const tests = [
             await page.press('Add');
             await page.until(`!!jsyaml.load(${config}).assemblies.test_right`, 30, 'the new assembly');
             const {assemblies} = await parsed(page);
-            const parts = [{name: 'panel', model: 'github:shiqi-614/ErgoCai.modules/e-paper/2.13inch/2.13inch.glb', module: 'e-paper', z: 30}];
+            const parts = [{name: 'panel', model: 'github:shiqi-614/ErgoCai.modules/e-paper/2.13inch/2.13inch.glb', at_module: 'e-paper', z: 30}];
             assert(JSON.stringify(assemblies.test_right) === JSON.stringify({stack: ['right_buttom', 'right_top'], pcb: {name: 'ergo_cai_right', top: 'right_buttom'}, parts}),
                 `test_right: ${JSON.stringify(assemblies.test_right)}`);
             assert(JSON.stringify(assemblies.test_left) === JSON.stringify({stack: ['left_buttom', 'left_top'], pcb: {name: 'ergo_cai_left', top: 'left_buttom'}, parts}),
@@ -91,7 +91,11 @@ export const tests = [
             const same = JSON.stringify(right0.map(p => p.name)) === JSON.stringify(left0.map(p => p.name));
             await page.ev(`[...document.querySelectorAll('button')].find(b => b.textContent.startsWith('▸ Assemblies'))?.click()`);
             await page.ev(`[...document.querySelectorAll('button')].find(b => b.textContent.trim() === 'ergocai_right')?.click()`);
-            await page.until(`document.body.textContent.includes('Parts of ergocai_right: ${n}')`, 120, 'the parts panel');
+            // an assembly is 3D only: its card has the case's heights and, in a tab beside them, its parts
+            await page.until(`[...document.querySelectorAll('[role="tab"]')].some(t => t.textContent === 'Parts')`, 120, 'the parts tab');
+            assert(!(await page.ev(`!!document.querySelector('[aria-label="Board view"]')`)), 'an assembly should have no 2D view to switch to');
+            await page.ev(`[...document.querySelectorAll('[role="tab"]')].find(t => t.textContent === 'Parts').click()`);
+            await page.until(`document.body.textContent.includes('${n} part${n === 1 ? '' : 's'}: other 3D models')`, 30, 'the parts panel');
             assert(await page.ev(`document.querySelector('label input[type=checkbox][disabled]') === null`) === same,
                 same ? 'both halves should be ticked' : 'the other half should be left alone');
             const parts = `jsyaml.load(${config}).assemblies.ergocai_right.parts`;

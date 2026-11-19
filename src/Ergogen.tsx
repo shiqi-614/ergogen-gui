@@ -1,4 +1,4 @@
-import {useEffect, useRef, useState} from "react";
+import {useEffect, useState} from "react";
 import ErrorBoundary from "./atoms/ErrorBoundary";
 import {configErrors, revealLine} from "./utils/configErrors";
 import styled from "styled-components";
@@ -7,7 +7,6 @@ import Split from "react-split";
 import ConfigEditor from "./molecules/ConfigEditor";
 import Downloads from "./molecules/Dowloads";
 import FilePreview from "./molecules/FilePreview";
-import {OutlineRequest} from "./molecules/NewOutline";
 import LayoutEditor from "./molecules/LayoutEditor";
 
 import {useConfigContext} from "./context/ConfigContext";
@@ -126,29 +125,6 @@ const InnerSplit = styled(StyledSplit)`
   padding: 0;
 `;
 
-// switches the middle pane between the file preview and the layout editor
-const ModeBar = styled.div`
-  position: absolute;
-  top: 0.5rem;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 1;
-  display: flex;
-  border-radius: 0.25rem;
-  overflow: hidden;
-  background: #595959;
-`;
-
-const ModeTab = styled.button<{ active: boolean }>`
-  padding: 0.3rem 0.9rem;
-  border: none;
-  background: ${p => p.active ? '#28a745' : 'transparent'};
-  color: #ffffff;
-  font: inherit;
-  font-size: 0.85rem;
-  cursor: pointer;
-`;
-
 type Mode = 'preview' | 'layout';
 
 const LeftSplitPane = styled.div`
@@ -164,10 +140,8 @@ const Ergogen = () => {
     const [selectedOption, setSelectedOption] = useState<ConfigOption|null>(ErgoCai);
     const configContext = useConfigContext();
     const [isProcessing, setIsProcessing] = useState(false);
-    const [mode, setMode] = useState<Mode>('preview');
-    const configOnEnteringLayout = useRef<string | undefined>();
-    // a new outline asked for in the Downloads list, made by the layout editor
-    const [outlineRequest, setOutlineRequest] = useState<OutlineRequest | null>(null);
+    // demo.svg is the points and outlines, shown in the layout editor; everything else in its own preview
+    const mode: Mode = previewKey === 'demo.svg' ? 'layout' : 'preview';
 
     // the cases are made only while a case or an assembly is on show (they take most of a run's time)
     const wantCases = mode === 'preview' && (previewKey.startsWith('cases.') || previewKey.startsWith('assemblies.'));
@@ -189,31 +163,8 @@ const Ergogen = () => {
     let previewContent: string | Blob = typeof walkArray === 'string' || walkArray instanceof Blob ? walkArray : "";
     let selectedOptionLabel = selectedOption?.label;
 
-    // A full preview blocks the page for minutes, so it pauses while the layout editor is
-    // open and runs once on the way out if the layout changed
-    const switchMode = (next: Mode) => {
-        if (next === mode) return;
-        if (next === 'layout') {
-            configOnEnteringLayout.current = configContext.configInput;
-            configContext.setAutoGen(false);
-        } else {
-            configContext.setAutoGen(true);
-            if (configContext.configInput !== configOnEnteringLayout.current) {
-                configContext.processInput(configContext.configInput, {is_preview: true});
-            }
-        }
-        setMode(next);
-    };
-
-    const showPreview = (key: string) => {
-        setPreviewKey(key);
-        switchMode('preview');
-    };
-
-    const newOutline = (request: OutlineRequest) => {
-        setOutlineRequest(request);
-        switchMode('layout');
-    };
+    // the full run goes on in the layout editor too: without the cases (made only while one is on show) it is quick
+    const showPreview = (key: string) => setPreviewKey(key);
 
     return (
         <FlexContainer>
@@ -287,14 +238,10 @@ const Ergogen = () => {
                         snapOffset={0}
                     >
                         <LeftSplitPane>
-                            <ModeBar>
-                                <ModeTab active={mode === 'preview'} onClick={() => switchMode('preview')}>Preview</ModeTab>
-                                <ModeTab active={mode === 'layout'} onClick={() => switchMode('layout')}>Layout</ModeTab>
-                            </ModeBar>
                             <ErrorBoundary area={mode === 'layout' ? 'the layout editor' : 'the preview'}
                                            resetKey={`${mode} ${previewKey} ${configContext.configInput}`}>
                                 {mode === 'layout'
-                                    ? <LayoutEditor request={outlineRequest} onRequestDone={() => setOutlineRequest(null)}/>
+                                    ? <LayoutEditor/>
                                     // until the first run has results (or an error) there is nothing to preview
                                     : configContext.results || configContext.error
                                         ? <StyledFilePreview key={previewKey} previewKey={previewKey} previewContent={previewContent}/>
@@ -303,8 +250,8 @@ const Ergogen = () => {
                         </LeftSplitPane>
                         <RightSplitPane>
                             <ErrorBoundary area="the Downloads list" resetKey={configContext.configInput}>
-                                <Downloads setPreview={showPreview} label={selectedOptionLabel} onNewOutline={newOutline}
-                                           previewKey={mode === 'preview' ? previewKey : undefined}/>
+                                <Downloads setPreview={showPreview} label={selectedOptionLabel}
+                                           previewKey={previewKey}/>
                             </ErrorBoundary>
                         </RightSplitPane>
                     </InnerSplit>

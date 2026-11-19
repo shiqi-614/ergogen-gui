@@ -1,5 +1,4 @@
 import NewCase from "./NewCase";
-import NewOutline, {OutlineRequest} from "./NewOutline";
 import NewPcb from "./NewPcb";
 import NewAssembly from "./NewAssembly";
 import {NewUnit, UnitList, useUnits} from "./Units";
@@ -33,7 +32,8 @@ const SectionContainer = styled.div`
   margin-bottom: 0.5em;
 `;
 
-// the title opens and closes the section; Outlines, PCBs, Cases and Assemblies also have a "+" for a new one
+// the title opens and closes the section; PCBs, Cases and Assemblies also have a "+" for a new one (outlines are
+// added in the demo's layout editor)
 const SectionHeader = styled.div`
   display: flex;
   align-items: center;
@@ -82,15 +82,13 @@ const SectionHeader = styled.div`
 const SECTION_OF: Record<string, string> = {outlines: 'Outlines', pcbs: 'PCBs', cases: 'Cases', assemblies: 'Assemblies'};
 
 // the sections a new item can be added to, and what it is called
-const NEW_ITEM: Record<string, string> = {Outlines: 'outline', PCBs: 'PCB', Cases: 'case', Assemblies: 'assembly'};
+const NEW_ITEM: Record<string, string> = {PCBs: 'PCB', Cases: 'case', Assemblies: 'assembly'};
 
 type Props = {
     setPreview: (key: string) => void,
     label: string | undefined,
     // what the preview pane shows, marked in the list
     previewKey?: string,
-    // a new outline, for the layout editor to make
-    onNewOutline: (request: OutlineRequest) => void,
 };
 
 type DownloadObj = {
@@ -113,7 +111,7 @@ type DownloadSection = {
     items: DownloadArr
 };
 
-const Downloads = ({setPreview, label, previewKey, onNewOutline}: Props) => {
+const Downloads = ({setPreview, label, previewKey}: Props) => {
     const configContext = useConfigContext();
     const tabContext = useContext(TabContext);
     // sections start closed, a click on the title opens one
@@ -159,28 +157,6 @@ const Downloads = ({setPreview, label, previewKey, onNewOutline}: Props) => {
                 extension: 'yaml',
                 content: yaml.dump(results.units)
             });
-    }
-
-    if (results) {
-        const outlines = section('Outlines');
-        for (const [name, outline] of Object.entries(results.outlines ?? {})) {
-            outlines.push(
-                {
-                    fileName: name,
-                    extension: 'dxf',
-                    // @ts-ignore
-                    content: outline.dxf,
-                    preview: `outlines.${name}.svg`
-                }
-                // {
-                    // fileName: name,
-                    // extension: 'yaml',
-                    // // @ts-ignore
-                    // content: yaml.dump(outline.yaml)
-                // }
-            )
-        }
-
     }
 
     if (results) {
@@ -312,8 +288,6 @@ const Downloads = ({setPreview, label, previewKey, onNewOutline}: Props) => {
                                           onClick={() => { setAdding(title); setOpen({...open, [title]: true}); }}>+</button>
                               )}
                           </SectionHeader>
-                          {adding === title && title === 'Outlines' &&
-                              <NewOutline onCancel={() => setAdding(null)} onCreate={request => { setAdding(null); onNewOutline(request); }}/>}
                           {adding === title && title === 'Cases' &&
                               <NewCase onCancel={() => setAdding(null)} onCreated={key => { setAdding(null); setPreview(key); }}/>}
                           {adding === title && title === 'PCBs' &&

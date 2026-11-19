@@ -9,8 +9,10 @@ export const freshApp = async (page, url) => {
     await page.until(`!!window.monaco?.editor.getModels()[0]`, 60, 'the config editor');
 };
 
+// demo.svg, the points and outlines, is shown in the layout editor (the page opens on it)
 export const openLayout = async page => {
-    await page.press('Layout');
+    await page.ev(`[...document.querySelectorAll('button')].find(b => b.textContent.startsWith('▸ Config & points'))?.click()`);
+    await page.ev(`[...document.querySelectorAll('button')].find(b => b.textContent.includes('demo.dxf'))?.click()`);
     await page.until(`document.querySelectorAll('svg title').length > 60`, 60, 'the layout to draw its keys');
 };
 
@@ -61,10 +63,8 @@ export const outlineMenu = `[...document.querySelectorAll('select')].find(s => [
 export const pressNew = (page, section) =>
     page.ev(`[...document.querySelectorAll('button[title="A new ${section}"]')][0].click()`);
 
-// After a test: the config it leaves has to make ergogen run without an error. The layout editor pauses the full
-// run, so this goes back to the preview (which runs it again when the config changed) and waits for it to finish.
+// After a test: the config it leaves has to make ergogen run without an error: this waits for the last run.
 export const settled = async page => {
-    await page.ev(`[...document.querySelectorAll('button')].find(b => b.textContent === 'Preview')?.click()`);
     await new Promise(r => setTimeout(r, 600));
     await page.until(`!document.querySelector('[aria-label="Generating"]')`, 180, 'the last ergogen run to finish');
     const error = await page.ev(`document.querySelector('[data-ergogen-error]')?.textContent ?? null`);

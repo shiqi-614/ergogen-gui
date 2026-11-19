@@ -35,11 +35,12 @@ export const RotateHandle = styled.circle`
   cursor: grab;
 `;
 
-export const StatusBar = styled.div`
+// what an edit did (or an error), at the bottom left: $right keeps it clear of the panel on the right
+export const StatusBar = styled.div<{ $right?: string }>`
   position: absolute;
   left: 0.75rem;
   bottom: 0.75rem;
-  right: 0.75rem;
+  right: ${p => p.$right ?? '0.75rem'};
   display: flex;
   align-items: center;
   gap: 0.75rem;

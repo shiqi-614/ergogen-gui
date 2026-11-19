@@ -1,7 +1,11 @@
 // Outlines in the layout editor
-import {assert, config, freshApp, openLayout, outlineMenu, parsed, pressNew, deleteFromList} from '../app.mjs';
+import {assert, config, freshApp, openLayout, outlineMenu, parsed, pressNew} from '../app.mjs';
 
-const pick = (page, name) => page.choose(outlineMenu, name);
+// an outline from the menu, once the layout editor has it (it reads the config again after an edit)
+const pick = async (page, name) => {
+    await page.until(`[...${outlineMenu}.options].some(o => o.value === ${JSON.stringify(name)})`, 60, `${name} in the outline menu`);
+    await page.choose(outlineMenu, name);
+};
 const redEdges = `document.querySelectorAll('svg line[stroke="#ff4d4d"]').length`;
 const points = async (page, outline) => (await parsed(page)).outlines[outline]?.[0]?.points;
 
@@ -53,8 +57,9 @@ export const tests = [
         name: 'outlines: a hull from a template, then a point added and deleted',
         async run(page, {url}) {
             await freshApp(page, url);
-            // from the + on the Downloads list's Outlines, into the layout editor
-            await page.until(`!!document.querySelector('button[title="A new outline"]')`, 60, 'the Outlines section');
+            // from the + beside the layout editor's outline menu
+            await openLayout(page);
+            await page.until(`!!document.querySelector('button[title="A new outline"]')`, 60, 'the + of the outline menu');
             await pressNew(page, 'outline');
             await page.ev(`document.querySelector('input[placeholder="outline name"]').focus()`);
             await page.type('e2e_hull');
@@ -75,10 +80,76 @@ export const tests = [
         },
     },
     {
+        name: 'outlines: an outline part (outlines.expand: board, expanded) has its outline and expand set in the panel',
+        async run(page, {url}) {
+            await freshApp(page, url);
+            const part = async () => (await parsed(page)).outlines.expand[0];
+            assert((await part()).name === 'board', 'the example should have outlines.expand made of board');
+            await openLayout(page);
+            await pick(page, 'expand');
+            const menu = `[...document.querySelectorAll('select')].find(s => s.title === 'the outline this part is made of')`;
+            await page.until(`${menu}?.value === 'board'`, 30, 'the outline it is made of');
+            await page.choose(menu, 'cut');
+            await page.until(`jsyaml.load(${config}).outlines.expand[0].name === 'cut'`, 30, 'its outline to be written');
+            await page.choose(menu, 'board');
+            await page.until(`jsyaml.load(${config}).outlines.expand[0].name === 'board'`, 30, 'and back');
+            const box = `[...document.querySelectorAll('input[placeholder="0"]')].find(i => i.value === '8')`;
+            await page.until(`!!${box}`, 30, 'its expand of 8');
+            await page.ev(`${box}.select()`);
+            await page.type('6');
+            await page.key('Enter', 'Enter', 13);
+            await page.until(`jsyaml.load(${config}).outlines.expand[0].expand === 6`, 30, 'its expand to be written');
+        },
+    },
+    {
+        name: "outlines: a point's shift, a where's ref and a template's args are typed in the panel",
+        async run(page, {url}) {
+            await freshApp(page, url);
+            await openLayout(page);
+            const typeInto = async (input, value) => {
+                await page.ev(`${input}.scrollIntoView({block: 'center'}); ${input}.select()`);
+                await page.type(value);
+                await page.key('Enter', 'Enter', 13);
+            };
+            const boxes = `[...document.querySelectorAll('input.anchor')]`;
+            const menus = `[...document.querySelectorAll('select.anchor')]`;
+            // a polygon's point: its y (point 0's x and y are the first boxes), an expression kept as typed
+            await pick(page, 'usb_and_swith');
+            await page.until(`${boxes}.length >= 16 && ${menus}.length >= 8`, 30, 'the boxes of its points');
+            await typeInto(`${boxes}[1]`, '1ky + 6 + funnelLip + funnelDepth');
+            await page.until(`jsyaml.load(${config}).outlines.usb_and_swith[0].points[0].shift[1] === '1ky + 6 + funnelLip + funnelDepth'`, 30, 'its y to be written');
+            // its ref, from the menu of points
+            await page.choose(`${menus}[0]`, 'matrix_col2_row0');
+            await page.until(`jsyaml.load(${config}).outlines.usb_and_swith[0].points[0].ref === 'matrix_col2_row0'`, 30, 'its ref to be written');
+            // a point more, and that one deleted again
+            const count = `jsyaml.load(${config}).outlines.usb_and_swith[0].points.length`;
+            await page.ev(`[...document.querySelectorAll('button.add')][0].click()`);
+            await page.until(`${count} === 5`, 30, 'a fifth point');
+            await page.until(`!!document.querySelector('button[title="Delete point 4"]')`, 30, 'its row');
+            await page.ev(`document.querySelector('button[title="Delete point 4"]').click()`);
+            await page.until(`${count} === 4`, 30, 'the point to go');
+            // a template's part: the ref of its where, written as the list it was
+            await pick(page, '_pcb_mounts');
+            await page.until(`document.body.textContent.includes('A template, of __what__, __radius__')`, 30, 'the template');
+            await page.until(`${menus}.some(m => m.value === 'matrix_col0_row0')`, 30, 'the ref of pcb_pos1');
+            await page.choose(`${menus}.find(m => m.value === 'matrix_col0_row0')`, 'matrix_col1_row0');
+            await page.until(`JSON.stringify(jsyaml.load(${config}).outlines._pcb_mounts.pcb_pos1.where.ref) === '["matrix_col1_row0"]'`, 30, 'its ref to be written');
+            // an outline filled in from it: its args, and the way back to the template
+            await page.ev(`[...document.querySelectorAll('button')].find(b => b.textContent === 'pcb_stud_mounting').click()`);
+            await page.until(`${outlineMenu}.value === 'pcb_stud_mounting'`, 10, 'pcb_stud_mounting to open');
+            await page.until(`${boxes}.some(i => i.value === 'studSize')`, 30, 'its args');
+            await typeInto(`${boxes}.find(i => i.value === 'studSize')`, 'screwSize');
+            await page.until(`jsyaml.load(${config}).outlines.pcb_stud_mounting.$args[1] === 'screwSize'`, 30, 'its arg to be written');
+            await page.ev(`[...document.querySelectorAll('button')].find(b => b.textContent === '_pcb_mounts').click()`);
+            await page.until(`${outlineMenu}.value === '_pcb_mounts'`, 10, 'the template to open');
+        },
+    },
+    {
         name: 'outlines: a new drawn outline starts drawing in the layout editor',
         async run(page, {url}) {
             await freshApp(page, url);
-            await page.until(`!!document.querySelector('button[title="A new outline"]')`, 60, 'the Outlines section');
+            await openLayout(page);
+            await page.until(`!!document.querySelector('button[title="A new outline"]')`, 60, 'the + of the outline menu');
             await pressNew(page, 'outline');
             await page.ev(`document.querySelector('input[placeholder="outline name"]').focus()`);
             await page.type('e2e_drawn');
@@ -98,7 +169,14 @@ export const tests = [
             const used = Object.keys(config0.outlines).find(name => name !== 'board' && Object.values(config0.cases ?? {})
                 .some(parts => Array.isArray(parts) && parts.some(p => p.what === 'outline' && p.name === name)));
             assert(used, 'the example should have an outline a case uses');
-            const said = await deleteFromList(page, 'Outlines', used);
+            // from the Delete in the outline's own panel
+            await openLayout(page);
+            await pick(page, used);
+            await page.until(`!!document.querySelector('button[title="Delete outline ${used}"]')`, 60, `the panel of ${used}`);
+            await page.ev(`document.querySelector('button[title="Delete outline ${used}"]').click()`);
+            await page.until(`!![...document.querySelectorAll('[role="dialog"] .buttons button')].find(b => b.textContent === 'Delete')`, 10, 'the confirmation');
+            const said = await page.ev(`document.querySelector('[role="dialog"]').innerText`);
+            await page.ev(`[...document.querySelectorAll('[role="dialog"] .buttons button')].find(b => b.textContent === 'Delete').click()`);
             await page.until(`!jsyaml.load(${config}).outlines[${JSON.stringify(used)}]`, 30, `${used} to be deleted`);
             const after = await parsed(page);
             const left = Object.values(after.cases ?? {}).some(parts => Array.isArray(parts) && parts.some(p => p.what === 'outline' && p.name === used));

@@ -432,8 +432,17 @@ export const usePcbParts = (viewer: any, pcb: string) => {
         setAdding(null);
     };
 
-    // the keys of this board's half, and which of them the chosen footprint is on
-    const keyList = chosen ? findWhereList(text(), entryPath('footprints', chosen)) : null;
+    // the keys of this board's half, and which of them the chosen footprint is on: those its where names, or for a
+    // where that picks them otherwise (true, a regex), those this run placed it on. Toggling one writes them as a list.
+    const keyList = (() => {
+        const found = chosen ? findWhereList(text(), entryPath('footprints', chosen)) : null;
+        if (!found || typeof found === 'string' || found.names) return found as { names: string[], site: EditSite } | string | null;
+        const placed = Object.entries(pcbResults?.footprints ?? {})
+            .filter(([key]) => key === chosen || new RegExp(`^${chosen}_\\d+$`).test(key))
+            .map(([, entry]: [string, any]) => String(entry?.point?.meta?.name ?? '').replace(/^mirror_/, ''))
+            .filter(name => name in points || `mirror_${name}` in points);
+        return {names: Array.from(new Set(placed)), site: found.site};
+    })();
     const toggleKey = (keyName: string) => {
         if (!chosen || !keyList || typeof keyList === 'string') return;
         const name = keyName.replace(/^mirror_/, '');

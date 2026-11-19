@@ -1,6 +1,6 @@
 import {expect, it} from "vitest";
 import yaml from "js-yaml";
-import {fieldOf, locateField, addMirror, addZone, deleteMirror, deleteZone, deleteUnit, unitEntries, unitMentions, addAssemblyPart, assemblyLines, deletePcb, entryLines, pcbReferences, findKeySite, splitShift, deleteColumn, deleteRow, insertEntry, keyMentions, nextName, addOutline, caseLines, caseReferences, deleteCase, insertIntoStack, mirrorCaseLines, stacksWith, addPcbOutline, appendEntry, appendListItem, appendOutline, applyEdits, deleteEntry, deleteListItem, deleteOutline, deleteOutlinePart, findAnchorShift, findChildShift, findChildValue, findItemSites, findPartSites, findShift, findSite, findValue, findWhereList, formatLength, insertPolygonPoint, moveListItem, nudge, outlineReferences, parseLength, partLines, pcbOutlines, plateLines, removePolygonPoint, EditSite} from "./layoutEdit";
+import {fieldOf, locateField, addMirror, addZone, deleteMirror, deleteZone, deleteUnit, unitEntries, unitMentions, addAssemblyPart, assemblyLines, deletePcb, entryLines, pcbReferences, findKeySite, splitShift, deleteColumn, deleteRow, insertEntry, keyMentions, nextName, addOutline, caseLines, caseReferences, deleteCase, insertIntoStack, mirrorCaseLines, stacksWith, addPcbOutline, appendEntry, appendListItem, appendOutline, applyEdits, deleteEntry, deleteListItem, deleteOutline, deleteOutlinePart, findAnchorShift, findChildShift, findChildValue, findItemSites, findPartSites, findShift, findSite, findValue, findWhereList, findLineValue, findListValues, formatLength, insertPolygonPoint, moveListItem, nudge, outlineReferences, parseLength, partLines, pcbOutlines, plateLines, removePolygonPoint, EditSite} from "./layoutEdit";
 
 const config = `points:
   zones:
@@ -399,7 +399,15 @@ it('reads and rewrites the keys a footprint is on', () => {
     expect(stab.names).toEqual(['thumbs_col2_row5', 'thumbs_col3_row5']);
     expect(applyEdits(footprints, [{site: stab.site, value: '[thumbs_col2_row5]'}])).toContain('        where: [thumbs_col2_row5] # two keys\n');
     expect(led.names).toEqual(['matrix_col0_row0']);
-    expect(findWhereList(footprints, fp('diodes'))).toMatch(/not a list/);
+    // where: true picks its keys in the run: no names, and a list written over it
+    const diodes = findWhereList(footprints, fp('diodes'));
+    if (typeof diodes === 'string') throw new Error(diodes);
+    expect(diodes.names).toBeNull();
+    expect(applyEdits(footprints, [{site: diodes.site, value: '[a, b]'}])).toContain('      diodes:\n        what: x\n        where: [a, b]\n        adjust:');
+    const block = 'pcbs:\n  right:\n    footprints:\n      k:\n        where:\n          - /x/\n          - y\n        what: x\n';
+    const fromBlock = findWhereList(block, fp('k'));
+    if (typeof fromBlock === 'string') throw new Error(fromBlock);
+    expect(applyEdits(block, [{site: fromBlock.site, value: '[a]'}])).toBe('pcbs:\n  right:\n    footprints:\n      k:\n        where: [a]\n        what: x\n');
 });
 
 const boards = `pcbs:
@@ -657,16 +665,16 @@ it('copies a pcb, and deletes one with its mirror and their assemblies', () => {
     expect(Object.keys(left.assemblies)).toEqual(['a_other']);
     expect(assemblyLines(['b', 'c'], 'right', 'c')).toEqual(['stack: [b, c]', 'pcb:', '  name: right', '  top: c']);
     expect(assemblyLines([], 'right')).toEqual(['stack: []', 'pcb: right']);
-    const lines = assemblyLines(['b'], 'right', undefined, [{name: 'e-paper', model: '${M}/e.glb', module: 'e-paper', z: '30'}, {name: '', model: 'https://x/y.glb'}]);
-    expect(lines).toEqual(['stack: [b]', 'pcb: right', 'parts:', '  - name: e-paper', '    model: "${M}/e.glb"', '    module: e-paper', '    z: 30',
+    const lines = assemblyLines(['b'], 'right', undefined, [{name: 'e-paper', model: '${M}/e.glb', at_module: 'e-paper', z: '30'}, {name: '', model: 'https://x/y.glb'}]);
+    expect(lines).toEqual(['stack: [b]', 'pcb: right', 'parts:', '  - name: e-paper', '    model: "${M}/e.glb"', '    at_module: e-paper', '    z: 30',
         '  - model: "https://x/y.glb"']);
-    expect((yaml.load(lines.join('\n')) as any).parts[0]).toEqual({name: 'e-paper', model: '${M}/e.glb', module: 'e-paper', z: 30});
+    expect((yaml.load(lines.join('\n')) as any).parts[0]).toEqual({name: 'e-paper', model: '${M}/e.glb', at_module: 'e-paper', z: 30});
 });
 
 it('adds a part to an assembly, with or without parts already', () => {
-    const part = {name: 'p', model: 'github:o/r/m.glb', module: 'e-paper', z: '30'};
+    const part = {name: 'p', model: 'github:o/r/m.glb', at_module: 'e-paper', z: '30'};
     const loaded = (t: string) => (yaml.load(t) as any).assemblies;
-    expect(loaded(addAssemblyPart(BOARDS, 'a_left', part)).a_left.parts).toEqual([{name: 'p', model: 'github:o/r/m.glb', module: 'e-paper', z: 30}]);
+    expect(loaded(addAssemblyPart(BOARDS, 'a_left', part)).a_left.parts).toEqual([{name: 'p', model: 'github:o/r/m.glb', at_module: 'e-paper', z: 30}]);
     const two = addAssemblyPart(addAssemblyPart(BOARDS, 'a_right', part), 'a_right', {name: '', model: 'https://x/y.glb'});
     expect(loaded(two).a_right.parts.map((p: any) => p.model)).toEqual(['github:o/r/m.glb', 'https://x/y.glb']);
     expect(loaded(two).a_left).toEqual({stack: ['y'], pcb: 'left'});
@@ -729,4 +737,16 @@ it('finds the line a field ergogen names is on, dotted keys and lists too', () =
     expect(fieldOf('Error: Field "pcbs.x.outlines.edge.outline" should be one of [a, b]!')).toBe('pcbs.x.outlines.edge.outline');
     expect(fieldOf('Unexpected key "parts" within field "assemblies.right"!')).toBe('assemblies.right.parts');
     expect(fieldOf('Cannot convert undefined or null to object')).toBeNull();
+});
+
+it('finds a value on one line, and the plain items of a list', () => {
+    const text = 'outlines:\n  a:\n    $args: [hexagon, studSize]\n    p:\n      where:\n        ref: [matrix_col0_row0]\n        shift: [1, 2]\n';
+    const ref = findLineValue(text, ['outlines', 'a', 'p', 'where'], 'ref');
+    if (typeof ref === 'string') throw new Error(ref);
+    expect(ref.raw).toBe('[matrix_col0_row0]');
+    expect(applyEdits(text, [{site: ref, value: 'matrix_col6_row0'}])).toContain('        ref: matrix_col6_row0\n');
+    const args = findListValues(text, ['outlines', 'a', '$args']);
+    if (typeof args === 'string') throw new Error(args);
+    expect(args.map(a => a.raw)).toEqual(['hexagon', 'studSize']);
+    expect(applyEdits(text, [{site: args[1], value: 'screwSize'}])).toContain('$args: [hexagon, screwSize]');
 });

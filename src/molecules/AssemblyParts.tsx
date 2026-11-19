@@ -5,11 +5,12 @@ import yaml from "js-yaml";
 import {useConfigContext} from "../context/ConfigContext";
 import {EditSite, addAssemblyPart, applyEdits, deleteListItem, findItemSites} from "../utils/layoutEdit";
 
-// The other 3D models of an assembly (assemblies.<name>.parts), in its 3D view: a line each, to set its name, the
-// module of the pcb it sits at, its height and its model, to delete it, or to add one. The view draws them once
-// ergogen has placed them.
+// The other 3D models of an assembly (assemblies.<name>.parts), in its 3D view: a line each, to set its name, its
+// model, where it goes (at_module: the module of the pcb it sits at) and how high (z), to delete it, or to add one.
+// The fields are named as the config names them. The view draws them once ergogen has placed them.
 
-const ATTRS = ['name', 'model', 'module', 'z'] as const;
+// module is at_module's old name, still read (and written, in a part that has it)
+const ATTRS = ['name', 'model', 'at_module', 'module', 'z'] as const;
 type Attr = typeof ATTRS[number];
 
 // at the 3D view's bottom right
@@ -28,12 +29,13 @@ const Card = styled(CardShell)`
   }
 `;
 
-type Props = { assembly: string };
+// embedded: as a tab of the 3D view's card, without a card of its own
+type Props = { assembly: string, embedded?: boolean };
 
 // what a model path shows as: without the quotes it may be written in
 const unquote = (raw: string | undefined) => (raw ?? '').replace(/^"(.*)"$/, '$1').replace(/^'(.*)'$/, '$1');
 
-const AssemblyParts = ({assembly}: Props): JSX.Element | null => {
+const AssemblyParts = ({assembly, embedded = false}: Props): JSX.Element | null => {
     const configContext = useConfigContext();
     const text = configContext?.configInput ?? '';
     const [drafts, setDrafts] = useState<Record<string, string | undefined>>({});
@@ -123,18 +125,15 @@ const AssemblyParts = ({assembly}: Props): JSX.Element | null => {
         );
     };
 
-    return (
-        <Card onPointerDown={e => e.stopPropagation()}>
-            <CardHead title={`Parts of ${assembly}: ${parts.length}`} subtitle="other 3D models on the board" folded={folded} onFold={setFolded} foldAt="left"
-                      actions={!folded && (
-                          <Button $variant="go" title="Another 3D model on the board, e.g. a module board on standoffs"
+    const addButton = (
+        <Button $variant="go" title="Another 3D model on the board, e.g. a module board on standoffs"
                                   onClick={() => write(() => {
                                       const part = {name: `part${parts.length + 1}`, model: '', module: modules[0], z: '0'};
                                       const next = addAssemblyPart(text, assembly, part);
                                       return both && other ? addAssemblyPart(next, other.name, part) : next;
                                   }, `a part added${both ? `, on ${other?.name} too` : ''}: give it a model`)}>+ Part</Button>
-                      )}/>
-            {!folded && <div className="body">
+    );
+    const content = <>
                 {other && (
                     <Check title={other.same ? `Every change here is made to ${other.name}'s parts too` : `${other.name}'s parts are not the same as these, so they are changed one by one`}>
                         <input type="checkbox" checked={both} disabled={!other.same} onChange={e => setBoth(e.target.checked)}/>
@@ -142,22 +141,23 @@ const AssemblyParts = ({assembly}: Props): JSX.Element | null => {
                     </Check>
                 )}
                 {parts.map((part, index) => {
-                    const module = rawOf(part.sites.module);
+                    const at: Attr = rawOf(part.sites.module) !== undefined ? 'module' : 'at_module';
+                    const module = rawOf(part.sites[at]);
                     return (
                         <div key={String(part.key)} className="part">
-                            <Field label="Name">{box(index, 'name', 'name', 'name', 'what it is called in the view')}</Field>
-                            <Field label="At">
-                                <select value={module ?? ''} title="the module of the pcb it sits at, turned with it"
-                                        disabled={typeof part.sites.module === 'string'}
-                                        onChange={e => e.target.value && set(index, 'module', e.target.value)}>
+                            <Field label="name">{box(index, 'name', 'name', 'name', 'what it is called in the view')}</Field>
+                            <Field label="model">{box(index, 'model', 'model', 'github:owner/repo/model.glb, https://…, or ${VAR}/…',
+                                'its model: a path as footprints name them (glb, step, wrl), a URL, or github:owner/repo/file')}</Field>
+                            <Field label={at}>
+                                <select value={module ?? ''} title="where it goes: at this module of the pcb, turned with it"
+                                        disabled={typeof part.sites[at] === 'string'}
+                                        onChange={e => e.target.value && set(index, at, e.target.value)}>
                                     {!module && <option value="">the board's origin</option>}
                                     {module && !modules.includes(module) && <option value={module}>{module}</option>}
                                     {modules.map(m => <option key={m} value={m}>{m}</option>)}
                                 </select>
                             </Field>
-                            <Field label="Z" unit="mm">{box(index, 'z', 'z', '0', "the height of the model's z = 0, in mm")}</Field>
-                            <Field label="Model">{box(index, 'model', 'model', 'github:owner/repo/model.glb, https://…, or ${VAR}/…',
-                                'its model: a path as footprints name them (glb, step, wrl), a URL, or github:owner/repo/file')}</Field>
+                            <Field label="z" unit="mm">{box(index, 'z', 'z', '0', "how high: its z = 0 this far above the stack's bottom, in mm")}</Field>
                             <Actions>
                                 <Gap/>
                                 <Button $variant="danger" title={`Delete part #${index}`}
@@ -170,7 +170,19 @@ const AssemblyParts = ({assembly}: Props): JSX.Element | null => {
                     );
                 })}
                 {note && <Status>{note}</Status>}
-            </div>}
+    </>;
+    if (embedded) return <>
+        <Actions style={{marginTop: 0, paddingTop: 0, borderTop: 'none', marginBottom: '0.5rem'}}>
+            <span>{parts.length} part{parts.length === 1 ? '' : 's'}: other 3D models on the board</span><Gap/>{addButton}
+        </Actions>
+        {content}
+    </>;
+
+    return (
+        <Card onPointerDown={e => e.stopPropagation()}>
+            <CardHead title={`Parts of ${assembly}: ${parts.length}`} subtitle="other 3D models on the board" folded={folded} onFold={setFolded} foldAt="left"
+                      actions={!folded && addButton}/>
+            {!folded && <div className="body">{content}</div>}
         </Card>
     );
 };

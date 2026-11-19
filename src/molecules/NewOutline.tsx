@@ -3,8 +3,8 @@ import yaml from "js-yaml";
 import {useConfigContext} from "../context/ConfigContext";
 import {Button, Dialog, Field} from "../ui";
 
-// A new outline (outlines.<name>), from the "+" on the Downloads list's Outlines: a name and how it starts. The
-// layout editor makes it, with its keys at hand, and opens it there (or starts drawing its points).
+// A new outline (outlines.<name>), from the "+" beside the layout editor's outline menu: a name and how it starts.
+// The layout editor makes it, with its keys at hand, and opens it (or starts drawing its points).
 
 export type Template = 'draw' | 'hull' | 'plate-mx' | 'plate-choc';
 export const TEMPLATES: [Template, string][] = [

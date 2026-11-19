@@ -15,8 +15,9 @@ import {
 } from "./layout/styles";
 import ColumnPanel, {Tab} from "./layout/ColumnPanel";
 import OutlinePanel from "./layout/OutlinePanel";
+import {usePanZoom} from "../ui";
 import ErrorBoundary from "../atoms/ErrorBoundary";
-import {OutlineRequest} from "./NewOutline";
+import NewOutline, {OutlineRequest} from "./NewOutline";
 import {Drag, HandleAt, HandleDrag, stepDrag} from "./layout/drags";
 import {Cursor, Drawing, placeNear as placeNearKey, pointAt as snapDrawnPoint} from "./layout/drawing";
 
@@ -24,17 +25,7 @@ import {Cursor, Drawing, placeNear as placeNearKey, pointAt as snapDrawnPoint} f
 // six decimals: enough for a snapped point to stay exactly in line, and short for round ones
 const exactText = (v: number) => String(Number(v.toFixed(6)));
 
-const HELP = 'Click a key to select its column. Drag it up/down for stagger, sideways for spread '
-    + '(Shift: with the columns after it), the green handle for splay, Alt-drag to move the zone; on the panel\'s '
-    + 'Key tab, dragging moves just that key. Pick an outline at the top left to drag its points.';
-
-type Props = {
-    // a new outline to make (from the Downloads list), once the keys are known; onRequestDone when it is
-    request?: OutlineRequest | null,
-    onRequestDone?: () => void,
-};
-
-const LayoutEditor = ({request, onRequestDone}: Props): JSX.Element | null => {
+const LayoutEditor = (): JSX.Element | null => {
     const configContext = useConfigContext();
     const configInput = configContext?.configInput ?? '';
 
@@ -136,13 +127,26 @@ const LayoutEditor = ({request, onRequestDone}: Props): JSX.Element | null => {
         };
     }, [points, selected]);
 
-    // a requested outline is made once the keys (and the outlines there are) have been worked out
-    const createOutline = useRef<(request: OutlineRequest) => void>();
-    useEffect(() => {
-        if (!request || !points) return;
-        createOutline.current?.(request);
-        onRequestDone?.();
-    }, [request, points]); // eslint-disable-line react-hooks/exhaustive-deps
+    // the New outline dialog, from the + beside the outline menu
+    const [newOutline, setNewOutline] = useState(false);
+    // the outline part pointed at in its panel ("board.0"), lit on the board
+    const [litPart, setLitPart] = useState<string | null>(null);
+
+    // right-drag moves the view, the wheel zooms it about the pointer (the view box is in board millimetres)
+    usePanZoom(svgRef, {
+        pan: ({dx, dy}) => setView(v => {
+            const scale = svgRef.current?.getScreenCTM()?.a || 1;
+            return v && {...v, x: v.x - dx / scale, y: v.y - dy / scale};
+        }),
+        zoom: (factor, px, py) => setView(v => {
+            const ctm = svgRef.current?.getScreenCTM();
+            const box = svgRef.current?.getBoundingClientRect();
+            if (!v || !ctm || !box) return v;
+            // the board point under the pointer stays under it
+            const at = new DOMPoint(box.left + px, box.top + py).matrixTransform(ctm.inverse());
+            return {x: at.x - (at.x - v.x) * factor, y: at.y - (at.y - v.y) * factor, w: v.w * factor, h: v.h * factor};
+        }),
+    });
 
     if (!configContext) return null;
 
@@ -351,7 +355,6 @@ const LayoutEditor = ({request, onRequestDone}: Props): JSX.Element | null => {
             setError(String(e));
         }
     };
-    createOutline.current = create;
 
     const placeNear = (wanted: Vec, exact: boolean) => placeNearKey(points, wanted, exact);
 
@@ -469,7 +472,14 @@ const LayoutEditor = ({request, onRequestDone}: Props): JSX.Element | null => {
                 onPointerUp={endDrag}
                 onPointerCancel={endDrag}
                 onPointerDown={() => { setSelected(null); setChosenPoint(null); }}
+                // a double click on the background goes back to the whole board, after panning and zooming
+                onDoubleClick={e => { if (e.target === e.currentTarget && points) setView(fitView(points)); }}
             >
+                {/* the part pointed at in the panel: its polygon, filled and drawn over the rest */}
+                {litPart && outlineInfo?.polygons.filter(p => p.id === litPart || litPart.startsWith(`${p.id}.points[`)).map(p => (
+                    <polygon key={p.id} points={p.handles.map(h => { const v = handlePosition(h); return `${v.x},${v.y}`; }).join(' ')}
+                             fill="rgba(255, 159, 28, 0.28)" stroke="#ffffff" strokeWidth={0.6} strokeDasharray="2 1" pointerEvents="none"/>
+                ))}
                 {outline && paths[outline] && (
                     // ergogen's own result for the outline, already in the view's flipped coordinates
                     <path d={paths[outline]} fill="rgba(255, 159, 28, 0.08)" stroke="#ff9f1c" strokeWidth={0.5}
@@ -516,6 +526,11 @@ const LayoutEditor = ({request, onRequestDone}: Props): JSX.Element | null => {
                             </EdgeTarget>
                         );
                     }))}
+                    {/* the point pointed at in the panel */}
+                    {outlineInfo?.handles.filter(h => h.label === litPart).map(h => {
+                        const v = handlePosition(h);
+                        return <circle key={`lit-${h.key}`} cx={v.x} cy={v.y} r={3} fill="none" stroke="#ffffff" strokeWidth={0.6} pointerEvents="none"/>;
+                    })}
                     {outlineInfo?.handles.map(h => {
                         const v = handlePosition(h);
                         const title = <title>{h.label}</title>;
@@ -567,6 +582,10 @@ const LayoutEditor = ({request, onRequestDone}: Props): JSX.Element | null => {
             {!selected && outline && !drawing && (
                 <ErrorBoundary area="the outline's panel" resetKey={configInput}>
                 <OutlinePanel outline={outline} text={configInput} onCommit={commit} folded={panelFolded} onFold={setPanelFolded}
+                              dxf={configContext.results?.outlines?.[outline]?.dxf} onLight={setLitPart}
+                              chosenPoint={outlineInfo?.handles.find(h => h.key === chosenPoint)?.label ?? null}
+                              onChoosePoint={label => setChosenPoint(outlineInfo?.handles.find(h => h.label === label)?.key ?? null)}
+                              pointNames={Object.keys(points ?? {})} onPick={setOutline}
                               onDeleted={name => { setOutline(''); setHint(`Deleted outline ${name}; undo in the editor brings it back`); }}/>
                 </ErrorBoundary>
             )}
@@ -595,11 +614,14 @@ const LayoutEditor = ({request, onRequestDone}: Props): JSX.Element | null => {
             )}
 
             <OutlineBar onPointerDown={e => e.stopPropagation()}>
-                <select value={outline} disabled={!!drawing} onChange={e => setOutline(e.target.value)}
-                        title="New outlines: the + on the Downloads list's Outlines">
-                    <option value="">Outline: none</option>
-                    {outlineNames.map(name => <option key={name} value={name}>{name}</option>)}
-                </select>
+                <div className="row">
+                    <select value={outline} disabled={!!drawing} onChange={e => setOutline(e.target.value)} title="The outline to edit">
+                        <option value="">Outline: none</option>
+                        {outlineNames.map(name => <option key={name} value={name}>{name}</option>)}
+                    </select>
+                    <button title="A new outline" disabled={!!drawing || !points} onClick={() => setNewOutline(true)}>+</button>
+                </div>
+                {newOutline && <NewOutline onCancel={() => setNewOutline(false)} onCreate={request => { setNewOutline(false); create(request); }}/>}
                 {drawing && (
                     <div className="row">
                         <button onClick={() => finishDrawing(drawing)} disabled={drawing.points.length < 3}>Finish</button>
@@ -614,13 +636,16 @@ const LayoutEditor = ({request, onRequestDone}: Props): JSX.Element | null => {
                 )}
             </OutlineBar>
 
-            <StatusBar>
-                <button onClick={() => points && setView(fitView(points))}>Fit</button>
-                {error ? <ErrorText>{error}</ErrorText> : <span>{drawing
-                    ? `Drawing ${drawing.name}: click to add points (each one is a shift from its nearest key), `
-                        + 'click the first point or press Enter to finish, Backspace to undo, Esc to cancel'
-                    : hint ?? HELP}</span>}
-            </StatusBar>
+            {/* only when there is something to say: an error, how drawing goes, or what an edit did. The outline's
+                panel is 20rem wide, a column's 16rem, both 0.75rem in */}
+            {(error || drawing || hint) && (
+                <StatusBar $right={selected ? '17.5rem' : outline && !drawing ? '21.5rem' : undefined}>
+                    {error ? <ErrorText>{error}</ErrorText> : <span>{drawing
+                        ? `Drawing ${drawing.name}: click to add points (each one is a shift from its nearest key), `
+                            + 'click the first point or press Enter to finish, Backspace to undo, Esc to cancel'
+                        : hint}</span>}
+                </StatusBar>
+            )}
         </Container>
     );
 };
