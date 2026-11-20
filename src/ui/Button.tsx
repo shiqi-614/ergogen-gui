@@ -43,6 +43,7 @@ export const Button = styled.button<{ $variant?: ButtonVariant }>`
   color: ${colors.strong};
   font: inherit;
   font-size: ${fontSize.small};
+  white-space: nowrap;
   cursor: pointer;
 
   &:disabled {

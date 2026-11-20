@@ -39,7 +39,7 @@ export const tests = [
             await freshApp(page, url);
             await editParts(page, 'Modules');
             const boxes = await page.ev(`document.querySelectorAll('svg polygon.module').length`);
-            await page.press('+ Add module');
+            await page.press('+ Module');
             await page.ev(`document.querySelector('input[placeholder="module name"]').focus()`);
             await page.type('e2e_mod');
             await page.press('Place');

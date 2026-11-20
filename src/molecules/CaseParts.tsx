@@ -1,6 +1,6 @@
 import {useEffect, useMemo, useState} from "react";
 import styled from "styled-components";
-import {Actions, Button, CardHead, CardShell, Field, Gap, Status, Tip, colors} from "../ui";
+import {Actions, AddMenu, Button, CardHead, CardShell, Field, Gap, Status, Tip, colors} from "../ui";
 import yaml from "js-yaml";
 import {useConfigContext} from "../context/ConfigContext";
 import {EditSite, appendListItem, applyEdits, deleteListItem, findItemSites, moveListItem} from "../utils/layoutEdit";
@@ -113,6 +113,11 @@ const CaseParts = ({caseName, made, onLight}: Props): JSX.Element | null => {
     const path = ['cases', source];
     const parts = useMemo(() => findItemSites(text, path, [...ATTRS]), [text, source]); // eslint-disable-line react-hooks/exhaustive-deps
     const outlines = Object.keys(config?.outlines ?? {});
+    // the cases a part can be made of: those before this one (ergogen makes the cases in order), but its own
+    const earlier = (() => {
+        const names = Object.keys(config?.cases ?? {});
+        return names.slice(0, Math.max(0, names.indexOf(source))).filter(name => name !== source);
+    })();
 
     if (!configContext) return null;
     // a case written in a way the panel can't edit: why
@@ -176,12 +181,14 @@ const CaseParts = ({caseName, made, onLight}: Props): JSX.Element | null => {
             fail('delete it', err);
         }
     };
-    // a new part at the end, as thick as the case's first, opened to be set
-    const add = (what: 'outline' | 'pcb') => {
+    // a new part at the end, as thick as the case's first, opened to be set; a case part is that case as it is
+    const add = (what: 'outline' | 'pcb' | 'case', caseOf?: string) => {
         const thick = made.find(m => m.extrude !== null)?.extrude ?? 3;
-        const name = what === 'outline' ? outlines[0] ?? 'board' : '/footprints.keys/';
+        const name = what === 'outline' ? outlines[0] ?? 'board' : what === 'pcb' ? '/footprints.keys/' : caseOf;
+        const lines = what === 'case' ? [`what: case`, `name: ${name}`, 'operation: add']
+            : [`what: ${what}`, `name: ${name}`, `extrude: ${thick}`, 'operation: subtract'];
         try {
-            write(appendListItem(text, path, [`what: ${what}`, `name: ${name}`, `extrude: ${thick}`, 'operation: subtract']),
+            write(appendListItem(text, path, lines),
                 `a ${what} part added at the end`);
             setOpen(String(parts.length));
         } catch (err: unknown) {
@@ -237,8 +244,10 @@ const CaseParts = ({caseName, made, onLight}: Props): JSX.Element | null => {
                     );
                 })}
                 <Actions>
-                    <Button $variant="go" onClick={() => add('outline')} title="A part made from an outline, at the end">+ outline</Button>
-                    <Button $variant="go" onClick={() => add('pcb')} title="A part made from footprints' shapes, at the end">+ footprints</Button>
+                    <Button $variant="go" onClick={() => add('outline')} title="A part made from an outline, at the end">+ Outline</Button>
+                    <Button $variant="go" onClick={() => add('pcb')} title="A part made from footprints' shapes, at the end">+ Footprints</Button>
+                    <AddMenu label="+ Case" title="A part that is another case as it is, at the end (only a case before this one)"
+                             options={earlier} onPick={name => add('case', name)}/>
                 </Actions>
                 {note && <Status>{note}</Status>}
             </div>}

@@ -108,6 +108,7 @@ export const tests = [
             await page.until(`${left}[0]?.z ${same ? '===' : '!=='} 31`, 30, same ? 'the other half to follow' : 'the other half to stay');
             await page.press('+ Part');
             await page.until(`${parts}.length === ${n + 1} && ${left}.length === ${same ? n + 1 : left0.length}`, 30, 'a new part');
+            assert((await parsed(page)).assemblies.ergocai_right.parts[n].at_module, 'a new part should sit at a module (at_module)');
             await page.until(`document.querySelectorAll('.part').length === ${n + 1}`, 30, 'its line');
             await page.ev(`${box(n, 'model')}.focus()`);
             await page.type('github:shiqi-614/ErgoCai.modules/e-paper/2.13inch/2.13inch.glb');
@@ -117,6 +118,45 @@ export const tests = [
             await page.until(`${parts}.length === ${n} && ${left}.length === ${left0.length}`, 30, 'the new part to go');
             assert(JSON.stringify((await parsed(page)).assemblies.ergocai_right.parts.map(p => p.name)) === JSON.stringify(right0.map(p => p.name)),
                 'the parts should be back as they were, but for the height');
+        },
+    },
+    {
+        name: "boards: a case is put on an assembly's stack and taken off it in its 3D view; the board's own stays",
+        async run(page, {url}) {
+            await freshApp(page, url);
+            const stack = `jsyaml.load(${config}).assemblies.ergocai_right.stack.map(e => typeof e === 'string' ? e : e.name)`;
+            const before = await page.ev(stack);
+            const board = (await parsed(page)).assemblies.ergocai_right.pcb.top;
+            await page.ev(`[...document.querySelectorAll('button')].find(b => b.textContent.startsWith('▸ Assemblies'))?.click()`);
+            await page.ev(`[...document.querySelectorAll('button')].find(b => b.textContent.trim() === 'ergocai_right')?.click()`);
+            const menu = `document.querySelector('select[title="Put another case on top of the stack"]')`;
+            await page.until(`!!${menu}`, 180, 'the menu of cases');
+            const extra = await page.ev(`[...${menu}.options].map(o => o.value).find(v => v)`);
+            assert(extra && !before.includes(extra), `the menu should offer a case not in the stack: ${extra}`);
+            await page.choose(menu, extra);
+            await page.until(`JSON.stringify(${stack}) === ${JSON.stringify(JSON.stringify([...before, extra]))}`, 30, `${extra} on top of the stack`);
+            const remove = `document.querySelector('button[title^="Take ${extra} out"]')`;
+            await page.until(`!!${remove}`, 180, `its row`);
+            await page.ev(`${remove}.click()`);
+            await page.until(`JSON.stringify(${stack}) === ${JSON.stringify(JSON.stringify(before))}`, 30, `${extra} off the stack again`);
+            await page.until(`!!document.querySelector('button[title^="The board is placed by ${board}"]')`, 180, 'the rows again');
+            assert(await page.ev(`document.querySelector('button[title^="The board is placed by ${board}"]').disabled`), `${board} holds the board: its × should be off`);
+            // the bottom case up one, and back
+            const [first, second] = before;
+            await page.ev(`document.querySelector('button[title="Move ${first} up the stack"]').click()`);
+            await page.until(`JSON.stringify(${stack}.slice(0, 2)) === ${JSON.stringify(JSON.stringify([second, first]))}`, 30, `${first} up one`);
+            await page.until(`!!document.querySelector('button[title="Move ${first} down the stack"]') && !document.querySelector('button[title="Move ${first} down the stack"]').disabled`, 180, 'its row again');
+            await page.ev(`document.querySelector('button[title="Move ${first} down the stack"]').click()`);
+            await page.until(`JSON.stringify(${stack}) === ${JSON.stringify(JSON.stringify(before))}`, 30, `${first} back at the bottom`);
+            // the board placed by another case's top, and back
+            const placed = `jsyaml.load(${config}).assemblies.ergocai_right.pcb.top`;
+            const placeMenu = `[...document.querySelectorAll('select')].find(s => (s.title || '').startsWith('the case part whose top'))`;
+            await page.until(`!!${placeMenu}`, 180, 'the placement menu');
+            await page.choose(placeMenu, first);
+            await page.until(`${placed} === ${JSON.stringify(first)}`, 30, `the board level with ${first}`);
+            await page.until(`!!${placeMenu}`, 180, 'the placement menu again');
+            await page.choose(placeMenu, board);
+            await page.until(`${placed} === ${JSON.stringify(board)}`, 30, `the board back level with ${board}`);
         },
     },
 ];

@@ -128,7 +128,7 @@ const AssemblyParts = ({assembly, embedded = false}: Props): JSX.Element | null 
     const addButton = (
         <Button $variant="go" title="Another 3D model on the board, e.g. a module board on standoffs"
                                   onClick={() => write(() => {
-                                      const part = {name: `part${parts.length + 1}`, model: '', module: modules[0], z: '0'};
+                                      const part = {name: `part${parts.length + 1}`, model: '', at_module: modules[0], z: '0'};
                                       const next = addAssemblyPart(text, assembly, part);
                                       return both && other ? addAssemblyPart(next, other.name, part) : next;
                                   }, `a part added${both ? `, on ${other?.name} too` : ''}: give it a model`)}>+ Part</Button>

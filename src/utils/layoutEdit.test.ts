@@ -1,6 +1,6 @@
 import {expect, it} from "vitest";
 import yaml from "js-yaml";
-import {fieldOf, locateField, addMirror, addZone, deleteMirror, deleteZone, deleteUnit, unitEntries, unitMentions, addAssemblyPart, assemblyLines, deletePcb, entryLines, pcbReferences, findKeySite, splitShift, deleteColumn, deleteRow, insertEntry, keyMentions, nextName, addOutline, caseLines, caseReferences, deleteCase, insertIntoStack, mirrorCaseLines, stacksWith, addPcbOutline, appendEntry, appendListItem, appendOutline, applyEdits, deleteEntry, deleteListItem, deleteOutline, deleteOutlinePart, findAnchorShift, findChildShift, findChildValue, findItemSites, findPartSites, findShift, findSite, findValue, findWhereList, findLineValue, findListValues, formatLength, insertPolygonPoint, moveListItem, nudge, outlineReferences, parseLength, partLines, pcbOutlines, plateLines, removePolygonPoint, EditSite} from "./layoutEdit";
+import {fieldOf, locateField, addMirror, addZone, deleteMirror, deleteZone, deleteUnit, unitEntries, unitMentions, addAssemblyPart, assemblyLines, deletePcb, entryLines, pcbReferences, findKeySite, splitShift, deleteColumn, deleteRow, insertEntry, keyMentions, nextName, addOutline, caseLines, caseReferences, deleteCase, insertIntoStack, removeFromStack, mirrorCaseLines, stacksWith, addPcbOutline, appendEntry, appendListItem, appendOutline, applyEdits, deleteEntry, deleteListItem, deleteOutline, deleteOutlinePart, findAnchorShift, findChildShift, findChildValue, findItemSites, findPartSites, findShift, findSite, findValue, findWhereList, findLineValue, findListValues, formatLength, insertPolygonPoint, moveListItem, nudge, outlineReferences, parseLength, partLines, pcbOutlines, plateLines, removePolygonPoint, EditSite} from "./layoutEdit";
 
 const config = `points:
   zones:
@@ -749,4 +749,12 @@ it('finds a value on one line, and the plain items of a list', () => {
     if (typeof args === 'string') throw new Error(args);
     expect(args.map(a => a.raw)).toEqual(['hexagon', 'studSize']);
     expect(applyEdits(text, [{site: args[1], value: 'screwSize'}])).toContain('$args: [hexagon, screwSize]');
+});
+
+it('takes a case out of a stack, and leaves the others as written', () => {
+    const text = 'assemblies:\n  a:\n    stack: [bottom, {name: gap, gap: 2}, top]\n    pcb: {name: p, top: gap}\n';
+    expect(removeFromStack(text, 'a', 'top')).toContain('stack: [bottom, {name: gap, gap: 2}]');
+    expect(removeFromStack(text, 'a', 'bottom')).toContain('stack: [{name: gap, gap: 2}, top]');
+    expect(() => removeFromStack(text, 'a', 'nope')).toThrow(/not in assemblies.a.stack/);
+    expect(insertIntoStack(text, 'a', 'lid', 3)).toContain('stack: [bottom, {name: gap, gap: 2}, top, lid]');
 });

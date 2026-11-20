@@ -1,11 +1,11 @@
 import {useEffect, useMemo, useRef, useState} from "react";
 import styled from "styled-components";
 import yaml from "js-yaml";
-import {Actions, Button, CardHead, CardShell, Field, Gap, Tip, colors} from "../../ui";
+import {Actions, AddMenu, Button, CardHead, CardShell, Field, Gap, Tip, colors} from "../../ui";
 import {ConfirmDelete} from "../DeleteItem";
 import {
-    EditSite, PartAttr, applyEdits, deleteOutline, deleteOutlinePart, findLineValue, findListValues, findPartSites, findShift,
-    insertPolygonPoint, isPlainNumber, outlineReferences, removePolygonPoint,
+    EditSite, PartAttr, appendEntry, appendListItem, applyEdits, deleteOutline, deleteOutlinePart, findLineValue, findListValues,
+    findPartSites, findShift, insertPolygonPoint, isPlainNumber, moveListItem, nextName, outlineReferences, removePolygonPoint,
 } from "../../utils/layoutEdit";
 
 const OPERATIONS = ['add', 'subtract', 'intersect', 'stack'];
@@ -86,7 +86,8 @@ const Contents = styled.div`
     text-overflow: ellipsis;
   }
 
-  button {
+  /* the points' toggle and their × (the panel's own buttons are the shared Button) */
+  button.toggle, button.remove {
     padding: 0;
     border: none;
     background: none;
@@ -158,11 +159,6 @@ const Contents = styled.div`
     cursor: default;
   }
 
-  button.add {
-    margin-top: 0.3rem;
-    color: #ff9f1c;
-  }
-
   input.anchor:focus {
     border-color: #ff9f1c;
     outline: none;
@@ -191,7 +187,7 @@ const Template = styled.div`
     margin-bottom: 0.4rem;
   }
 
-  button {
+  button.link {
     padding: 0;
     border: none;
     background: none;
@@ -301,6 +297,37 @@ const OutlinePanel = ({outline, text, onCommit, onDeleted, folded, onFold, dxf, 
             commitText(deleteOutlinePart(flush(latest.current), outline, key));
         } catch (e: unknown) {
             window.alert(`Can't delete that part: ${e instanceof Error ? e.message : String(e)}`);
+        }
+    };
+
+    // A new part at the end, at the key the outline's first part starts from (or the first key): a triangle, a
+    // 10 mm square, a 5 mm circle, or another outline as it is
+    const refOf = (): string => {
+        const first = Array.isArray(written) ? written[0] : Object.values(written ?? {})[0] as any;
+        const ref = first?.where?.ref ?? first?.points?.[0]?.ref;
+        return typeof ref === 'string' ? ref : Array.isArray(ref) && typeof ref[0] === 'string' ? ref[0] : pointNames[0] ?? 'matrix';
+    };
+    const addPart = (what: 'polygon' | 'rectangle' | 'circle' | 'outline', made?: string) => {
+        const ref = refOf();
+        const lines = what === 'polygon' ? ['what: polygon', 'operation: add', 'points:',
+                ...[[-5, -5], [5, -5], [0, 5]].flatMap(([x, y]) => [`  - ref: ${ref}`, `    shift: [${x}, ${y}]`])]
+            : what === 'rectangle' ? ['what: rectangle', 'operation: add', 'size: [10, 10]', 'where:', `  ref: ${ref}`]
+            : what === 'circle' ? ['what: circle', 'operation: add', 'radius: 5', 'where:', `  ref: ${ref}`]
+            : ['what: outline', 'operation: add', `name: ${made}`];
+        try {
+            const base = flush(latest.current);
+            commitText(Array.isArray(written) ? appendListItem(base, ['outlines', outline], lines)
+                : appendEntry(base, ['outlines', outline], nextName(Object.keys(written ?? {}), 'part'), lines));
+        } catch (e: unknown) {
+            window.alert(`Can't add a part: ${e instanceof Error ? e.message : String(e)}`);
+        }
+    };
+    // a part up or down the list (the order is how they join: each one's operation applies to those before it)
+    const movePart = (index: number, delta: number) => {
+        try {
+            commitText(moveListItem(flush(latest.current), ['outlines', outline], index, delta));
+        } catch (e: unknown) {
+            window.alert(`Can't move that part: ${e instanceof Error ? e.message : String(e)}`);
         }
     };
 
@@ -463,7 +490,7 @@ const OutlinePanel = ({outline, text, onCommit, onDeleted, folded, onFold, dxf, 
                 <datalist id="outline-panel-points">{pointNames.map(name => <option key={name} value={name}/>)}</datalist>
                 {template && (
                     <Template>
-                        <div>Filled in from the template <button title={`Edit ${template}`} onClick={() => onPick?.(template)}>{template}</button>:
+                        <div>Filled in from the template <button className="link" title={`Edit ${template}`} onClick={() => onPick?.(template)}>{template}</button>:
                             its parts are edited there, its values here.</div>
                         {typeof argSites === 'string' ? <Tip>Can't edit its $args: {argSites}</Tip> : argSites.map((site, i) => (
                             <Field key={i} label={params[i] ?? `$args[${i}]`}>
@@ -480,7 +507,7 @@ const OutlinePanel = ({outline, text, onCommit, onDeleted, folded, onFold, dxf, 
                 {!template && params.length > 0 && (
                     <Template>
                         <div>A template, of {params.join(', ')}: ergogen makes it only as the outlines that fill it in
-                            {users.length ? <>: {users.map((u, i) => <span key={u}>{i ? ', ' : ''}<button title={`Edit ${u}`} onClick={() => onPick?.(u)}>{u}</button></span>)}</> : ' (none yet)'}.
+                            {users.length ? <>: {users.map((u, i) => <span key={u}>{i ? ', ' : ''}<button className="link" title={`Edit ${u}`} onClick={() => onPick?.(u)}>{u}</button></span>)}</> : ' (none yet)'}.
                         </div>
                     </Template>
                 )}
@@ -507,7 +534,6 @@ const OutlinePanel = ({outline, text, onCommit, onDeleted, folded, onFold, dxf, 
                             <PartHead first={index === 0}>
                                 <span title={`${outline}.${part.key}`}>{typeof part.key === 'number' ? `#${part.key}` : part.key} {part.what}
                                     <small> {describe(raw)}</small></span>
-                                <Button $variant="ghost" title="Delete this part" onClick={() => removePart(part.key, part.what)}>×</Button>
                             </PartHead>
                             {raw && typeof raw === 'object' && (
                                 <Contents>
@@ -519,7 +545,7 @@ const OutlinePanel = ({outline, text, onCommit, onDeleted, folded, onFold, dxf, 
                                             : <div key={key}><b>{key}</b><span title={oneLine(value)}>{oneLine(value)}</span></div>;
                                     })}
                                     {Array.isArray(raw.points) && <>
-                                        <button title={open ? 'Hide its points' : 'List its points, as the config writes them'}
+                                        <button className="toggle" title={open ? 'Hide its points' : 'List its points, as the config writes them'}
                                                 onClick={() => setOpened({...opened, [id]: !open})}>
                                             {open ? '▾' : '▸'} {raw.points.length} points
                                         </button>
@@ -542,8 +568,10 @@ const OutlinePanel = ({outline, text, onCommit, onDeleted, folded, onFold, dxf, 
                                                 })}
                                             </ol>
                                         )}
-                                        {open && <button className="add" title="One more point, after the last (5 mm to its right): set it here or drag it on the board"
-                                                         onClick={() => addPoint(part.key, raw.points)}>+ point</button>}
+                                        {open && <Actions>
+                                            <Button $variant="go" title="One more point, after the last (5 mm to its right): set it here or drag it on the board"
+                                                    onClick={() => addPoint(part.key, raw.points)}>+ Point</Button>
+                                        </Actions>}
                                     </>}
                                 </Contents>
                             )}
@@ -573,9 +601,25 @@ const OutlinePanel = ({outline, text, onCommit, onDeleted, folded, onFold, dxf, 
                                 </select>
                             </Field>
                             {numberField('Fillet', field('fillet'), rawOf(fillet), 10, 0, reason(fillet), value => value, fillet, part.key, 'fillet')}
+                            <Actions>
+                                {Array.isArray(written) && <>
+                                    <Button disabled={index === 0} title="Move it up: before the part above" onClick={() => movePart(index, -1)}>↑</Button>
+                                    <Button disabled={index === parts.length - 1} title="Move it down: after the part below" onClick={() => movePart(index, 1)}>↓</Button>
+                                </>}
+                                <Gap/>
+                                <Button $variant="danger" title="Delete this part" onClick={() => removePart(part.key, part.what)}>Delete</Button>
+                            </Actions>
                         </div>
                     );
                 })}
+                {!template && (
+                    <Actions>
+                        <Button $variant="go" title="A triangle at the end, round the first part's key: move its points, add more" onClick={() => addPart('polygon')}>+ Polygon</Button>
+                        <Button $variant="go" title="A 10 mm square at the end, on the first part's key" onClick={() => addPart('rectangle')}>+ Rectangle</Button>
+                        <Button $variant="go" title="A 5 mm circle at the end, on the first part's key" onClick={() => addPart('circle')}>+ Circle</Button>
+                        <AddMenu label="+ Outline" title="Another outline as a part, at the end" options={others} onPick={name => addPart('outline', name)}/>
+                    </Actions>
+                )}
                 {parts.length > 0 && <Tip>Expand and fillet apply to the outline up to and including their part.</Tip>}
                 <Actions>
                     {dxf && <Button as="a" title={`Download ${outline}.dxf`} download={`${outline}.dxf`}

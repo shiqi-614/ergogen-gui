@@ -36,11 +36,28 @@ export const tests = [
             await page.until(`jsyaml.load(${config}).cases.right_top[2].name === ${JSON.stringify(before[1].name)}`, 30, 'part 1 to move down');
 
             // a part added at the end opens, and is deleted from its settings
-            await page.press('+ outline', 120);
+            await page.press('+ Outline', 120);
             await page.until(`jsyaml.load(${config}).cases.right_top.length === ${before.length + 1}`, 30, 'a new part');
             await page.until(`${lines} === ${before.length + 1} && !!document.querySelector('.settings button[title="Delete this part"]')`, 120, 'it open');
             await page.ev(`document.querySelector('.settings button[title="Delete this part"]').click()`);
             await page.until(`jsyaml.load(${config}).cases.right_top.length === ${before.length}`, 30, 'the new part to go');
+        },
+    },
+    {
+        name: 'cases: a part made of an earlier case is added from its menu, and deleted',
+        async run(page, {url}) {
+            await freshApp(page, url);
+            const names = Object.keys((await parsed(page)).cases);
+            const name = names[1], earlier = names[0];
+            await openCase(page, name);
+            const before = await caseParts(page, name);
+            const menu = `[...document.querySelectorAll('select')].find(s => (s.title || '').startsWith('A part that is another case'))`;
+            await page.until(`!!${menu} && [...${menu}.options].map(o => o.value).join() === ${JSON.stringify(',' + earlier)}`, 60, `the menu offering only ${earlier}`);
+            await page.choose(menu, earlier);
+            await page.until(`(p => p.length === ${before.length + 1} && p[${before.length}].what === 'case' && p[${before.length}].name === ${JSON.stringify(earlier)})(jsyaml.load(${config}).cases.${name})`, 30, `${earlier} as a part of ${name}`);
+            await page.until(`${lines} === ${before.length + 1} && !!document.querySelector('.settings button[title="Delete this part"]')`, 180, 'it open');
+            await page.ev(`window.confirm = () => true; document.querySelector('.settings button[title="Delete this part"]').click()`);
+            await page.until(`jsyaml.load(${config}).cases.${name}.length === ${before.length}`, 30, 'the part to go');
         },
     },
     {

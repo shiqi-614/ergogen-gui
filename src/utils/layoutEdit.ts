@@ -777,6 +777,31 @@ export const insertIntoStack = (text: string, assembly: string, name: string, in
     return text.slice(0, list.range.start) + `[${items.join(', ')}]` + text.slice(list.range.end);
 };
 
+// Takes cases.<name> out of assemblies.<assembly>.stack (the case itself stays)
+export const removeFromStack = (text: string, assembly: string, name: string): string => {
+    const doc = parseDocument(text, {keepCstNodes: true});
+    if (doc.errors.length) throw new Error('the config has YAML errors');
+    const list = flowItems(text, doc.getIn(['assemblies', assembly, 'stack'], true));
+    if (!list) throw new Error(`assemblies.${assembly}.stack is not a list written like [a, b]`);
+    if (!list.names.includes(name)) throw new Error(`${name} is not in assemblies.${assembly}.stack`);
+    const items = list.items.filter((_, i) => list.names[i] !== name);
+    return text.slice(0, list.range.start) + `[${items.join(', ')}]` + text.slice(list.range.end);
+};
+
+// Moves cases.<name> by delta places in assemblies.<assembly>.stack (-1: down, +1: up), entries kept as written
+export const moveInStack = (text: string, assembly: string, name: string, delta: number): string => {
+    const doc = parseDocument(text, {keepCstNodes: true});
+    if (doc.errors.length) throw new Error('the config has YAML errors');
+    const list = flowItems(text, doc.getIn(['assemblies', assembly, 'stack'], true));
+    if (!list) throw new Error(`assemblies.${assembly}.stack is not a list written like [a, b]`);
+    const from = list.names.indexOf(name), to = from + delta;
+    if (from < 0) throw new Error(`${name} is not in assemblies.${assembly}.stack`);
+    if (to < 0 || to >= list.items.length) return text;
+    const items = [...list.items];
+    [items[from], items[to]] = [items[to], items[from]];
+    return text.slice(0, list.range.start) + `[${items.join(', ')}]` + text.slice(list.range.end);
+};
+
 // What uses cases.<name>: the cases mirrored from it, the stacks it is in, and other cases' parts made of it
 export const caseReferences = (text: string, name: string): { mirrors: string[], stacks: string[], parts: string[] } => {
     const doc = parseDocument(text, {keepCstNodes: true});

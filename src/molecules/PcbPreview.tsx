@@ -6,6 +6,8 @@ import Pcb3dPreview, {Stack} from "../atoms/Pcb3dPreview";
 import {useConfigContext} from "../context/ConfigContext";
 import AssemblyParts from "./AssemblyParts";
 import {StackEdit, writeStack} from "../utils/assemblyEdit";
+import {applyEdits, findValue, insertIntoStack, moveInStack, removeFromStack} from "../utils/layoutEdit";
+import yaml from "js-yaml";
 
 type Props = {
     pcb: string,
@@ -77,6 +79,34 @@ const PcbPreview = ({pcb, board, initialView, assembly}: Props): JSX.Element => 
             window.alert(`Cannot write the stack into the config: ${e instanceof Error ? e.message : e}`);
         }
     };
+    // the cases this assembly's stack can take: the config's, less those in it
+    const caseNames = useMemo(() => {
+        try {
+            return Object.keys((yaml.load(configContext?.configInput ?? '') as any)?.cases ?? {});
+        } catch (e: unknown) {
+            return [];
+        }
+    }, [configContext?.configInput]);
+    const restack = (change: (text: string) => string) => {
+        if (!configContext?.configInput) return;
+        try {
+            configContext.setConfigInput(change(configContext.configInput));
+        } catch (e) {
+            window.alert(`Cannot change the stack: ${e instanceof Error ? e.message : e}`);
+        }
+    };
+    const stackCases = stack ? {
+        available: caseNames.filter(name => !stack.parts.some(p => p.name === name)),
+        add: (name: string) => restack(text => insertIntoStack(text, stack.name, name, stack.parts.length)),
+        remove: (name: string) => restack(text => removeFromStack(text, stack.name, name)),
+        move: (name: string, delta: number) => restack(text => moveInStack(text, stack.name, name, delta)),
+        // the board's pcb.top (or pcb.on) set to another case; the board then sits by that case, its shift kept
+        placeBy: (name: string) => restack(text => {
+            const site = findValue(text, ['assemblies', stack.name, 'pcb'], stack.pcb.top ? 'top' : 'on');
+            if (typeof site === 'string') throw new Error(site);
+            return applyEdits(text, [{site, value: name}]);
+        }),
+    } : undefined;
     const choose = (v: View) => {
         lastView = v;
         setView(v);
@@ -93,7 +123,7 @@ const PcbPreview = ({pcb, board, initialView, assembly}: Props): JSX.Element => 
             <ErrorBoundary area={view === '2d' ? 'the board' : 'the board in 3D'} resetKey={`${view} ${pcb.length}`}>
                 {view === '2d'
                     ? <KicanvasPreview pcb={pcb} name={`${board}_preview.kicad_pcb`} pcbName={board}/>
-                    : <Pcb3dPreview pcb={pcb} fileName={`${board}.glb`} stack={stack} onSave={save}
+                    : <Pcb3dPreview pcb={pcb} fileName={`${board}.glb`} stack={stack} onSave={save} stackCases={stackCases}
                                     partsTab={assembly && <ErrorBoundary area="the assembly's parts" resetKey={configContext?.configInput}>
                                         <AssemblyParts assembly={assembly} embedded/></ErrorBoundary>}/>}
             </ErrorBoundary>

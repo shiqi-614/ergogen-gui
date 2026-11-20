@@ -126,7 +126,7 @@ export const tests = [
             await page.until(`jsyaml.load(${config}).outlines.usb_and_swith[0].points[0].ref === 'matrix_col2_row0'`, 30, 'its ref to be written');
             // a point more, and that one deleted again
             const count = `jsyaml.load(${config}).outlines.usb_and_swith[0].points.length`;
-            await page.ev(`[...document.querySelectorAll('button.add')][0].click()`);
+            await page.ev(`[...document.querySelectorAll('button')].find(b => b.textContent === '+ Point').click()`);
             await page.until(`${count} === 5`, 30, 'a fifth point');
             await page.until(`!!document.querySelector('button[title="Delete point 4"]')`, 30, 'its row');
             await page.ev(`document.querySelector('button[title="Delete point 4"]').click()`);
@@ -164,6 +164,35 @@ export const tests = [
                 return [r(${lit}), [Math.min(...hs.map(h => h[0])), Math.min(...hs.map(h => h[1])), Math.max(...hs.map(h => h[2])), Math.max(...hs.map(h => h[3]))]];
             })()`);
             for (let i = 0; i < 4; i++) near(litBox[i], pointsBox[i], 4, `the lit part's edge ${i} should be at its points'`);
+        },
+    },
+    {
+        name: 'outlines: parts are added, moved and deleted in the panel',
+        async run(page, {url}) {
+            await freshApp(page, url);
+            await openLayout(page);
+            await pick(page, 'usb_and_swith');
+            const parts = `jsyaml.load(${config}).outlines.usb_and_swith`;
+            const n = (await parsed(page)).outlines.usb_and_swith.length;
+            await page.until(`[...document.querySelectorAll('button')].some(b => b.textContent === '+ Rectangle')`, 30, 'the add buttons');
+            await page.press('+ Rectangle');
+            await page.until(`${parts}.length === ${n + 1} && ${parts}[${n}].what === 'rectangle'`, 30, 'a rectangle at the end');
+            await page.press('+ Circle');
+            await page.until(`${parts}.length === ${n + 2} && ${parts}[${n + 1}].what === 'circle'`, 30, 'a circle after it');
+            // the circle up, before the rectangle
+            await page.until(`[...document.querySelectorAll('button[title^="Move it up"]')].length === ${n + 2}`, 30, 'their move buttons');
+            await page.ev(`[...document.querySelectorAll('button[title^="Move it up"]')][${n + 1}].click()`);
+            await page.until(`${parts}[${n}].what === 'circle' && ${parts}[${n + 1}].what === 'rectangle'`, 30, 'the circle moved up');
+            // another outline as a part
+            const menu = `[...document.querySelectorAll('select')].find(s => s.title === 'Another outline as a part, at the end')`;
+            await page.choose(menu, 'board');
+            await page.until(`${parts}.length === ${n + 3} && ${parts}[${n + 2}].name === 'board'`, 30, 'board as a part');
+            // the three deleted again, the last first
+            for (let k = 2; k >= 0; k--) {
+                await page.until(`document.querySelectorAll('button[title="Delete this part"]').length === ${n + k + 1}`, 30, 'its delete');
+                await page.ev(`window.confirm = () => true; [...document.querySelectorAll('button[title="Delete this part"]')][${n + k}].click()`);
+                await page.until(`${parts}.length === ${n + k}`, 30, `part ${n + k} to go`);
+            }
         },
     },
     {

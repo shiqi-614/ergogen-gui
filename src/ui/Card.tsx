@@ -24,7 +24,8 @@ export const CardShell = styled.div`
     padding: 0.65rem 0.7rem 0.7rem;
   }
 
-  input:not([type=checkbox]):not([type=range]), select {
+  /* the add menus (AddMenu) look like buttons, not fields */
+  input:not([type=checkbox]):not([type=range]), select:not(.add-menu) {
     width: 100%;
     min-width: 0;
     box-sizing: border-box;

@@ -106,7 +106,7 @@ const PartsCard = ({parts}: { parts: PcbParts }): JSX.Element => {
                                     ))}
                                 </List>
                                 <Actions>
-                                    <Button $variant="go" onClick={() => setAdding({tab, name: '', file: moduleFiles[0] ?? '', onKeys: true, placing: false})}>+ Add module</Button>
+                                    <Button $variant="go" onClick={() => setAdding({tab, name: '', file: moduleFiles[0] ?? '', onKeys: true, placing: false})}>+ Module</Button>
                                 </Actions>
                             </>)}
 
@@ -143,7 +143,7 @@ const PartsCard = ({parts}: { parts: PcbParts }): JSX.Element => {
                                     ))}
                                 </List>
                                 <Actions>
-                                    <Button $variant="go" onClick={() => setAdding({tab, name: '', file: footprintFiles[0] ?? '', onKeys: true, placing: false})}>+ Add footprint</Button>
+                                    <Button $variant="go" onClick={() => setAdding({tab, name: '', file: footprintFiles[0] ?? '', onKeys: true, placing: false})}>+ Footprint</Button>
                                 </Actions>
                             </>)}
 

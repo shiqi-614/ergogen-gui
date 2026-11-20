@@ -82,6 +82,7 @@ export const Check = styled.label`
 // the buttons at the bottom of a card or a tab: those before <Gap/> on the left, after it on the right
 export const Actions = styled.div`
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 0.35rem;
   margin-top: 0.65rem;

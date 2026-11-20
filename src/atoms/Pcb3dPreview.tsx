@@ -1,6 +1,6 @@
 import {ReactNode, useEffect, useRef, useState} from "react";
 import styled from "styled-components";
-import {Actions, Button, CardHead, CardShell, CardTabs, Gap, Status as StatusText, Tip, colors, fontSize} from "../ui";
+import {Actions, Field, AddMenu, Button, CardHead, CardShell, CardTabs, Gap, Status as StatusText, Tip, colors, fontSize} from "../ui";
 import * as THREE from "three";
 import {OrbitControls} from "three/examples/jsm/controls/OrbitControls";
 import {STLLoader} from "three/examples/jsm/loaders/STLLoader";
@@ -32,6 +32,12 @@ type Props = {
     onSave?: (edit: StackEdit) => void,
     // the assembly's other parts, edited in a tab beside its case's heights
     partsTab?: ReactNode,
+    // the cases a stack can take, and putting one on its top, moving one up or down, taking one out of it, and
+    // which case the board is placed by (its pcb.top or pcb.on)
+    stackCases?: {
+        available: string[], add: (name: string) => void, remove: (name: string) => void,
+        move: (name: string, delta: number) => void, placeBy: (name: string) => void,
+    },
 };
 
 // where the panel has the board and each case part (their bottoms' heights), and the other parts (their origins')
@@ -151,10 +157,16 @@ const Card = styled(CardShell)`
   }
 `;
 
-// a part's row: its switch, the height of its bottom, and where its top is then
+// a part's row: its switch, the height of its bottom, where its top is then, and (a case) its ↑ ↓ ×
 const Row = styled.div`
   display: grid;
-  grid-template-columns: 1fr 4.2rem 3.6rem;
+  grid-template-columns: minmax(0, 1fr) 4.2rem 3.6rem 3.6rem;
+
+  label, > span:first-child {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
   align-items: center;
   gap: 0.35rem;
   margin-bottom: 0.2rem;
@@ -163,6 +175,20 @@ const Row = styled.div`
     color: ${colors.muted};
     font-size: ${fontSize.small};
   }
+
+  .tools {
+    display: flex;
+    justify-content: flex-end;
+  }
+`;
+
+// a group's name: the board, and the other parts after it
+const GroupHead = styled.div`
+  margin: 0.5rem 0 0.25rem;
+  padding-top: 0.4rem;
+  border-top: 1px solid ${colors.rule};
+  color: ${colors.muted};
+  font-size: ${fontSize.small};
 `;
 
 // The view lights linear colours and draws in sRGB. The colours here are sRGB, as KiCad gives them, and go in
@@ -245,7 +271,7 @@ const PARALLEL = 4;
 // A board in 3D: its body, holes and pads, and every footprint's 3D models (from the addresses in ErgoCaiLib's
 // 3dmodels/sources.yaml); in an assembly, also its case parts and other parts. Left drag orbits, right drag pans,
 // the wheel zooms.
-const Pcb3dPreview = ({pcb, fileName, stack, onSave, partsTab}: Props): JSX.Element => {
+const Pcb3dPreview = ({pcb, fileName, stack, onSave, partsTab, stackCases}: Props): JSX.Element => {
     const container = useRef<HTMLDivElement>(null);
     const view = useRef<Built | null>(null);
     // case parts switched off, by name; a ref too, for parts that load after a switch
@@ -661,15 +687,43 @@ const Pcb3dPreview = ({pcb, fileName, stack, onSave, partsTab}: Props): JSX.Elem
                                 <input key={`${p.name}|${fields}`} type="number" step="0.1" defaultValue={mm(z)}
                                        title={`The height of ${p.name}'s bottom`} onChange={e => moveTo(p.name, e.target.value)}/>
                                 <span className="top">– {mm(z + p.height)}</span>
+                                {stackCases && (() => {
+                                    const holds = stack.pcb.top === p.name || stack.pcb.on === p.name;
+                                    const at = stack.parts.indexOf(p);
+                                    return <span className="tools">
+                                        <Button $variant="ghost" disabled={at === stack.parts.length - 1} onClick={() => stackCases.move(p.name, 1)}
+                                                title={`Move ${p.name} up the stack`}>↑</Button>
+                                        <Button $variant="ghost" disabled={at === 0} onClick={() => stackCases.move(p.name, -1)}
+                                                title={`Move ${p.name} down the stack`}>↓</Button>
+                                        <Button $variant="ghost" disabled={holds} onClick={() => stackCases.remove(p.name)}
+                                                title={holds ? `The board is placed by ${p.name} (pcb.${stack.pcb.top === p.name ? 'top' : 'on'}): change that first`
+                                                    : `Take ${p.name} out of this assembly's stack (the case stays in cases)`}>×</Button>
+                                    </span>;
+                                })()}
                             </Row>
                         );
                     })}
+                    {stackCases && (
+                        <Actions>
+                            <AddMenu label="+ Case" title="Put another case on top of the stack" options={stackCases.available} onPick={stackCases.add}/>
+                        </Actions>
+                    )}
+                    <GroupHead>Board</GroupHead>
                     <Row>
-                        <span>PCB</span>
+                        <span>{fileName.replace(/\.glb$/, '')}</span>
                         <input key={`pcb|${fields}`} type="number" step="0.1" defaultValue={mm(positions.pcb)}
                                title="The height of the board's bottom" onChange={e => moveTo(null, e.target.value)}/>
                         <span className="top">– {mm(positions.pcb + stack.pcb.thickness)}</span>
                     </Row>
+                    {stackCases && (stack.pcb.top || stack.pcb.on) && (
+                        <Field label={stack.pcb.top ? 'Top level with' : 'Lies on'}>
+                            <select value={(stack.pcb.top || stack.pcb.on) as string} onChange={e => stackCases.placeBy(e.target.value)}
+                                    title={stack.pcb.top ? "the case part whose top the board's top is level with (pcb.top)" : 'the case part the board lies on (pcb.on)'}>
+                                {stack.parts.map(p => <option key={p.name} value={p.name}>{p.name}</option>)}
+                            </select>
+                        </Field>
+                    )}
+                    {stack.models.length > 0 && <GroupHead>Other parts</GroupHead>}
                     {stack.models.map((m, i) => {
                         const z = positions.models[i] ?? m.z;
                         return (
