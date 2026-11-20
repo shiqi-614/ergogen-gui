@@ -527,11 +527,13 @@ cases:
       extrude: 5
       operation: subtract
       expand: 0.5
+    # 1 mm wider than right_top's: the edge of right_top's opening is the ledge the joystick retainer's hooks
+    # catch under (ErgoCai.modules joystick/Alpsalpine-pogo/retainer)
     - what: pcb
       name: /modules.joystick/
       extrude: 5
       operation: subtract
-      expand: 1.5
+      expand: 2.5
     - what: outline
       name: usb_and_swith
       extrude: 5
@@ -700,7 +702,15 @@ assemblies:
       - name: joystick
         model: "github:shiqi-614/ErgoCai.modules/joystick/Alpsalpine-pogo/Alpsalpine-pogo.glb"
         at_module: joystick
-        z: 12
+        # 11.8 with the retainer: its spacers hold the board 3.8 mm over the pcb, so the pins work at 3.8 mm
+        z: 11.8
+      # the printed retainer: its frame and base screwed together through the joystick module's corners, one
+      # cartridge that snaps into the case by a hook at each end (ErgoCai.modules joystick/Alpsalpine-pogo/retainer);
+      # the frame's feet on the module board's top, the base (spacers, the post under the stick) under it
+      - name: retainer
+        model: "github:shiqi-614/ErgoCai.modules/joystick/Alpsalpine-pogo/retainer/retainer.glb"
+        at_module: joystick
+        z: 13.4
       # or the trackball module in its place, with its ball cup and 25 mm ball (trackball/PMW3610-pogo/cup)
       # - name: trackball
       #   model: "github:shiqi-614/ErgoCai.modules/trackball/PMW3610-pogo/PMW3610-pogo.glb"
