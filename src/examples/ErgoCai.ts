@@ -274,12 +274,6 @@ outlines:
     - operation: subtract
       name: stud_mounting
 
-  reset_hole:
-    - what: circle
-      radius: 1.5 
-      where:
-        ref: [matrix_col0_row0]
-        shift: [-21, -75]
   
   
 pcbs:
@@ -652,10 +646,14 @@ cases:
       name: usb_and_swith
       extrude: 3
       operation: subtract
-    - what: outline
-      name: reset_hole
+    # the reset button's hole, under its plunger: drawn on Dwgs.User in its footprint, on the board's back, so it
+    # goes where the module does
+    - what: pcb
+      name: /modules.reset(-left)?.RESRT_SW1/
       extrude: 3
       operation: subtract
+      layers: [Dwgs.User]
+      side: back
     - what: pcb
       name: /modules.e-paper.EPM_H/
       extrude: 5
