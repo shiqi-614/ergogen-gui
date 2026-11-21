@@ -484,6 +484,8 @@ cases:
       operation: subtract
       expand: 0.5
     - what: pcb
+      # the pogo mount's courtyard, for the joystick or the trackball read from above (a case for the side-read
+      # trackball cuts its outline instead: layers [User.1], cut: outline, here and in the middle and switch plates)
       name: /modules.joystick/
       extrude: 3
       operation: subtract
@@ -688,6 +690,8 @@ assemblies:
       - name: joystick
         model: "github:shiqi-614/ErgoCai.modules/joystick/Alpsalpine-pogo/Alpsalpine-pogo.glb"
         at_module: joystick
+        # turned half a turn on the mount: its pogo pins to the pads at x -11, by the thumb
+        rotate: 180
         # the retainer's spacers hold the board 3.8 mm over the pcb, so the pins work at 3.8 mm: the pcb's top at 8
         z: 11.8
       # the printed retainer: its frame and base screwed together through the joystick module's corners, one
@@ -696,12 +700,15 @@ assemblies:
       - name: retainer
         model: "github:shiqi-614/ErgoCai.modules/joystick/Alpsalpine-pogo/retainer/retainer.glb"
         at_module: joystick
+        # turned half a turn on the mount: its pogo pins to the pads at x -11, by the thumb
+        rotate: 180
         z: 13.4
-      # or the trackball module in its place, with its ball cup and 25 mm ball (trackball/PMW3610-pogo/cup)
+      # or the trackball module in its place, with its ball cup and 20 mm ball (trackball/PMW3610-pogo/cup)
       # - name: trackball
       #   model: "github:shiqi-614/ErgoCai.modules/trackball/PMW3610-pogo/PMW3610-pogo.glb"
       #   at_module: joystick
-      #   z: 12
+      #   rotate: 180
+      #   z: 11.8
   ergocai_left:
     stack: [left_buttom, left_gap, left_switchplate, left_middle, left_top]
     pcb:

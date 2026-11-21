@@ -16,12 +16,13 @@ export type MadePart = {
     shift: number[], rotate: number[], matched: number, outline: any,
 };
 
-const ATTRS = ['name', 'operation', 'extrude', 'expand', 'shift', 'rotate', 'layers', 'side', 'asym'] as const;
+const ATTRS = ['name', 'operation', 'extrude', 'expand', 'shift', 'rotate', 'layers', 'side', 'cut', 'asym'] as const;
 type Attr = typeof ATTRS[number];
 
 const OPERATIONS = ['add', 'subtract', 'intersect'];
 const ASYMS = ['both', 'source', 'clone'];
 const SIDES = ['front', 'back', 'both'];
+const CUTS = ['box', 'outline'];
 const SIGN: Record<string, string> = {add: '+', subtract: '−', intersect: '∩'};
 // the colours the view draws a part's shape in
 export const OPERATION_COLOURS: Record<string, number> = {add: 0x4dabf7, subtract: 0xff4d4d, intersect: 0xffd43b};
@@ -235,6 +236,7 @@ const CaseParts = ({caseName, made, onLight}: Props): JSX.Element | null => {
                                     {source !== caseName && <Tip>On {caseName} it shifts the other way in x, and turns the other way about y and z.</Tip>}
                                     {part.what === 'pcb' && <Field label="Layers">{box(index, 'layers', '', '[F.CrtYd]')}</Field>}
                                     {part.what === 'pcb' && <Field label="Side">{select(index, 'side', SIDES, 'front', "the footprints it cuts: on the board's front, its back (a bottom plate's holes), or both")}</Field>}
+                                    {part.what === 'pcb' && <Field label="Cut">{select(index, 'cut', CUTS, 'box', 'what each footprint cuts: the box round what it draws on the layers, or the closed shapes it draws there')}</Field>}
                                     <Field label="Halves">{select(index, 'asym', ASYMS, 'both', 'which halves it is on: both, the source one, or the mirrored one')}</Field>
                                     {!result && <Tip>Not on this half (its asym leaves it off).</Tip>}
                                     <Actions>

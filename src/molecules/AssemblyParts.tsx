@@ -10,7 +10,7 @@ import {EditSite, addAssemblyPart, applyEdits, deleteListItem, findItemSites} fr
 // The fields are named as the config names them. The view draws them once ergogen has placed them.
 
 // module is at_module's old name, still read (and written, in a part that has it)
-const ATTRS = ['name', 'model', 'at_module', 'module', 'z'] as const;
+const ATTRS = ['name', 'model', 'at_module', 'module', 'rotate', 'z'] as const;
 type Attr = typeof ATTRS[number];
 
 // at the 3D view's bottom right
@@ -157,6 +157,7 @@ const AssemblyParts = ({assembly, embedded = false}: Props): JSX.Element | null 
                                     {modules.map(m => <option key={m} value={m}>{m}</option>)}
                                 </select>
                             </Field>
+                            <Field label="rotate" unit="°">{box(index, 'rotate', 'rotate', '0', 'turned this much more on its place, e.g. 180 for a module that goes on its mount the other way round')}</Field>
                             <Field label="z" unit="mm">{box(index, 'z', 'z', '0', "how high: its z = 0 this far above the stack's bottom, in mm")}</Field>
                             <Actions>
                                 <Gap/>
