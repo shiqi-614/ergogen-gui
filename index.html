@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <link rel="icon" href="https://cdn.jsdelivr.net/gh/shiqi-614/ergogen-gui@cdn-20261121-123438-83b9697/favicon.ico" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#000000" />
+    <meta
+      name="description"
+      content="Ergogen"
+    />
+    <link rel="manifest" href="https://cdn.jsdelivr.net/gh/shiqi-614/ergogen-gui@cdn-20261121-123438-83b9697/manifest.json" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans&display=swap" rel="stylesheet">
+    <title>Ergogen</title>
+    <style>html,body,#root{height:100%}.booting{color:#c8c8c8;flex-direction:column;justify-content:center;align-items:center;gap:.8rem;height:100%;font-family:Noto Sans,sans-serif;font-size:.9rem;display:flex}.booting:before{content:"";border:.222222rem solid #ffffff26;border-top-color:#28a745;border-radius:50%;width:2rem;height:2rem;animation:.8s linear infinite booting}@keyframes booting{to{transform:rotate(360deg)}}</style>
+    <script type="module" crossorigin src="https://cdn.jsdelivr.net/gh/shiqi-614/ergogen-gui@cdn-20261121-123438-83b9697/assets/index-D1PfIyE5.js"></script>
+    <link rel="stylesheet" crossorigin href="https://cdn.jsdelivr.net/gh/shiqi-614/ergogen-gui@cdn-20261121-123438-83b9697/assets/index-D0Jh2Ca-.css">
+  </head>
+  <body style="background: #2d2d2d;">
+    <noscript>You need to enable JavaScript to run this app.</noscript>
+    <!-- the app replaces this once ergogen.js, its scripts and the app itself have loaded -->
+    <div id="root"><div class="booting" role="status">Loading Ergogen…</div></div>
+    <!-- ergogen.js reads makerjs, jsyaml, math and axios as globals: the versions ergogen itself depends on,
+         pinned, from jsDelivr. Its kle global (kle-serial) is left undefined, so keyboard-layout-editor JSON
+         is not read in the browser -->
+    <script src="https://cdn.jsdelivr.net/npm/js-yaml@3.14.2/dist/js-yaml.min.js" integrity="sha384-VB35dRNbaeCelpj1WJOImRbg3tDL4YW785BNkTLhHtSNt7TGAOWFQ+GIU0IjiBB7" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mathjs@11.12.0/lib/browser/math.js" integrity="sha384-88DqLWMdRCi4oxuBRmFFUaZauJLUVRXNry8v840iAOr9FRmFH20cMrBRM9Lmffd9" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/makerjs@0.19.2/dist/browser.maker.js" integrity="sha384-2NKBApAuvsXwQIPlPYnRrs7qrcCgLVDkrrmY0jcGzHR8cgrkjaM6bdtnIrKJftqG" crossorigin="anonymous"></script>
+    <script>
+      makerjs = require('makerjs')
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/axios@1.13.6/dist/axios.min.js" integrity="sha384-EtqfExzDvAOmLLdnOsa5Dy174/rTmPzv9OnQXw8NQOXnTypob284TIsp6Gt3yEyL" crossorigin="anonymous"></script>
+    <script>
+      window.ergogenManifoldUrl = "https://cdn.jsdelivr.net/npm/manifold-3d@3.5.5/manifold.js"
+    </script>
+    <!-- built from the ergogen fork when the app is built (yarn run build-ergogen) -->
+    <script src="https://cdn.jsdelivr.net/gh/shiqi-614/ergogen-gui@cdn-20261121-123438-83b9697/dependencies/ergogen.js"></script>
+    <!-- the app; module scripts are deferred, so it runs after the scripts above -->
+  </body>
+</html>
