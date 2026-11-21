@@ -521,6 +521,12 @@ cases:
       extrude: 5
       operation: subtract
       expand: 0.5
+    - what: pcb
+      name: /modules.battery/
+      extrude: 5
+      operation: subtract
+      expand: 0.5
+      shift: [5, 0, 0]
     # 1 mm wider than right_top's: the edge of right_top's opening is the ledge the joystick retainer's hooks
     # catch under (ErgoCai.modules joystick/Alpsalpine-pogo/retainer)
     - what: pcb
@@ -532,11 +538,8 @@ cases:
       name: usb_and_swith
       extrude: 5
       operation: subtract
-    - what: outline
-      name: pcb_stud_mounting
-      extrude: 5
-      operation: subtract
     - what: pcb
+      expand: 1
       name: /modules.e-paper.EPM_H/
       extrude: 5
       operation: subtract
@@ -589,10 +592,6 @@ cases:
       name: usb_and_swith
       extrude: 5
       operation: subtract
-    - what: outline
-      name: pcb_screw_mounting
-      extrude: 5
-      operation: subtract
     # the power switch and the USB receptacle, with the room the lever and the plug need: drawn on Dwgs.User in
     # their footprints, over the whole part
     - what: pcb
@@ -600,11 +599,6 @@ cases:
       extrude: 5
       operation: subtract
       layers: [Dwgs.User]
-    - what: pcb
-      name: /modules.e-paper.EPM_H/
-      extrude: 5
-      operation: subtract
-      layers: ["*.Cu"]
     - what: pcb
       name: /modules.e-paper.EPM_FPC1/
       extrude: 5
@@ -628,11 +622,6 @@ cases:
       name: stud_mounting
       extrude: 5
       operation: subtract
-    - what: pcb
-      name: /modules.e-paper.EPM_H/
-      extrude: 5
-      operation: subtract
-      layers: ["*.Cu"]
 
   right_buttom:
     - what: outline
@@ -654,11 +643,6 @@ cases:
       operation: subtract
       layers: [Dwgs.User]
       side: back
-    - what: pcb
-      name: /modules.e-paper.EPM_H/
-      extrude: 5
-      operation: subtract
-      layers: ["*.Cu"]
 
   left_top:
     mirror:
