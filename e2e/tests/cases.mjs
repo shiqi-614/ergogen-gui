@@ -30,6 +30,14 @@ export const tests = [
             await page.key('Enter', 'Enter', 13);
             await page.until(`jsyaml.load(${config}).cases.right_top[1].extrude === 4`, 30, 'the thickness in the config');
 
+            // and a shift, which the part didn't have
+            const shift = `document.querySelector('.settings input[title="shift"]')`;
+            await page.until(`!!${shift}`, 120, 'its shift box');
+            await page.ev(`(() => { const i = ${shift}; i.focus(); i.select(); })()`);
+            await page.type('[5, 0, 0]');
+            await page.key('Enter', 'Enter', 13);
+            await page.until(`JSON.stringify(jsyaml.load(${config}).cases.right_top[1].shift) === '[5,0,0]'`, 30, 'the shift in the config');
+
             // move it down, and it stays open
             await page.until(`!!document.querySelector('.settings button[title="Move it down"]')`, 120, 'its settings again');
             await page.ev(`document.querySelector('.settings button[title="Move it down"]').click()`);

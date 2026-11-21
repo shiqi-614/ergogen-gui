@@ -16,7 +16,7 @@ export type MadePart = {
     shift: number[], rotate: number[], matched: number, outline: any,
 };
 
-const ATTRS = ['name', 'operation', 'extrude', 'expand', 'layers', 'side', 'asym'] as const;
+const ATTRS = ['name', 'operation', 'extrude', 'expand', 'shift', 'rotate', 'layers', 'side', 'asym'] as const;
 type Attr = typeof ATTRS[number];
 
 const OPERATIONS = ['add', 'subtract', 'intersect'];
@@ -230,6 +230,9 @@ const CaseParts = ({caseName, made, onLight}: Props): JSX.Element | null => {
                                     <Field label="Operation">{select(index, 'operation', OPERATIONS, 'add', 'how it joins the parts before it')}</Field>
                                     {part.what !== 'case' && <Field label="Thick" unit="mm">{box(index, 'extrude', '', '1')}</Field>}
                                     {part.what !== 'case' && <Field label="Expand" unit="mm">{box(index, 'expand', '', '0')}</Field>}
+                                    <Field label="Shift" unit="mm">{box(index, 'shift', '', '[0, 0, 0]')}</Field>
+                                    <Field label="Rotate" unit="°">{box(index, 'rotate', '', '[0, 0, 0]')}</Field>
+                                    {source !== caseName && <Tip>On {caseName} it shifts the other way in x, and turns the other way about y and z.</Tip>}
                                     {part.what === 'pcb' && <Field label="Layers">{box(index, 'layers', '', '[F.CrtYd]')}</Field>}
                                     {part.what === 'pcb' && <Field label="Side">{select(index, 'side', SIDES, 'front', "the footprints it cuts: on the board's front, its back (a bottom plate's holes), or both")}</Field>}
                                     <Field label="Halves">{select(index, 'asym', ASYMS, 'both', 'which halves it is on: both, the source one, or the mirrored one')}</Field>
