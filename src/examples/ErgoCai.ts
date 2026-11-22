@@ -588,21 +588,13 @@ cases:
       name: usb_and_swith
       extrude: 5
       operation: subtract
-    # the power switch, with the room the lever needs: drawn on Dwgs.User in its footprint, over the whole part. The
-    # USB receptacle is on the board's back, and the plug's top stays level with the board's top (0.07 mm over it at
-    # the 6.5 mm the plug may be at most), so the plate goes over it
+    # the power switch and the USB receptacle, with the room the lever and the plug need: drawn on Dwgs.User in
+    # their footprints, over the whole part
     - what: pcb
-      name: /modules.power_switch(-left)?.BAT_SW1/
+      name: /modules.(usb.USB_J1|power_switch(-left)?.BAT_SW1)/
       extrude: 5
       operation: subtract
       layers: [Dwgs.User]
-    # the USB receptacle's pins, soldered on the board's front: the room for the joints, on Eco2.User in its footprint
-    - what: pcb
-      name: /modules.usb.USB_J1/
-      extrude: 5
-      operation: subtract
-      layers: [Eco2.User]
-      side: back
     - what: pcb
       name: /modules.e-paper.EPM_FPC1/
       extrude: 5
@@ -611,30 +603,29 @@ cases:
       layers: [Dwgs.User]
       side: back
 
-  # 8 mm: under the board, 6.4 mm for the parts on its back; the USB plug (6.5 mm at most) reaches 4.83 mm below it
   right_gap: 
     - what: outline
       name: expand
-      extrude: 8
+      extrude: 5
     - what: outline
       name: board
-      extrude: 8
+      extrude: 5
       operation: subtract
     - what: outline
       name: usb_and_swith
-      extrude: 8
+      extrude: 5
       operation: subtract
     - what: outline
       name: stud_mounting
-      extrude: 8
+      extrude: 5
       operation: subtract
-    # the USB receptacle under the board, and the plug: the strip between the board and the funnel goes there
+    # the plug, whose bottom comes level with the board's bottom: the strip between the board and the funnel goes
+    # there (the receptacle's Dwgs.User)
     - what: pcb
       name: /modules.usb.USB_J1/
-      extrude: 8
+      extrude: 5
       operation: subtract
       layers: [Dwgs.User]
-      side: back
 
   right_buttom:
     - what: outline
@@ -686,43 +677,43 @@ assemblies:
       name: ergo_cai_right
       top: right_gap
     # the e-paper module (ErgoCai.modules e-paper/2.13inch, exported from KiCad with its models) on the e-paper
-    # socket's four holes, over the 18650 cell: its board's bottom at 33 mm, on 22 mm standoffs from the pcb
+    # socket's four holes, over the 18650 cell: its board's bottom at 30 mm, on 22 mm standoffs from the pcb
     parts:
       - name: e-paper
         model: "github:shiqi-614/ErgoCai.modules/e-paper/2.13inch/2.13inch.glb"
         at_module: e-paper
-        z: 33
+        z: 30
       # the joystick module (ErgoCai.modules joystick/Alpsalpine-pogo, exported from KiCad with its models) on the
       # joystick mount: its board's bottom 3.8 mm over the pcb's top
       - name: joystick
         model: "github:shiqi-614/ErgoCai.modules/joystick/Alpsalpine-pogo/Alpsalpine-pogo.glb"
         at_module: joystick
-        # the retainer's spacers hold the board 3.8 mm over the pcb, so the pins work at 3.8 mm: the pcb's top at 11
-        z: 14.8
+        # the retainer's spacers hold the board 3.8 mm over the pcb, so the pins work at 3.8 mm: the pcb's top at 8
+        z: 11.8
       # the printed retainer: its frame and base screwed together through the joystick module's corners, one
       # cartridge that snaps into the case by a hook at each end (ErgoCai.modules joystick/Alpsalpine-pogo/retainer);
       # the frame's feet on the module board's top, the base (spacers, the post under the stick) under it
       - name: retainer
         model: "github:shiqi-614/ErgoCai.modules/joystick/Alpsalpine-pogo/retainer/retainer.glb"
         at_module: joystick
-        z: 16.4
+        z: 13.4
       # or the trackball module in its place, with its ball cup and 25 mm ball (trackball/PMW3610-pogo/cup)
       # - name: trackball
       #   model: "github:shiqi-614/ErgoCai.modules/trackball/PMW3610-pogo/PMW3610-pogo.glb"
       #   at_module: joystick
-      #   z: 15
+      #   z: 12
   ergocai_left:
     stack: [left_buttom, left_gap, left_switchplate, left_middle, left_top]
     pcb:
       name: ergo_cai_left
       top: left_gap
     # the e-paper module (ErgoCai.modules e-paper/2.13inch, exported from KiCad with its models) on the e-paper
-    # socket's four holes, over the 18650 cell: its board's bottom at 33 mm, on 22 mm standoffs from the pcb
+    # socket's four holes, over the 18650 cell: its board's bottom at 30 mm, on 22 mm standoffs from the pcb
     parts:
       - name: e-paper
         model: "github:shiqi-614/ErgoCai.modules/e-paper/2.13inch/2.13inch.glb"
         at_module: e-paper
-        z: 33
+        z: 30
 `
 };
 
