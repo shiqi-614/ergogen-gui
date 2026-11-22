@@ -621,13 +621,6 @@ cases:
       name: stud_mounting
       extrude: 5
       operation: subtract
-    # the plug, whose bottom comes level with the board's bottom: the strip between the board and the funnel goes
-    # there (the receptacle's Dwgs.User)
-    - what: pcb
-      name: /modules.usb.USB_J1/
-      extrude: 5
-      operation: subtract
-      layers: [Dwgs.User]
 
   right_buttom:
     - what: outline
@@ -707,9 +700,9 @@ cases:
 # the one below it, and the board's top is level with the top of the gap, the frame it lies in.
 # The right half takes one of three modules on its pogo mount, all on the same keyboard board (the firmware finds
 # which one is there: zmk-ergo-cai pogo_detect): an assembly for each, to look at and to print the case it needs.
-#   ergocai_right            the joystick (and its retainer)
-#   ergocai_right_trackball  the trackball read from above (its ball cup), in the joystick's case
-#   ergocai_right_side       the trackball read from the side, in the right_*_side case layers
+#   ergocai_right                 the joystick (and its retainer)
+#   ergocai_right_trackball       the trackball read from above (its ball cup), in the joystick's case
+#   ergocai_right_side_trackball  the trackball read from the side, in the right_*_side case layers
 assemblies:
   ergocai_right:
     stack: [right_buttom, right_gap, right_switchplate, right_middle, right_top]
@@ -758,7 +751,7 @@ assemblies:
         at_module: joystick
         rotate: 180
         z: 11.8
-  ergocai_right_side:
+  ergocai_right_side_trackball:
     stack: [right_buttom, right_gap, right_switchplate_side, right_middle_side, right_top_side]
     pcb:
       name: ergo_cai_right
