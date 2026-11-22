@@ -484,8 +484,8 @@ cases:
       operation: subtract
       expand: 0.5
     - what: pcb
-      # the pogo mount's courtyard, for the joystick or the trackball read from above (a case for the side-read
-      # trackball cuts its outline instead: layers [User.1], cut: outline, here and in the middle and switch plates)
+      # the pogo mount's courtyard, for the joystick or the trackball read from above (right_top_side opens it further
+      # for the side-read trackball, as right_middle_side and right_switchplate_side do the middle and switch plates)
       name: /modules.joystick/
       extrude: 3
       operation: subtract
@@ -650,6 +650,39 @@ cases:
       layers: [Dwgs.User]
       side: back
 
+  # The same case for the side-read trackball (ErgoCai.modules trackball/PMW3610-side-pogo) on the mount: each layer
+  # the joystick's, opened further round the mount's User.1 outline (the side module's board and ball seat)
+  right_top_side:
+    - what: case
+      name: right_top
+    - what: pcb
+      name: /modules.joystick/
+      extrude: 3
+      operation: subtract
+      expand: 1.5
+      layers: [User.1]
+      cut: outline
+  right_middle_side:
+    - what: case
+      name: right_middle
+    - what: pcb
+      name: /modules.joystick/
+      extrude: 5
+      operation: subtract
+      expand: 2.5
+      layers: [User.1]
+      cut: outline
+  right_switchplate_side:
+    - what: case
+      name: right_switchplate
+    - what: pcb
+      name: /modules.joystick/
+      extrude: 5
+      operation: subtract
+      expand: 1.5
+      layers: [User.1]
+      cut: outline
+
   left_top:
     mirror:
       from: right_top
@@ -672,6 +705,11 @@ cases:
 
 # How the case parts stack up around each board, from the bottom up, for the 3D board preview: each part sits on
 # the one below it, and the board's top is level with the top of the gap, the frame it lies in.
+# The right half takes one of three modules on its pogo mount, all on the same keyboard board (the firmware finds
+# which one is there: zmk-ergo-cai pogo_detect): an assembly for each, to look at and to print the case it needs.
+#   ergocai_right            the joystick (and its retainer)
+#   ergocai_right_trackball  the trackball read from above (its ball cup), in the joystick's case
+#   ergocai_right_side       the trackball read from the side, in the right_*_side case layers
 assemblies:
   ergocai_right:
     stack: [right_buttom, right_gap, right_switchplate, right_middle, right_top]
@@ -703,12 +741,39 @@ assemblies:
         # turned half a turn on the mount: its pogo pins to the pads at x -11, by the thumb
         rotate: 180
         z: 13.4
-      # or the trackball module in its place, with its ball cup and 20 mm ball (trackball/PMW3610-pogo/cup)
-      # - name: trackball
-      #   model: "github:shiqi-614/ErgoCai.modules/trackball/PMW3610-pogo/PMW3610-pogo.glb"
-      #   at_module: joystick
-      #   rotate: 180
-      #   z: 11.8
+  ergocai_right_trackball:
+    stack: [right_buttom, right_gap, right_switchplate, right_middle, right_top]
+    pcb:
+      name: ergo_cai_right
+      top: right_gap
+    parts:
+      - name: e-paper
+        model: "github:shiqi-614/ErgoCai.modules/e-paper/2.13inch/2.13inch.glb"
+        at_module: e-paper
+        z: 30
+      # the trackball module (ErgoCai.modules trackball/PMW3610-pogo) with its ball cup and 20 mm ball, turned half a
+      # turn as the joystick is, its board on the cup's base 3.8 mm over the pcb
+      - name: trackball
+        model: "github:shiqi-614/ErgoCai.modules/trackball/PMW3610-pogo/PMW3610-pogo.glb"
+        at_module: joystick
+        rotate: 180
+        z: 11.8
+  ergocai_right_side:
+    stack: [right_buttom, right_gap, right_switchplate_side, right_middle_side, right_top_side]
+    pcb:
+      name: ergo_cai_right
+      top: right_gap
+    parts:
+      - name: e-paper
+        model: "github:shiqi-614/ErgoCai.modules/e-paper/2.13inch/2.13inch.glb"
+        at_module: e-paper
+        z: 30
+      # the side-read trackball module (ErgoCai.modules trackball/PMW3610-side-pogo, its cartridge and sensor board in
+      # its model) as it is on the mount, not turned: its board's bottom at 11.8, on the base's 3.8 mm spacers
+      - name: side-trackball
+        model: "github:shiqi-614/ErgoCai.modules/trackball/PMW3610-side-pogo/PMW3610-side-pogo.glb"
+        at_module: joystick
+        z: 11.8
   ergocai_left:
     stack: [left_buttom, left_gap, left_switchplate, left_middle, left_top]
     pcb:
