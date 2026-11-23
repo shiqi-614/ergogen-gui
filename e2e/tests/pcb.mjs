@@ -24,8 +24,20 @@ export const tests = [
             const shift = (await right(page)).modules.usb.where.shift;
             const box = await page.titled('modules.usb:');
             const scale = await pxPerMm(page);
+            // every frame until the new board is on show: a board shown, no loading cover over it, and the corner note
+            // that it is being updated
+            await page.ev(`(() => { window.__blank = 0; window.__updating = 0; const look = () => {
+                const shown = [...document.querySelectorAll('kicanvas-embed')].filter(e => e.style.visibility !== 'hidden').length;
+                if (!shown || document.body.textContent.includes('Loading the PCB preview')) window.__blank++;
+                if (document.body.textContent.includes('Updating the board…')) window.__updating++;
+                window.__looking = requestAnimationFrame(look);
+            }; look(); })()`);
             await page.drag(box, [box[0] + 40, box[1]]);
             await waitForBoard(page, 'USB_J1', before);
+            assert(await page.ev(`(() => { cancelAnimationFrame(window.__looking); return window.__blank })()`) === 0,
+                'the board should stay on show while the next one is made, with no loading cover');
+            assert(await page.ev(`window.__updating`) > 0, 'a note should say the board is being updated');
+            await page.until(`!document.body.textContent.includes('Updating the board…')`, 30, 'the note to go once the board is updated');
             const after = await boardFootprint(page, 'USB_J1');
             const moved = (await right(page)).modules.usb.where.shift;
             near(after[0] - before[0], 40 / scale, 0.1, 'USB_J1 should move as far as the box was dragged');
@@ -147,16 +159,19 @@ export const tests = [
             await page.until(`!!document.querySelector('svg polygon.module.chosen')`, 10, 'usb to be picked');
             for (let i = 0; i < 3; i++) await arrow(page, 'ArrowRight');
             await arrow(page, 'ArrowUp', true);
-            await page.key(']', 'BracketRight', 221);
-            await page.until(`(() => { const w = jsyaml.load(${config}).pcbs.ergo_cai_right.modules.usb.where; return w.rotate === -5 && Math.abs(Number(w.shift[1]) - ${Number(where.shift[1]) + 1}) < 1e-6 })()`,
-                30, 'usb to be moved and turned');
+            await page.until(`(() => { const w = jsyaml.load(${config}).pcbs.ergo_cai_right.modules.usb.where; return Math.abs(Number(w.shift[1]) - ${Number(where.shift[1]) + 1}) < 1e-6 })()`,
+                30, 'usb to be moved');
             const moved = (await right(page)).modules.usb.where;
             near(Number(moved.shift[0]), Number(where.shift[0]) + 0.3, 1e-6, 'three steps right are 0.3 mm');
             await waitForBoard(page, 'USB_J1', before);
-            await page.until(`(() => { const f = ${viewer}?.board?.footprints.find(f => f.reference === 'USB_J1'); return f && Math.abs(f.at.rotation - (${before[2]} - 5)) < 1e-6 })()`, 120, 'USB_J1 to turn');
             const after = await boardFootprint(page, 'USB_J1');
             near(after[0] - before[0], 0.3, 1e-6, 'USB_J1 should move 0.3 mm right');
             near(after[1] - before[1], -1, 1e-6, 'and 1 mm up');
+            // then turned, about the module's point, which USB_J1 is not on: only its turn is checked
+            await page.until(`!!document.querySelector('svg polygon.module.chosen')`, 120, 'usb still picked');
+            await page.key(']', 'BracketRight', 221);
+            await page.until(`jsyaml.load(${config}).pcbs.ergo_cai_right.modules.usb.where.rotate === -5`, 30, 'usb to be turned');
+            await page.until(`(() => { const f = ${viewer}?.board?.footprints.find(f => f.reference === 'USB_J1'); return f && Math.abs(f.at.rotation - (${before[2]} - 5)) < 1e-6 })()`, 120, 'USB_J1 to turn');
         },
     },
     {

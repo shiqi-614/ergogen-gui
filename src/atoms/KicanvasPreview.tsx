@@ -1,9 +1,10 @@
 import {useEffect, useRef, useState} from "react";
 import ErrorBoundary from "./ErrorBoundary";
 import styled from "styled-components";
-import Loading from "./Loading";
+import Loading, {Spinner} from "./Loading";
 import Button from "./Button";
 import PcbEditor from "./PcbEditor";
+import {useConfigContext} from "../context/ConfigContext";
 
 type Props = {
     pcb: string,
@@ -55,10 +56,17 @@ const Container = styled.div`
   overflow: hidden;
 `;
 
-// where the <kicanvas-embed> goes; the overlay sits next to it, out of KiCanvas' way
+// where the <kicanvas-embed> goes; the overlay sits next to it, out of KiCanvas' way. A regenerated board loads
+// in a second, hidden <kicanvas-embed> over the shown one, and takes its place once drawn
 const Board = styled.div`
+  position: relative;
   width: 100%;
   height: 100%;
+
+  kicanvas-embed {
+    position: absolute;
+    inset: 0;
+  }
 `;
 
 // covers the board until KiCanvas has loaded and drawn it
@@ -67,6 +75,22 @@ const Overlay = styled.div`
   inset: 0;
   display: flex;
   background: rgba(45, 45, 45, 0.92);
+`;
+
+// in a corner while the board on show is being made again: it stays on show and can be edited meanwhile
+const Updating = styled.div`
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.25rem 0.6rem;
+  border-radius: 0.25rem;
+  background: rgba(45, 45, 45, 0.85);
+  color: #c8c8c8;
+  font-size: 0.8rem;
+  pointer-events: none;
 `;
 
 const Failed = styled.div`
@@ -82,20 +106,31 @@ const KicanvasPreview = ({pcb, name = 'preview.kicad_pcb', pcbName}: Props): JSX
     const container = useRef<HTMLDivElement>(null);
     // keeps the view while the board is regenerated after an edit
     const camera = useRef<Camera | null>(null);
+    // the <kicanvas-embed> on show; it stays until the next board has been drawn
+    const shown = useRef<HTMLElement | null>(null);
     // KiCanvas loads its script once, then parses and draws every board it gets
     const [status, setStatus] = useState<'loading' | 'shown' | 'failed'>('loading');
     // bumped by Retry, to load the script again
     const [attempt, setAttempt] = useState(0);
     // the board viewer, once it has drawn this board
     const [viewer, setViewer] = useState<any>(null);
+    // a regenerated board being drawn behind the one on show
+    const [drawing, setDrawing] = useState(false);
+    // ergogen making the next results, after an edit
+    const running = !!useConfigContext()?.running;
 
     useEffect(() => {
         const target = container.current;
         if (!target || !pcb) return;
         let embed: HTMLElement | null = null;
         let cancelled = false;
-        setStatus('loading');
-        setViewer(null);
+        // the first board covers the pane until drawn; a regenerated one loads behind the one on show
+        if (!shown.current) {
+            setStatus('loading');
+            setViewer(null);
+        } else {
+            setDrawing(true);
+        }
 
         loadKicanvas().then(() => {
             if (cancelled) return;
@@ -104,12 +139,19 @@ const KicanvasPreview = ({pcb, name = 'preview.kicad_pcb', pcbName}: Props): JSX
             element.setAttribute('controls', 'full');
             element.style.height = '100%';
             element.style.setProperty('aspect-ratio', 'auto');
+            element.style.visibility = 'hidden';
             const source = document.createElement('kicanvas-source');
             source.setAttribute('name', name);
             source.textContent = pcb;
             element.appendChild(source);
             element.addEventListener('kicanvas:load', () => {
-                if (!cancelled) setStatus('shown');
+                if (cancelled) return;
+                // the view of the board on show, kept on the new one
+                const old = shown.current && boardViewer(shown.current);
+                if (old) {
+                    const {center, zoom} = old.viewport.camera;
+                    camera.current = {x: center.x, y: center.y, zoom};
+                }
                 const viewer = boardViewer(element);
                 const outline = viewer?.layers.by_name('Edge.Cuts')?.bbox;
                 if (!outline || !(outline.w > 0)) return;
@@ -124,30 +166,40 @@ const KicanvasPreview = ({pcb, name = 'preview.kicad_pcb', pcbName}: Props): JSX
                     viewer.zoom_to_board();
                 }
                 viewer.draw();
-                if (!cancelled) setViewer(viewer);
+                element.style.visibility = '';
+                shown.current?.remove();
+                shown.current = element;
+                setStatus('shown');
+                setDrawing(false);
+                setViewer(viewer);
             });
-            target.replaceChildren(element);
+            target.appendChild(element);
             embed = element;
         }, () => {
             if (!cancelled) setStatus('failed');
         });
 
+        // a board that was not drawn yet goes; the one on show stays until the next one is drawn
         return () => {
             cancelled = true;
-            const viewer = embed && boardViewer(embed);
-            if (viewer) {
-                const {center, zoom} = viewer.viewport.camera;
-                camera.current = {x: center.x, y: center.y, zoom};
-            }
-            embed?.remove();
+            if (embed && embed !== shown.current) embed.remove();
         };
     }, [pcb, name, attempt]);
+
+    // the board on show goes with the pane
+    useEffect(() => () => {
+        shown.current?.remove();
+        shown.current = null;
+    }, []);
 
     return (
         <Container>
             <Board ref={container}/>
             {/* stays mounted while the board regenerates after an edit, so editing goes on on the new one */}
             {pcbName && <ErrorBoundary area="the board's editor" resetKey={pcb}><PcbEditor viewer={status === 'shown' ? viewer : null} pcb={pcbName}/></ErrorBoundary>}
+            {status === 'shown' && (running || drawing) && (
+                <Updating role="status" aria-live="polite"><Spinner $size="0.8rem"/>Updating the board…</Updating>
+            )}
             {pcb && status !== 'shown' && (
                 <Overlay>
                     {status === 'failed'
