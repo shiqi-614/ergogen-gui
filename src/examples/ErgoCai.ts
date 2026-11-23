@@ -184,41 +184,6 @@ outlines:
           shift: [0.8kx , -4.7ky]
       fillet: 0.9
 
-  # Where the pcb is screwed down (its mounting hole footprints use these too), as a template: ergogen drops an
-  # outline with $params and no $args, and fills one in for each outline below that extends it with $args.
-  _pcb_mounts:
-    $params: [__what__, __radius__]
-    pcb_pos1:
-      what: __what__
-      radius: __radius__
-      where: &pcb_pos1
-        ref: [matrix_col0_row0]
-        shift: [-1.55kx, 1ky]
-    pcb_pos2:
-      what: __what__
-      radius: __radius__
-      where: &pcb_pos2
-        ref: [matrix_col6_row0]
-        shift: [0.65kx, 1ky]
-    pcb_pos3:
-      what: __what__
-      radius: __radius__
-      where: &pcb_pos3
-        ref: [matrix_col6_row4]
-        shift: [0.9kx, -0.55ky]
-    pcb_pos4:
-      what: __what__
-      radius: __radius__
-      where: &pcb_pos4
-        ref: [matrix_col6_row4]
-        shift: [-2.7kx, -0.55ky]
-  pcb_stud_mounting:
-    $extends: outlines._pcb_mounts
-    $args: [hexagon, studSize]
-  pcb_screw_mounting:
-    $extends: outlines._pcb_mounts
-    $args: [circle, screwSize]
-
   # where the case parts are screwed together
   _shell_mounts:
     $params: [__what__, __radius__]
@@ -316,34 +281,6 @@ pcbs:
             repo: "shiqi-614/ErgoCaiLib"
             file: "footprints/ErgoCai.pretty/STAB_MX_2u.kicad_mod"
         where: [thumbs_col2_row5, thumbs_col3_row5]
-      mount_hole1:
-        what: 
-          github:
-            repo: "shiqi-614/ErgoCaiLib"
-            file: "footprints/ErgoCai.pretty/MountingHole_2.2mm_M2_DIN965.kicad_mod"
-        where: 
-          <<: *pcb_pos1
-      mount_hole2:
-        what: 
-          github:
-            repo: "shiqi-614/ErgoCaiLib"
-            file: "footprints/ErgoCai.pretty/MountingHole_2.2mm_M2_DIN965.kicad_mod"
-        where: 
-          <<: *pcb_pos2
-      mount_hole3:
-        what: 
-          github:
-            repo: "shiqi-614/ErgoCaiLib"
-            file: "footprints/ErgoCai.pretty/MountingHole_2.2mm_M2_DIN965.kicad_mod"
-        where: 
-          <<: *pcb_pos3
-      mount_hole4:
-        what: 
-          github:
-            repo: "shiqi-614/ErgoCaiLib"
-            file: "footprints/ErgoCai.pretty/MountingHole_2.2mm_M2_DIN965.kicad_mod"
-        where: 
-          <<: *pcb_pos4
     modules:
       charger:
         what:
