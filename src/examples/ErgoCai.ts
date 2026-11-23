@@ -457,6 +457,22 @@ pcbs:
   ergo_cai_left:
     mirror:
       from: ergo_cai_right
+  # The right half with the trackball on the keyboard board itself (ErgoCai.modules trackball/PMW3610): the sensor
+  # flat on its back, its lens up through the board, in the pogo mount's place, no module board and no pogo pins;
+  # its ball seat snaps under the case's top layer as the pogo modules' cartridges do, so the case is the joystick's
+  ergo_cai_right_trackball:
+    $extends: pcbs.ergo_cai_right
+    modules:
+      joystick:
+        what:
+          github:
+            repo: "shiqi-614/ErgoCai.modules"
+            file: "trackball/PMW3610/PMW3610.kicad_pcb"
+        where:
+          ref: [thumbs_col3_row5]
+          shift: [-7, -30]
+          # turned half a turn from the mount, as the pogo trackball module is on it
+          rotate: 90
 
 cases:  
   right_top:
@@ -703,6 +719,9 @@ cases:
 #   ergocai_right                 the joystick (and its retainer)
 #   ergocai_right_trackball       the trackball read from above (its ball cup), in the joystick's case
 #   ergocai_right_side_trackball  the trackball read from the side, in the right_*_side case layers
+# and one with the trackball on the keyboard board itself, a board of its own (ergo_cai_right_trackball):
+#   ergocai_right_trackball_board the trackball read from above, its sensor on the keyboard board, its seat in the
+#                                 joystick's case
 assemblies:
   ergocai_right:
     stack: [right_buttom, right_gap, right_switchplate, right_middle, right_top]
@@ -767,6 +786,17 @@ assemblies:
         model: "github:shiqi-614/ErgoCai.modules/trackball/PMW3610-side-pogo/PMW3610-side-pogo.glb"
         at_module: joystick
         z: 11.8
+  ergocai_right_trackball_board:
+    stack: [right_buttom, right_gap, right_switchplate, right_middle, right_top]
+    pcb:
+      name: ergo_cai_right_trackball
+      top: right_gap
+    # the ball seat (TB_CUP1, its model with the ball) is the board's own footprint: nothing more to add
+    parts:
+      - name: e-paper
+        model: "github:shiqi-614/ErgoCai.modules/e-paper/2.13inch/2.13inch.glb"
+        at_module: e-paper
+        z: 30
   ergocai_left:
     stack: [left_buttom, left_gap, left_switchplate, left_middle, left_top]
     pcb:
