@@ -350,7 +350,9 @@ pcbs:
             file: "joystick/joystick-mount-pogo/joystick-mount-pogo.kicad_pcb"
         where: 
           ref: [thumbs_col3_row5]
-          shift: [-7, -30]
+          # (-9, 2 mm further out than -7: the mount's courtyard 0.1 mm inside the board's edge, 2 mm further
+          # from the key matrix)
+          shift: [-9, -30]
           rotate: -90
         asym: source
       usb:
@@ -407,7 +409,7 @@ pcbs:
             file: "trackball/PMW3610/PMW3610.kicad_pcb"
         where:
           ref: [thumbs_col3_row5]
-          shift: [-7, -30]
+          shift: [-9, -30]
           # turned half a turn from the mount, as the pogo trackball module is on it
           rotate: 90
 
