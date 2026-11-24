@@ -115,6 +115,25 @@ export const shadowOf = (triangle: V[], z0: number, z1: number): [number, number
 const overlapsBox = (lo: number[], hi: number[], box: Slab['box']) =>
     lo[0] <= box.max[0] && box.min[0] <= hi[0] && lo[1] <= box.max[1] && box.min[1] <= hi[1];
 
+// Case parts that run into each other: two parts' slabs that overlap in height, where their material overlaps seen
+// from above (both shrink by TOLERANCE, so parts that only touch, one on another, don't count). A part posed under or
+// beside the stack (the tenting legs under the bottom plate) is a case part too: only this sees it run into another.
+// Each pair once, with its largest overlap over the heights.
+export const findLayerCollisions = (slabs: Slab[]): Collision[] => {
+    const found: Collision[] = [];
+    slabs.forEach((a, i) => slabs.slice(i + 1).forEach(b => {
+        if (a.name === b.name || a.z1 <= b.z0 || b.z1 <= a.z0 || !overlapsBox(a.box.min, a.box.max, b.box)) return;
+        const common = a.material.intersect(b.material);
+        const overlap = common.area();
+        common.delete();
+        if (overlap <= MIN_AREA) return;
+        const same = found.find(c => c.reference === a.name && c.layer === b.name);
+        if (same) same.area = Math.max(same.area, overlap);
+        else found.push({body: -1, reference: a.name, model: '', layer: b.name, area: overlap});
+    }));
+    return found;
+};
+
 const area = (section: any, slab: Slab) => {
     const common = section.intersect(slab.material);
     const a = common.area();

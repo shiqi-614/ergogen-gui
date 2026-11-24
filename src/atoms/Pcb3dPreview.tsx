@@ -6,7 +6,7 @@ import {OrbitControls} from "three/examples/jsm/controls/OrbitControls";
 import {STLLoader} from "three/examples/jsm/loaders/STLLoader";
 import {BoardData, Model3d, PlacedFootprint, readBoard} from "../utils/pcb3d/board";
 import {boardSection, buildBoard, loadManifold} from "../utils/pcb3d/boardMesh";
-import {Body, caseSlabs, Collision, findCollisions, Slab, stlSolid, TOLERANCE} from "../utils/pcb3d/collisions";
+import {Body, caseSlabs, Collision, findCollisions, findLayerCollisions, Slab, stlSolid, TOLERANCE} from "../utils/pcb3d/collisions";
 import {MeshPart} from "../utils/pcb3d/meshCache";
 import {loadModel, loadSources} from "../utils/pcb3d/models";
 import {modelMatrix} from "../utils/pcb3d/placement";
@@ -640,7 +640,7 @@ const Pcb3dPreview = ({pcb, fileName, stack, onSave, partsTab, stackCases}: Prop
                 if (w) hit.add(`${v.models.indexOf(w.mesh)}:${w.index}`);
             });
             mark(v, hit);
-            setCheck({state: 'done', found: summarize(collisions)});
+            setCheck({state: 'done', found: summarize([...collisions, ...findLayerCollisions(slabs)])});
         } catch (e) {
             setCheck({state: 'failed', why: e instanceof Error ? e.message : String(e)});
         } finally {
@@ -742,7 +742,7 @@ const Pcb3dPreview = ({pcb, fileName, stack, onSave, partsTab, stackCases}: Prop
                     })}
                     <Actions>
                         <Button onClick={checkCollisions} disabled={!built || loading || check.state === 'running'}
-                                title={`Which footprints' models, other parts and the board reach more than ${TOLERANCE} mm into the case parts shown`}>
+                                title={`Which footprints' models, other parts, the board and case parts reach more than ${TOLERANCE} mm into the case parts shown`}>
                             {check.state === 'running' ? `Checking… ${check.done} of ${check.total}` : 'Check collisions'}
                         </Button>
                         <Gap/>
@@ -758,8 +758,8 @@ const Pcb3dPreview = ({pcb, fileName, stack, onSave, partsTab, stackCases}: Prop
                         ? <Tip>Nothing runs into the case parts shown.</Tip>
                         : <details open>
                             <summary>
-                                {count(check.found)} {count(check.found) === 1 ? 'footprint runs' : 'footprints run'} into
-                                the case, in red; overlap seen from above
+                                {count(check.found)} {count(check.found) === 1 ? 'part runs' : 'parts run'} into the
+                                case, footprints in red; overlap seen from above
                             </summary>
                             <ul>{check.found.map(f => (
                                 <li key={`${f.layer}|${f.references.join(',')}`} title={f.references.join(', ') + (f.models.length ? `\n${f.models.join(', ')}` : '')}>
