@@ -36,6 +36,9 @@ units:
   tentPin: 2.2
   tentSlotLow: 6.5
   tentSlotHigh: 11.5
+  # The peg printed on each seat's top, tentPeg across, in line with the screw and midway between the slots: in its
+  # hole in the bottom plate (outlines._tent_pegs) it keeps the seat from turning on its one screw
+  tentPeg: 4
   # The detent: the plunger's 1.5 mm ball (radius tentBall) rests on the edges of a notch in the leg's round end, the
   # folded one where the end points at the plunger and the standing one a quarter turn on. A notch is tentNotch* wide
   # each side of its middle where it meets the round end, and round, 0.05 mm wider still, so that its bottom is clear
@@ -372,6 +375,19 @@ outlines:
       name: _tent_thumb_high
       origin: [{ref: thumbs_col1_row5, shift: [-0.75kx, -0.77ky]}, {shift: [tentPivotX, tentSlotHigh], rotate: -25}]
       where: {shift: [0, -30]}
+  # The holes in the bottom plate for the seats' pegs (unit tentPeg), 0.1 mm wider each side: matrix_top_left's, and
+  # thumb_lower's, on its seat turned 25 degrees with the thumbs
+  _tent_pegs:
+    top:
+      what: circle
+      where: {ref: matrix_col0_row0, shift: [-1.85kx, 1.25ky]}
+      adjust: {shift: [0, -(tentSlotLow + tentSlotHigh) / 2]}
+      radius: tentPeg / 2 + 0.1
+    thumb:
+      what: circle
+      where: {ref: thumbs_col1_row5, shift: [-0.75kx, -0.77ky]}
+      adjust: {shift: [0, (tentSlotLow + tentSlotHigh) / 2]}
+      radius: tentPeg / 2 + 0.1
 
   
   
@@ -731,6 +747,11 @@ cases:
       operation: subtract
       layers: [Dwgs.User]
       side: back
+    # the tenting seats' pegs
+    - what: outline
+      name: _tent_pegs
+      extrude: 3
+      operation: subtract
 
   # The same case for the side-read trackball (ErgoCai.modules trackball/PMW3610-side-pogo) on the mount: each layer
   # the joystick's, opened further round the mount's User.1 outline (the side module's board and ball seat)
