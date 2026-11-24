@@ -6,11 +6,11 @@ import {useConfigContext} from "../context/ConfigContext";
 import {EditSite, addAssemblyPart, applyEdits, deleteListItem, findItemSites} from "../utils/layoutEdit";
 
 // The other 3D models of an assembly (assemblies.<name>.parts), in its 3D view: a line each, to set its name, its
-// model, where it goes (at_module: the module of the pcb it sits at) and how high (z), to delete it, or to add one.
-// The fields are named as the config names them. The view draws them once ergogen has placed them.
+// model, where it goes (at_module: the module of the pcb it sits at; or where: an anchor) and how high (z), to delete
+// it, or to add one. The fields are named as the config names them. The view draws them once ergogen has placed them.
 
 // module is at_module's old name, still read (and written, in a part that has it)
-const ATTRS = ['name', 'model', 'at_module', 'module', 'rotate', 'z'] as const;
+const ATTRS = ['name', 'model', 'at_module', 'module', 'where', 'rotate', 'z'] as const;
 type Attr = typeof ATTRS[number];
 
 // at the 3D view's bottom right
@@ -143,12 +143,16 @@ const AssemblyParts = ({assembly, embedded = false}: Props): JSX.Element | null 
                 {parts.map((part, index) => {
                     const at: Attr = rawOf(part.sites.module) !== undefined ? 'module' : 'at_module';
                     const module = rawOf(part.sites[at]);
+                    // placed by an anchor instead of at a module: its anchor, as written
+                    const anchored = rawOf(part.sites.where) !== undefined;
                     return (
                         <div key={String(part.key)} className="part">
                             <Field label="name">{box(index, 'name', 'name', 'name', 'what it is called in the view')}</Field>
                             <Field label="model">{box(index, 'model', 'model', 'github:owner/repo/model.glb, https://…, or ${VAR}/…',
                                 'its model: a path as footprints name them (glb, step, wrl), a URL, or github:owner/repo/file')}</Field>
-                            <Field label={at}>
+                            {anchored ? <Field label="where">{box(index, 'where', 'where', '{ref: <point>, shift: [x, y]}',
+                                'where it goes: an anchor, a point of the layout shifted and turned, as an outline places a shape')}</Field>
+                            : <Field label={at}>
                                 <select value={module ?? ''} title="where it goes: at this module of the pcb, turned with it"
                                         disabled={typeof part.sites[at] === 'string'}
                                         onChange={e => e.target.value && set(index, at, e.target.value)}>
@@ -156,7 +160,7 @@ const AssemblyParts = ({assembly, embedded = false}: Props): JSX.Element | null 
                                     {module && !modules.includes(module) && <option value={module}>{module}</option>}
                                     {modules.map(m => <option key={m} value={m}>{m}</option>)}
                                 </select>
-                            </Field>
+                            </Field>}
                             <Field label="rotate" unit="°">{box(index, 'rotate', 'rotate', '0', 'turned this much more on its place, e.g. 180 for a module that goes on its mount the other way round')}</Field>
                             <Field label="z" unit="mm">{box(index, 'z', 'z', '0', "how high: its z = 0 this far above the stack's bottom, in mm")}</Field>
                             <Actions>
