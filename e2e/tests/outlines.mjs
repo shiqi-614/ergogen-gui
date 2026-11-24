@@ -131,7 +131,17 @@ export const tests = [
             await page.until(`!!document.querySelector('button[title="Delete point 4"]')`, 30, 'its row');
             await page.ev(`document.querySelector('button[title="Delete point 4"]').click()`);
             await page.until(`${count} === 4`, 30, 'the point to go');
-            // a template's part: the ref of its where, written as the list it was
+            // a template's part: the ref of its where, written as the list it was. ErgoCai has no template since its
+            // board lost the mounting holes, so the test adds the one it had
+            const template = [
+                '  _pcb_mounts:', '    $params: [__what__, __radius__]',
+                '    pcb_pos1:', '      what: __what__', '      radius: __radius__',
+                '      where:', '        ref: [matrix_col0_row0]', '        shift: [-1.55kx, 1ky]',
+                '  pcb_stud_mounting:', '    $extends: outlines._pcb_mounts', '    $args: [hexagon, studSize]', '',
+            ].join('\n');
+            await page.ev(`(() => { const m = window.monaco.editor.getModels()[0];
+                m.setValue(m.getValue().replace('\\noutlines:\\n', '\\noutlines:\\n' + ${JSON.stringify(template)} + '\\n')); })()`);
+            await page.until(`!!jsyaml.load(${config}).outlines._pcb_mounts`, 30, 'the template in the config');
             await pick(page, '_pcb_mounts');
             await page.until(`document.body.textContent.includes('A template, of __what__, __radius__')`, 30, 'the template');
             await page.until(`${menus}.some(m => m.value === 'matrix_col0_row0')`, 30, 'the ref of pcb_pos1');

@@ -4,7 +4,6 @@ import styled from "styled-components";
 import './index.css';
 
 import Ergogen from './Ergogen';
-import Header from "./atoms/Header";
 import ConfigContextProvider from "./context/ConfigContext";
 import Absolem from "./examples/absolem";
 
@@ -20,7 +19,6 @@ ReactDOM.render(
   <React.StrictMode>
       <>
           <AppContainer>
-              <Header/>
               <ConfigContextProvider initialInput={Absolem.value}>
                 <Ergogen />
               </ConfigContextProvider>

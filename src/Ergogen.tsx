@@ -12,6 +12,7 @@ import LayoutEditor from "./molecules/LayoutEditor";
 import {useConfigContext} from "./context/ConfigContext";
 import Button from "./atoms/Button";
 import Loading from "./atoms/Loading";
+import Header from "./atoms/Header";
 import Select from "react-select";
 import DownloadIcon from "./atoms/DownloadIcon";
 import {ConfigOption, exampleOptions } from "./examples";
@@ -95,7 +96,7 @@ const StyledSelect = styled(Select)`
     flex-grow: 1;
 `;
 
-// the example menu, and the button that hides the config editor
+// the button that hides the config editor
 const EditorHead = styled.div`
   display: flex;
   gap: 0.4rem;
@@ -209,6 +210,17 @@ const Ergogen = () => {
     const showPreview = (key: string) => setPreviewKey(key);
 
     return (
+        <>
+        {/* the example menu in the header: hiding the config editor does not hide it */}
+        <Header>
+            <StyledSelect
+                options={exampleOptions}
+                value={selectedOption}
+                // @ts-ignore
+                onChange={(newValue: ConfigOption|null) => setSelectedOption(newValue)}
+                placeholder={"Select an example, or paste your config in the editor"}
+            />
+        </Header>
         <FlexContainer>
             <StyledSplit
                 direction={"horizontal"}
@@ -226,13 +238,6 @@ const Ergogen = () => {
                     <EditorContainer style={editorHidden ? {display: 'none'} : undefined}>
                         <EditorHead>
                             <FoldButton title="Hide the config editor, for more room" onClick={() => setEditorHidden(true)}>◂</FoldButton>
-                            <StyledSelect
-                                options={exampleOptions}
-                                value={selectedOption}
-                                // @ts-ignore
-                                onChange={(newValue: ConfigOption|null) => setSelectedOption(newValue)}
-                                placeholder={"Paste your config below, or select an example here!"}
-                            />
                         </EditorHead>
                         <ErrorBoundary area="the config editor"><StyledConfigEditor/></ErrorBoundary>
 
@@ -308,6 +313,7 @@ const Ergogen = () => {
                 </RightSplitPane>
             </StyledSplit>
         </FlexContainer>
+        </>
     );
 }
 

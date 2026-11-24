@@ -1,3 +1,4 @@
+import {ReactNode} from "react";
 import styled from "styled-components";
 
 const HeaderContainer = styled.div`
@@ -7,6 +8,13 @@ const HeaderContainer = styled.div`
       align-items: center;
       justify-content: space-between;
       padding: 0 1rem 0 1rem;
+      gap: 1rem;
+`;
+
+// what the page puts in the header (the example menu): there whether the config editor is shown or not
+const Tools = styled.div`
+      flex: 0 1 24rem;
+      min-width: 0;
 `;
 
 const LinkContainer = styled.div`
@@ -23,12 +31,14 @@ const LinkContainer = styled.div`
 
 
 
-const Header = (): JSX.Element => {
+const Header = ({children}: {children?: ReactNode}): JSX.Element => {
     return (
         <HeaderContainer>
             <div>
                 <h2>Ergogen</h2>
             </div>
+
+            <Tools>{children}</Tools>
 
             <LinkContainer>
                 {/*<a href="#" rel="noreferrer">*/}
