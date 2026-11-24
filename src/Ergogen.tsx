@@ -1,4 +1,4 @@
-import {useEffect, useState} from "react";
+import {useEffect, useRef, useState} from "react";
 import ErrorBoundary from "./atoms/ErrorBoundary";
 import {configErrors, revealLine, setShowConfigEditor} from "./utils/configErrors";
 import styled from "styled-components";
@@ -13,9 +13,10 @@ import {useConfigContext} from "./context/ConfigContext";
 import Button from "./atoms/Button";
 import Loading from "./atoms/Loading";
 import Header from "./atoms/Header";
-import Select from "react-select";
 import DownloadIcon from "./atoms/DownloadIcon";
 import {ConfigOption, exampleOptions } from "./examples";
+import {colors, radius, shadow} from "./ui/theme";
+import Select, {StylesConfig} from "react-select";
 import ErgoCai from "./examples/ErgoCai";
 
 // fills the screen below the header: 100vh minus the header (4rem) and the split padding (2rem)
@@ -28,9 +29,14 @@ const EditorContainer = styled.div`
   flex-grow: 1;
 `;
 
+// the rest of the window below the header: a few px more in a pane (Firefox) are cut off here, they no longer push
+// the header smaller, and by another amount with the editor shown than hidden
 const FlexContainer = styled.div`
   display: flex;
   flex-flow: wrap;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
 `;
 
 const Error = styled.div`
@@ -90,22 +96,37 @@ const downloadConfig = (fileName: string, content: string) => {
     setTimeout(() => window.URL.revokeObjectURL(link.href), 1000);
 };
 
-const StyledSelect = styled(Select)`
-    color: black;
-    white-space: nowrap;
-    flex-grow: 1;
-`;
+// the example menu, where the header had the app's name: it reads as that title (its font and size), with a small
+// arrow after it; the list is in the same type, smaller
+const TITLE = {fontFamily: "'Noto Sans', sans-serif", fontSize: '1.5rem', fontWeight: 700};
+const LIST = {...TITLE, fontSize: '1rem'};
+const exampleMenuStyles: StylesConfig<ConfigOption, false> = {
+    control: base => ({...base, ...TITLE, minHeight: 0, border: 'none', boxShadow: 'none', background: 'transparent', cursor: 'pointer'}),
+    valueContainer: base => ({...base, padding: 0}),
+    singleValue: base => ({...base, margin: 0, color: colors.strong}),
+    placeholder: base => ({...base, margin: 0, color: colors.strong}),
+    input: base => ({...base, margin: 0, padding: 0}),
+    indicatorSeparator: () => ({display: 'none'}),
+    dropdownIndicator: (base, state) => ({...base, padding: '0 0 0 0.35rem', color: state.isFocused ? colors.strong : colors.muted,
+        ':hover': {color: colors.strong}}),
+    menu: base => ({...base, ...LIST, width: 'max-content', minWidth: '100%', marginTop: '0.3rem', zIndex: 20,
+        background: colors.panel, border: `1px solid ${colors.border}`, borderRadius: radius.card, boxShadow: shadow}),
+    menuList: base => ({...base, padding: '0.3rem 0', maxHeight: 'calc(100vh - 6rem)'}),
+    group: base => ({...base, padding: '0.2rem 0'}),
+    groupHeading: base => ({...base, color: colors.muted, fontSize: '0.75rem', fontWeight: 400, textTransform: 'none',
+        margin: '0.2rem 0', padding: '0 0.9rem'}),
+    option: (base, state) => ({...base, padding: '0.2rem 0.9rem', cursor: 'pointer',
+        color: state.isSelected ? colors.accent : colors.strong,
+        background: state.isFocused ? colors.buttonHover : 'transparent',
+        ':active': {background: colors.button}}),
+};
 
-// the button that hides the config editor
-const EditorHead = styled.div`
-  display: flex;
-  gap: 0.4rem;
-`;
-
-// hides the config editor, or (in the strip it leaves) shows it again
-const FoldButton = styled.button`
-  flex: none;
-  width: 2rem;
+// the strip the hidden config editor leaves: a click shows the editor
+const ShowButton = styled.button`
+  width: 100%;
+  height: calc(100vh - 6rem);
+  writing-mode: vertical-rl;
+  letter-spacing: 0.05em;
   border: none;
   border-radius: 0.25rem;
   background: #595959;
@@ -115,13 +136,6 @@ const FoldButton = styled.button`
 
   &:hover {
     background: #6f6f6f;
-  }
-
-  &.show {
-    width: 100%;
-    height: calc(100vh - 6rem);
-    writing-mode: vertical-rl;
-    letter-spacing: 0.05em;
   }
 `;
 
@@ -169,6 +183,12 @@ const RightSplitPane = styled.div`
     position: relative;
 `;
 
+// the Downloads list scrolls in its pane, as tall as the previews: the page below the header does not scroll
+const DownloadsPane = styled.div`
+    height: calc(100vh - 6rem);
+    overflow-y: auto;
+`;
+
 const Ergogen = () => {
     const [previewKey, setPreviewKey] = useState("demo.svg");
     const [selectedOption, setSelectedOption] = useState<ConfigOption|null>(ErgoCai);
@@ -188,9 +208,18 @@ const Ergogen = () => {
     }, [selectedOption]);
 
     // the config editor, hidden down to a strip at the left, as the page starts: the preview has the room until ▸
-    // Config, or a jump to an error's line, shows it. The split's sizes it goes back to
+    // Config, or a jump to an error's line, shows it. It hides again once the pointer has left it (and the strip
+    // between it and the preview, which a drag widens it by). The split's sizes it goes back to
     const [editorHidden, setEditorHidden] = useState(true);
     const [openSizes, setOpenSizes] = useState([30, 70]);
+    const hideTimer = useRef<number>();
+    const dragging = useRef(false);
+    const stay = () => window.clearTimeout(hideTimer.current);
+    const leave = () => {
+        stay();
+        if (!dragging.current) hideTimer.current = window.setTimeout(() => setEditorHidden(true), 300);
+    };
+    useEffect(() => stay, []);
     useEffect(() => {
         setShowConfigEditor(() => setEditorHidden(false));
         return () => setShowConfigEditor(null);
@@ -213,12 +242,15 @@ const Ergogen = () => {
         <>
         {/* the example menu in the header: hiding the config editor does not hide it */}
         <Header>
-            <StyledSelect
+            <Select<ConfigOption, false>
+                aria-label="Example"
+                classNamePrefix="example-menu"
                 options={exampleOptions}
                 value={selectedOption}
-                // @ts-ignore
-                onChange={(newValue: ConfigOption|null) => setSelectedOption(newValue)}
-                placeholder={"Select an example, or paste your config in the editor"}
+                onChange={option => setSelectedOption(option)}
+                isSearchable={false}
+                placeholder="Ergogen"
+                styles={exampleMenuStyles}
             />
         </Header>
         <FlexContainer>
@@ -229,16 +261,22 @@ const Ergogen = () => {
                 minSize={[FOLDED_WIDTH, 100]}
                 gutterSize={10}
                 snapOffset={0}
+                // the strip between the editor and the preview counts as the editor's: the pointer on it keeps it
+                gutter={(index: number, direction: string) => {
+                    const gutter = document.createElement('div');
+                    gutter.className = `gutter gutter-${direction}`;
+                    gutter.addEventListener('mouseenter', stay);
+                    gutter.addEventListener('mouseleave', leave);
+                    return gutter;
+                }}
+                onDragStart={() => { dragging.current = true; stay(); }}
                 // dragging the strip out shows the editor again, at the width it is dragged to
-                onDragEnd={(sizes: number[]) => { setEditorHidden(false); setOpenSizes(sizes); }}
+                onDragEnd={(sizes: number[]) => { dragging.current = false; setEditorHidden(false); setOpenSizes(sizes); }}
             >
-                <LeftSplitPane>
-                    {editorHidden && <FoldButton className="show" title="Show the config editor" onClick={() => setEditorHidden(false)}>▸ Config</FoldButton>}
+                <LeftSplitPane onMouseEnter={stay} onMouseLeave={leave}>
+                    {editorHidden && <ShowButton title="Show the config editor" onClick={() => setEditorHidden(false)}>▸ Config</ShowButton>}
                     {/* hidden, not unmounted: the editor keeps its undo history */}
                     <EditorContainer style={editorHidden ? {display: 'none'} : undefined}>
-                        <EditorHead>
-                            <FoldButton title="Hide the config editor, for more room" onClick={() => setEditorHidden(true)}>◂</FoldButton>
-                        </EditorHead>
                         <ErrorBoundary area="the config editor"><StyledConfigEditor/></ErrorBoundary>
 
                         <GenerateContainer>
@@ -304,10 +342,12 @@ const Ergogen = () => {
                             </ErrorBoundary>
                         </LeftSplitPane>
                         <RightSplitPane>
-                            <ErrorBoundary area="the Downloads list" resetKey={configContext.configInput}>
-                                <Downloads setPreview={showPreview} label={selectedOptionLabel}
-                                           previewKey={previewKey}/>
-                            </ErrorBoundary>
+                            <DownloadsPane>
+                                <ErrorBoundary area="the Downloads list" resetKey={configContext.configInput}>
+                                    <Downloads setPreview={showPreview} label={selectedOptionLabel}
+                                               previewKey={previewKey}/>
+                                </ErrorBoundary>
+                            </DownloadsPane>
                         </RightSplitPane>
                     </InnerSplit>
                 </RightSplitPane>

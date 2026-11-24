@@ -4,6 +4,8 @@ import styled from "styled-components";
 const HeaderContainer = styled.div`
       width: 100%;
       height: 4em;
+      /* the page is a column as tall as the window: the header keeps its height, whatever is below it */
+      flex: none;
       display: flex;
       align-items: center;
       justify-content: space-between;
@@ -11,10 +13,9 @@ const HeaderContainer = styled.div`
       gap: 1rem;
 `;
 
-// what the page puts in the header (the example menu): there whether the config editor is shown or not
+// what the page puts in the header's left, where the app's name was (the example menu)
 const Tools = styled.div`
-      flex: 0 1 24rem;
-      min-width: 0;
+      flex: none;
 `;
 
 const LinkContainer = styled.div`
@@ -34,11 +35,7 @@ const LinkContainer = styled.div`
 const Header = ({children}: {children?: ReactNode}): JSX.Element => {
     return (
         <HeaderContainer>
-            <div>
-                <h2>Ergogen</h2>
-            </div>
-
-            <Tools>{children}</Tools>
+            <Tools>{children ?? <h2>Ergogen</h2>}</Tools>
 
             <LinkContainer>
                 {/*<a href="#" rel="noreferrer">*/}

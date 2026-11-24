@@ -8,9 +8,8 @@ export const tests = [
             await freshApp(page, url);
             // the page opens with the editor hidden down to its strip
             await page.until(`!![...document.querySelectorAll('button')].find(b => b.textContent === '▸ Config')`, 10, 'the hidden editor');
-            await page.click(await page.center(`document.querySelector('input[id^="react-select"]')`, 'the example menu'));
-            await page.type('Tiny20');
-            await page.key('Enter', 'Enter', 13);
+            await page.click(await page.center(`document.querySelector('.example-menu__control')`, 'the example menu'));
+            await page.click(await page.center(`[...document.querySelectorAll('.example-menu__option')].find(o => o.textContent === 'Tiny20')`, 'Tiny20 in its list'));
             await page.until(`${config}.includes('rotate: 5') && !${config}.includes('funnelNarrow')`, 30, 'Tiny20 in the editor');
         },
     },

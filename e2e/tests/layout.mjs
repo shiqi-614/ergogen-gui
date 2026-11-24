@@ -1,5 +1,6 @@
 // Keys and columns in the layout editor
 import {assert, freshApp, keyCenters, near, openLayout, parsed} from '../app.mjs';
+import {wait} from '../cdp.mjs';
 
 const stagger = async (page, col) => (await parsed(page)).points.zones.matrix.columns[col].key?.stagger;
 
@@ -222,7 +223,7 @@ export const tests = [
         },
     },
     {
-        name: 'layout: the config editor starts hidden to a strip, shows with its text, and hides again',
+        name: 'layout: the config editor starts hidden to a strip, shows with its text, and hides once the pointer leaves it',
         async run(page, {url}) {
             await freshApp(page, url);
             await openLayout(page);
@@ -233,7 +234,16 @@ export const tests = [
             await page.ev(`document.querySelector('button[title="Show the config editor"]').click()`);
             await page.until(`${shown} && ${width} < ${hidden} - 100`, 10, 'the editor shown, the layout narrower');
             assert((await page.ev(`window.monaco.editor.getModels()[0].getValue()`)).includes('points:'), 'the config should be there');
-            await page.ev(`document.querySelector('button[title="Hide the config editor, for more room"]').click()`);
+            // the pointer on the editor keeps it; once it has left (past the strip between them) the editor hides
+            const editor = await page.center(`document.querySelector('.monaco-editor')`, 'the editor');
+            await page.cdp.send('Input.dispatchMouseEvent', {type: 'mouseMoved', x: editor[0], y: editor[1]});
+            await wait(600);
+            assert(await page.ev(shown), 'the editor should stay while the pointer is on it');
+            const gutter = await page.center(`document.querySelector('.gutter-horizontal')`, 'the strip after the editor');
+            await page.cdp.send('Input.dispatchMouseEvent', {type: 'mouseMoved', x: gutter[0], y: gutter[1]});
+            await wait(600);
+            assert(await page.ev(shown), 'the editor should stay while the pointer is on the strip after it');
+            await page.cdp.send('Input.dispatchMouseEvent', {type: 'mouseMoved', x: gutter[0] + 200, y: gutter[1]});
             await page.until(`!(${shown}) && Math.abs(${width} - ${hidden}) < 5`, 10, 'the editor hidden again, the layout back at its width');
         },
     },
