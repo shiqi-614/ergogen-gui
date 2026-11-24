@@ -74,15 +74,11 @@ units:
   tentBevelTopHigh: tentLegW * tan(tentHigh deg)
   tentBevelThumbLow: tentLegW * tan(tentLow deg) * cos(25 deg)
   tentBevelThumbHigh: tentLegW * tan(tentHigh deg) * cos(25 deg)
-  # For the cases that show the legs folded and standing: a leg laid flat is turned about its own middle, so each
-  # is shifted back by the distance from its pin to that middle (from its round end to its foot's long corner)
-  tentMidTopLow: (tentTopLow + tentBevelTopLow / 2 - tentLegW / 2) / 2
-  tentMidTopHigh: (tentTopHigh + tentBevelTopHigh / 2 - tentLegW / 2) / 2
+  # For the case that shows the legs folded: a leg laid flat is turned about its own middle, so the thumb seat's,
+  # turned 25 degrees, are shifted back by the distance from their pin to that middle (from the round end to the
+  # foot's long corner)
   tentMidThumbLow: (tentThumbLow + tentBevelThumbLow / 2 - tentLegW / 2) / 2
   tentMidThumbHigh: (tentThumbHigh + tentBevelThumbHigh / 2 - tentLegW / 2) / 2
-  # the pins' height in the cases of a standing pair, whose lower foot is that case's bottom
-  tentOpenLow: max(tentTopLow + tentBevelTopLow / 2, tentThumbLow + tentBevelThumbLow / 2)
-  tentOpenHigh: max(tentTopHigh + tentBevelTopHigh / 2, tentThumbHigh + tentBevelThumbHigh / 2)
 points:
   zones:
     matrix:
@@ -806,11 +802,9 @@ cases:
     mirror:
       from: right_buttom
 
-  # The tenting legs under the bottom plate, for the tent assemblies: each leg (outlines._tent_*) laid flat, turned on
-  # its edge and along its slot (rotate, about the leg's middle), and shifted so that its hole is on its seat's pin
-  # (units tent*), the case's bottom at its lowest point. Folded, all four lie toward the half's middle, the pins
-  # tentLegW / 2 over the case's bottom; in right_tent_low and right_tent_high that pair stands square to the plate,
-  # its lower foot the bottom, and the other pair stays folded.
+  # The tenting legs under the bottom plate, folded, for the tent assemblies: each leg (outlines._tent_*) laid flat,
+  # turned on its edge and along its slot (rotate, about the leg's middle), and shifted so that its hole is on its
+  # seat's pin (units tent*). All four lie toward the half's middle, the pins tentLegW / 2 over the case's bottom.
   right_tent_folded:
     - what: outline
       name: _tent_top_low
@@ -832,57 +826,9 @@ cases:
       extrude: tentLegT
       rotate: [90, 0, 25]
       shift: [-tentMidThumbHigh * (1 - cos(25 deg)) - tentLegT / 2 * sin(25 deg), tentLegT / 2 * cos(25 deg) + tentMidThumbHigh * sin(25 deg), tentLegW / 2]
-  right_tent_low:
-    - what: outline
-      name: _tent_top_low
-      extrude: tentLegT
-      rotate: [90, 90, 0]
-      shift: [-tentMidTopLow, tentLegT / 2, tentOpenLow - tentMidTopLow]
-    - what: outline
-      name: _tent_top_high
-      extrude: tentLegT
-      rotate: [90, 0, 0]
-      shift: [0, tentLegT / 2, tentOpenLow]
-    - what: outline
-      name: _tent_thumb_low
-      extrude: tentLegT
-      rotate: [90, 90, 25]
-      shift: [-tentMidThumbLow - tentLegT / 2 * sin(25 deg), tentLegT / 2 * cos(25 deg), tentOpenLow - tentMidThumbLow]
-    - what: outline
-      name: _tent_thumb_high
-      extrude: tentLegT
-      rotate: [90, 0, 25]
-      shift: [-tentMidThumbHigh * (1 - cos(25 deg)) - tentLegT / 2 * sin(25 deg), tentLegT / 2 * cos(25 deg) + tentMidThumbHigh * sin(25 deg), tentOpenLow]
-  right_tent_high:
-    - what: outline
-      name: _tent_top_low
-      extrude: tentLegT
-      rotate: [90, 0, 0]
-      shift: [0, tentLegT / 2, tentOpenHigh]
-    - what: outline
-      name: _tent_top_high
-      extrude: tentLegT
-      rotate: [90, 90, 0]
-      shift: [-tentMidTopHigh, tentLegT / 2, tentOpenHigh - tentMidTopHigh]
-    - what: outline
-      name: _tent_thumb_low
-      extrude: tentLegT
-      rotate: [90, 0, 25]
-      shift: [-tentMidThumbLow * (1 - cos(25 deg)) - tentLegT / 2 * sin(25 deg), tentLegT / 2 * cos(25 deg) + tentMidThumbLow * sin(25 deg), tentOpenHigh]
-    - what: outline
-      name: _tent_thumb_high
-      extrude: tentLegT
-      rotate: [90, 90, 25]
-      shift: [-tentMidThumbHigh - tentLegT / 2 * sin(25 deg), tentLegT / 2 * cos(25 deg), tentOpenHigh - tentMidThumbHigh]
   left_tent_folded:
     mirror:
       from: right_tent_folded
-  left_tent_low:
-    mirror:
-      from: right_tent_low
-  left_tent_high:
-    mirror:
-      from: right_tent_high
 
 # How the case parts stack up around each board, from the bottom up, for the 3D board preview: each part sits on
 # the one below it, and the board's top is level with the top of the gap, the frame it lies in.
@@ -981,9 +927,9 @@ assemblies:
         model: "github:shiqi-614/ErgoCai.modules/e-paper/2.13inch/2.13inch.glb"
         at_module: e-paper
         z: 30
-  # Each half with the tenting legs (cases *_tent_*): folded, and with the tentLow or the tentHigh pair standing; the
-  # seats under the inner screws, the bumpers by the outer edge. Each case of legs hangs under the bottom plate, its
-  # bottom that far under the plate's underside (z 0).
+  # Each half with the tenting legs folded (cases *_tent_folded): the seats under the inner screws, the bumpers by
+  # the outer edge. The case of legs hangs under the bottom plate, its bottom that far under the plate's underside
+  # (z 0).
   ergocai_right_tent_folded:
     stack:
       - {name: right_tent_folded, z: -(tentPivotZ + tentLegW / 2)}
@@ -1025,82 +971,6 @@ assemblies:
       - name: tent-bumper-bottom
         model: "github:shiqi-614/ErgoCai.modules/tent/bumper.glb"
         where: {ref: matrix_col6_row0, shift: [0.8kx + 8 - tentBumperD / 2, -4.7ky + 3.6]}
-  ergocai_right_tent_low:
-    stack:
-      - {name: right_tent_low, z: -(tentPivotZ + tentOpenLow)}
-      - {name: right_buttom, z: 0}
-      - right_gap
-      - right_switchplate
-      - right_middle
-      - right_top
-    pcb:
-      name: ergo_cai_right
-      top: right_gap
-    parts:
-      - name: e-paper
-        model: "github:shiqi-614/ErgoCai.modules/e-paper/2.13inch/2.13inch.glb"
-        at_module: e-paper
-        z: 30
-      - name: joystick
-        model: "github:shiqi-614/ErgoCai.modules/joystick/Alpsalpine-pogo/Alpsalpine-pogo.glb"
-        at_module: joystick
-        rotate: 180
-        z: 11.8
-      - name: retainer
-        model: "github:shiqi-614/ErgoCai.modules/joystick/Alpsalpine-pogo/retainer/retainer.glb"
-        at_module: joystick
-        rotate: 180
-        z: 13.4
-      - name: tent-seat-top
-        model: "github:shiqi-614/ErgoCai.modules/tent/seat.glb"
-        where: {ref: matrix_col0_row0, shift: [-1.85kx, 1.25ky]}
-      - name: tent-seat-thumb
-        model: "github:shiqi-614/ErgoCai.modules/tent/seat-mirrored.glb"
-        where: {ref: thumbs_col1_row5, shift: [-0.75kx, -0.77ky]}
-      - name: tent-bumper-top
-        model: "github:shiqi-614/ErgoCai.modules/tent/bumper.glb"
-        where: {ref: matrix_col6_row0, shift: [0.8kx + 8 - tentBumperD / 2, 1.25ky - 6.25]}
-      - name: tent-bumper-bottom
-        model: "github:shiqi-614/ErgoCai.modules/tent/bumper.glb"
-        where: {ref: matrix_col6_row0, shift: [0.8kx + 8 - tentBumperD / 2, -4.7ky + 3.6]}
-  ergocai_right_tent_high:
-    stack:
-      - {name: right_tent_high, z: -(tentPivotZ + tentOpenHigh)}
-      - {name: right_buttom, z: 0}
-      - right_gap
-      - right_switchplate
-      - right_middle
-      - right_top
-    pcb:
-      name: ergo_cai_right
-      top: right_gap
-    parts:
-      - name: e-paper
-        model: "github:shiqi-614/ErgoCai.modules/e-paper/2.13inch/2.13inch.glb"
-        at_module: e-paper
-        z: 30
-      - name: joystick
-        model: "github:shiqi-614/ErgoCai.modules/joystick/Alpsalpine-pogo/Alpsalpine-pogo.glb"
-        at_module: joystick
-        rotate: 180
-        z: 11.8
-      - name: retainer
-        model: "github:shiqi-614/ErgoCai.modules/joystick/Alpsalpine-pogo/retainer/retainer.glb"
-        at_module: joystick
-        rotate: 180
-        z: 13.4
-      - name: tent-seat-top
-        model: "github:shiqi-614/ErgoCai.modules/tent/seat.glb"
-        where: {ref: matrix_col0_row0, shift: [-1.85kx, 1.25ky]}
-      - name: tent-seat-thumb
-        model: "github:shiqi-614/ErgoCai.modules/tent/seat-mirrored.glb"
-        where: {ref: thumbs_col1_row5, shift: [-0.75kx, -0.77ky]}
-      - name: tent-bumper-top
-        model: "github:shiqi-614/ErgoCai.modules/tent/bumper.glb"
-        where: {ref: matrix_col6_row0, shift: [0.8kx + 8 - tentBumperD / 2, 1.25ky - 6.25]}
-      - name: tent-bumper-bottom
-        model: "github:shiqi-614/ErgoCai.modules/tent/bumper.glb"
-        where: {ref: matrix_col6_row0, shift: [0.8kx + 8 - tentBumperD / 2, -4.7ky + 3.6]}
   ergocai_left_tent_folded:
     stack:
       - {name: left_tent_folded, z: -(tentPivotZ + tentLegW / 2)}
@@ -1118,66 +988,6 @@ assemblies:
         at_module: e-paper
         z: 30
       # the left half's seats: the mirror images of the right half's, which are the other seat turned a half turn
-      - name: tent-seat-top
-        model: "github:shiqi-614/ErgoCai.modules/tent/seat-mirrored.glb"
-        where: {ref: mirror_matrix_col0_row0, shift: [-1.85kx, 1.25ky]}
-        rotate: 180
-      - name: tent-seat-thumb
-        model: "github:shiqi-614/ErgoCai.modules/tent/seat.glb"
-        where: {ref: mirror_thumbs_col1_row5, shift: [-0.75kx, -0.77ky]}
-        rotate: 180
-      - name: tent-bumper-top
-        model: "github:shiqi-614/ErgoCai.modules/tent/bumper.glb"
-        where: {ref: mirror_matrix_col6_row0, shift: [0.8kx + 8 - tentBumperD / 2, 1.25ky - 6.25]}
-      - name: tent-bumper-bottom
-        model: "github:shiqi-614/ErgoCai.modules/tent/bumper.glb"
-        where: {ref: mirror_matrix_col6_row0, shift: [0.8kx + 8 - tentBumperD / 2, -4.7ky + 3.6]}
-  ergocai_left_tent_low:
-    stack:
-      - {name: left_tent_low, z: -(tentPivotZ + tentOpenLow)}
-      - {name: left_buttom, z: 0}
-      - left_gap
-      - left_switchplate
-      - left_middle
-      - left_top
-    pcb:
-      name: ergo_cai_left
-      top: left_gap
-    parts:
-      - name: e-paper
-        model: "github:shiqi-614/ErgoCai.modules/e-paper/2.13inch/2.13inch.glb"
-        at_module: e-paper
-        z: 30
-      - name: tent-seat-top
-        model: "github:shiqi-614/ErgoCai.modules/tent/seat-mirrored.glb"
-        where: {ref: mirror_matrix_col0_row0, shift: [-1.85kx, 1.25ky]}
-        rotate: 180
-      - name: tent-seat-thumb
-        model: "github:shiqi-614/ErgoCai.modules/tent/seat.glb"
-        where: {ref: mirror_thumbs_col1_row5, shift: [-0.75kx, -0.77ky]}
-        rotate: 180
-      - name: tent-bumper-top
-        model: "github:shiqi-614/ErgoCai.modules/tent/bumper.glb"
-        where: {ref: mirror_matrix_col6_row0, shift: [0.8kx + 8 - tentBumperD / 2, 1.25ky - 6.25]}
-      - name: tent-bumper-bottom
-        model: "github:shiqi-614/ErgoCai.modules/tent/bumper.glb"
-        where: {ref: mirror_matrix_col6_row0, shift: [0.8kx + 8 - tentBumperD / 2, -4.7ky + 3.6]}
-  ergocai_left_tent_high:
-    stack:
-      - {name: left_tent_high, z: -(tentPivotZ + tentOpenHigh)}
-      - {name: left_buttom, z: 0}
-      - left_gap
-      - left_switchplate
-      - left_middle
-      - left_top
-    pcb:
-      name: ergo_cai_left
-      top: left_gap
-    parts:
-      - name: e-paper
-        model: "github:shiqi-614/ErgoCai.modules/e-paper/2.13inch/2.13inch.glb"
-        at_module: e-paper
-        z: 30
       - name: tent-seat-top
         model: "github:shiqi-614/ErgoCai.modules/tent/seat-mirrored.glb"
         where: {ref: mirror_matrix_col0_row0, shift: [-1.85kx, 1.25ky]}
