@@ -334,7 +334,8 @@ const Ergogen = () => {
                             <ErrorBoundary area={mode === 'layout' ? 'the layout editor' : 'the preview'}
                                            resetKey={`${mode} ${previewKey} ${configContext.configInput}`}>
                                 {mode === 'layout'
-                                    ? <LayoutEditor/>
+                                    // made again for another example, so that its view is fitted to that example's keys
+                                    ? <LayoutEditor key={selectedOption?.label ?? ''}/>
                                     // until the first run has results (or an error) there is nothing to preview
                                     : configContext.results || configContext.error
                                         ? <StyledFilePreview key={previewKey} previewKey={previewKey} previewContent={previewContent}/>
