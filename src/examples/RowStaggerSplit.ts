@@ -12,8 +12,9 @@ const RowStaggerSplit : ConfigExample = {
 # edge flush), the row's stagger plus that where it ends the row. The right half is not the left one mirrored (that
 # would stagger its rows the other way), so it is a zone of its own, on a pcb of its own. The right half has a B of
 # its own too, left of N, for whoever presses B with the right hand. Each half has a strip on its inner side with the
-# e-paper (ErgoCai.modules e-paper/2.13inch-socket) at its top, stacked as on ErgoCai: the MCU on the board's back, the
-# 18650 on its front, the e-paper module on standoffs over the cell. The charger and the power switch are at the top
+# e-paper (ErgoCai.modules e-paper/2.13inch-socket) halfway down, stacked as on ErgoCai: the MCU on the board's back,
+# the 18650 (or a pouch cell on its JST connector) on its front, the e-paper module over the cell on four standoffs on
+# the top plate, their M2 screws coming up through the middle layer. The charger and the power switch are at the top
 # edge's inner end, by them. The case is ErgoCai's five layers.
 units:
   kx: U                    # 19.05 mm, an ordinary keyboard's key pitch
@@ -22,12 +23,19 @@ units:
   homeStagger: 0.75kx
   bottomStagger: 1.25kx
   strip: 34                # the strip on each half's inner side: the e-paper's 30.1 mm and 2 mm either side
+  # the right half's strip, 8.5 mm wider on the keys' side: its B and Space reach into it, and a key under the e-paper
+  # (from the board's middle down) could not be pressed; the e-paper stays strip / 2 from the inner edge, so 1.4 mm
+  # clear of Space's keycap and 6.2 mm of B's
+  rightStrip: strip + 8.5
   # how far the right half sits from where it would be on a one-piece keyboard: the 1.25kx the left half's B reaches
   # past the start of the right half's Space, the two strips, and 1kx (1.5kx since the right half's strip begins
   # beside Y, 0.5kx in from Space) between the boards
-  splitGap: 2.25kx + 2 * strip
-  top: 1ky + 5             # how far above the number row's keys the strip with the USB port and the switch reaches
+  splitGap: 2.25kx + strip + rightStrip
+  top: 1ky                 # how far above the number row's keys the strip with the USB port and the switch reaches
   lip: 2.5                 # the board's edge this far past a key that has no key beyond it, clear of its diode's pads
+  # the inner strip's stack (the e-paper, the 18650 under it, the MCU) centred between the board's top and bottom
+  # edges: its centre this far above the bottom row (the top edge is 3ky + top above it, the bottom 1.5ky + lip below)
+  paper: (1.5ky + top - lip) / 2
   # the case's screws (top and bottom plates) and the studs between (gap, switchplate, middle), as on ErgoCai
   screwSize: 1.05
   studSize: 1.75
@@ -162,16 +170,16 @@ outlines:
     - what: polygon
       operation: stack
       points:
-        # the strip is beside Y, the inner side's first key in the rows by the e-paper (its left edge 0.5kx from its
-        # centre); Space and B, under the e-paper, reach into the strip
+        # the strip (rightStrip wide) is beside Y, the inner side's first key in the rows by the e-paper (its left edge
+        # 0.5kx from its centre); Space and B reach into it, beside the e-paper
         - ref: right_c0_top
-          shift: [-0.5kx - strip, ky + top]
+          shift: [-0.5kx - rightStrip, ky + top]
         - ref: right_c7_num
           shift: [1kx + lip, top]
         - ref: right_c7_mods
           shift: [0.625kx + lip, -0.5ky - lip]
         - ref: right_c0_top
-          shift: [-0.5kx - strip, -3.5ky - lip]
+          shift: [-0.5kx - rightStrip, -3.5ky - lip]
   # the funnels in front of the two USB ports and the two power switches, starting funnelLip out from the boards' top
   # edge; each half's case cuts all four, the other half's are outside it. They are added: a half's two overlap at
   # their far ends.
@@ -188,14 +196,14 @@ outlines:
           shift: [-funnelWide, top + funnelLip + funnelDepth]
     - what: polygon
       points:
-        - ref: left_c6_num
-          shift: [-9.5 + funnelWide, top + funnelLip + funnelDepth]
-        - ref: left_c6_num
-          shift: [-9.5 + funnelNarrow, top + funnelLip]
-        - ref: left_c6_num
-          shift: [-9.5 - funnelNarrow, top + funnelLip]
-        - ref: left_c6_num
-          shift: [-9.5 - funnelWide, top + funnelLip + funnelDepth]
+        - ref: left_c5_bottom
+          shift: [0.5kx + strip / 2 + funnelWide, 3ky + top + funnelLip + funnelDepth]
+        - ref: left_c5_bottom
+          shift: [0.5kx + strip / 2 + funnelNarrow, 3ky + top + funnelLip]
+        - ref: left_c5_bottom
+          shift: [0.5kx + strip / 2 - funnelNarrow, 3ky + top + funnelLip]
+        - ref: left_c5_bottom
+          shift: [0.5kx + strip / 2 - funnelWide, 3ky + top + funnelLip + funnelDepth]
     - what: polygon
       points:
         - ref: right_c4_num
@@ -208,18 +216,18 @@ outlines:
           shift: [-funnelWide, top + funnelLip + funnelDepth]
     - what: polygon
       points:
-        - ref: right_c1_num
-          shift: [9.5 + funnelWide, top + funnelLip + funnelDepth]
-        - ref: right_c1_num
-          shift: [9.5 + funnelNarrow, top + funnelLip]
-        - ref: right_c1_num
-          shift: [9.5 - funnelNarrow, top + funnelLip]
-        - ref: right_c1_num
-          shift: [9.5 - funnelWide, top + funnelLip + funnelDepth]
+        - ref: right_c0_top
+          shift: [-0.5kx - rightStrip + strip / 2 + funnelWide, ky + top + funnelLip + funnelDepth]
+        - ref: right_c0_top
+          shift: [-0.5kx - rightStrip + strip / 2 + funnelNarrow, ky + top + funnelLip]
+        - ref: right_c0_top
+          shift: [-0.5kx - rightStrip + strip / 2 - funnelNarrow, ky + top + funnelLip]
+        - ref: right_c0_top
+          shift: [-0.5kx - rightStrip + strip / 2 - funnelWide, ky + top + funnelLip + funnelDepth]
 
   # The case of each half, ErgoCai's five layers (cases, assemblies): the board grown by 8 mm, the gap a frame round
   # the board. Where its parts are screwed together: on that frame, 3 mm out from the board's corners and from the
-  # middle of its top edge (halfway between the USB port and the power switch) and of its bottom edge.
+  # middle of its top edge (between the USB port and the power switch, 23.8 mm from the port) and of its bottom edge.
   _left_mounts:
     $params: [__what__, __radius__]
     top_outer:
@@ -265,7 +273,7 @@ outlines:
       radius: __radius__
       where:
         ref: right_c0_top
-        shift: [-0.5kx - strip - 3, ky + top + 3]
+        shift: [-0.5kx - rightStrip - 3, ky + top + 3]
     top_middle:
       what: __what__
       radius: __radius__
@@ -295,7 +303,7 @@ outlines:
       radius: __radius__
       where:
         ref: right_c0_top
-        shift: [-0.5kx - strip - 3, -3.5ky - lip - 3]
+        shift: [-0.5kx - rightStrip - 3, -3.5ky - lip - 3]
   left_studs:
     $extends: outlines._left_mounts
     $args: [hexagon, studSize]
@@ -408,9 +416,10 @@ pcbs:
             file: "footprints/ErgoCai.pretty/STAB_MX_2u.kicad_mod"
         where: [left_c0_bottom, left_c4_mods]
     modules:
-      # The stack in the inner strip, as on ErgoCai: the MCU on the back, 6 mm above the cell's and the e-paper's point
-      # and turned so that its antenna points toward the inner edge; the 18650 on the front, centred under the
-      # e-paper, whose four standoffs stand either side of it.
+      # The stack in the inner strip, as on ErgoCai: the MCU on the back, 6 mm above the cell's and the e-paper's point,
+      # turned so that its antenna points toward the inner edge and as far out as it goes: the antenna keep-out, 11 mm
+      # from the module's centre, to the edge (the antenna kept clear of copper and of the other parts, as the
+      # module's manual asks); the 18650 on the front, centred under the e-paper.
       mcu:
         what:
           github:
@@ -418,7 +427,7 @@ pcbs:
             file: "mcu/E73-2G4M08S1C/E73-2G4M08S1C.kicad_pcb"
         where:
           ref: left_c5_bottom
-          shift: [0.5kx + strip / 2, 3ky + top - 2 - 34.45 + 6]
+          shift: [0.5kx + strip - 11, paper + 6]
           rotate: -90
       battery:
         what:
@@ -427,7 +436,18 @@ pcbs:
             file: "battery/18650_Nickel/18650_Nickel.kicad_pcb"
         where:
           ref: left_c5_bottom
-          shift: [0.5kx + strip / 2, 3ky + top - 2 - 34.45]
+          shift: [0.5kx + strip / 2, paper]
+      # A pouch LiPo's connector, for a cell in the battery opening instead of the 18650 (fit one or the other), as on
+      # ErgoCai: on the holder's axis, its entry facing the holder's end and its courtyard 0.5 mm past the holder's, so
+      # the cell's plug goes in from the opening, which the connector's cut-out in the switchplate joins.
+      jst-ph-battery-backup:
+        what:
+          github:
+            repo: "shiqi-614/ErgoCai.modules"
+            file: "battery/JST_PH_P2.00mm/JST_PH_P2.00mm.kicad_pcb"
+        where:
+          ref: left_c5_bottom
+          shift: [0.5kx + strip / 2, paper + 42.5]
       # on the back, above 6 and toward the strip, its VBAT side toward the cell's VBAT end, its OUT side toward the
       # power switch
       charger:
@@ -437,10 +457,11 @@ pcbs:
             file: "battery/BQ24072_charger/BQ24072_charger.kicad_pcb"
         where:
           ref: left_c6_num
-          shift: [7.5, 16]
+          shift: [7.5, top - 8.05]
           rotate: 90
         side: back
-      # its mouth 1.05 mm past the board's top edge, as on ErgoCai: the module's origin 2.7 mm inside the edge
+      # its mouth 2.55 mm past the board's top edge, 1.5 mm further out than on ErgoCai: the module's origin 1.2 mm
+      # inside the edge, its shield pads still 0.9 mm in
       usb:
         what:
           github:
@@ -448,16 +469,16 @@ pcbs:
             file: "usb/default_usb/default_usb.kicad_pcb"
         where:
           ref: left_c3_num
-          shift: [0, top - 2.7]
-      # between 5 and 6, next to the charger, as ErgoCai's is between its two inner columns
+          shift: [0, top - 1.2]
+      # straight above the battery, on its axis, at the top edge
       power_switch:
         what:
           github:
             repo: "shiqi-614/ErgoCai.modules"
             file: "battery/power_switch_right/power_switch_right.kicad_pcb"
         where:
-          ref: left_c6_num
-          shift: [-9.5, 21.5]
+          ref: left_c5_bottom
+          shift: [0.5kx + strip / 2, 3ky + top - 2.55]
       # where ErgoCai has it from the MCU, 12 mm toward the keys and 46.5 mm down, beside the e-paper's FFC socket;
       # its plunger over the hole in the bottom plate
       reset:
@@ -467,11 +488,11 @@ pcbs:
             file: "reset/reset/reset.kicad_pcb"
         where:
           ref: left_c5_bottom
-          shift: [0.5kx + strip / 2 - 12, 3ky + top - 2 - 34.45 + 6 - 46.5]
+          shift: [0.5kx + strip / 2 - 12, paper + 6 - 46.5]
           rotate: 180
       # the e-paper's socket (ErgoCai.modules e-paper/2.13inch-socket: the panel module's 30.1 x 68.9 mm on four
       # holes, its FFC down through a slot in the board to a socket on the back, 44.5 mm below the panel's centre),
-      # in the middle of the inner strip, its top 2 mm under the board's
+      # in the middle of the inner strip, halfway between the board's top and bottom edges
       e-paper:
         what:
           github:
@@ -479,7 +500,7 @@ pcbs:
             file: "e-paper/2.13inch-socket/2.13inch-socket.kicad_pcb"
         where:
           ref: left_c5_bottom
-          shift: [0.5kx + strip / 2, 3ky + top - 2 - 34.45]
+          shift: [0.5kx + strip / 2, paper]
   row_stagger_right:
     outlines:
       main:
@@ -529,7 +550,7 @@ pcbs:
             file: "mcu/E73-2G4M08S1C/E73-2G4M08S1C.kicad_pcb"
         where:
           ref: right_c0_top
-          shift: [-0.5kx - strip / 2, ky + top - 2 - 34.45 + 6]
+          shift: [-0.5kx - rightStrip + 11, paper - 2ky + 6]
           rotate: 90
       battery:
         what:
@@ -538,7 +559,18 @@ pcbs:
             file: "battery/18650_Nickel/18650_Nickel.kicad_pcb"
         where:
           ref: right_c0_top
-          shift: [-0.5kx - strip / 2, ky + top - 2 - 34.45]
+          shift: [-0.5kx - rightStrip + strip / 2, paper - 2ky]
+      # A pouch LiPo's connector, for a cell in the battery opening instead of the 18650 (fit one or the other), as on
+      # ErgoCai: on the holder's axis, its entry facing the holder's end and its courtyard 0.5 mm past the holder's, so
+      # the cell's plug goes in from the opening, which the connector's cut-out in the switchplate joins.
+      jst-ph-battery-backup:
+        what:
+          github:
+            repo: "shiqi-614/ErgoCai.modules"
+            file: "battery/JST_PH_P2.00mm/JST_PH_P2.00mm.kicad_pcb"
+        where:
+          ref: right_c0_top
+          shift: [-0.5kx - rightStrip + strip / 2, paper - 2ky + 42.5]
       charger:
         what:
           github:
@@ -546,7 +578,7 @@ pcbs:
             file: "battery/BQ24072_charger/BQ24072_charger.kicad_pcb"
         where:
           ref: right_c1_num
-          shift: [-12.2, 16]
+          shift: [-12.2, top - 8.05]
           rotate: -90
         side: back
       usb:
@@ -556,15 +588,16 @@ pcbs:
             file: "usb/default_usb/default_usb.kicad_pcb"
         where:
           ref: right_c4_num
-          shift: [0, top - 2.7]
+          shift: [0, top - 1.2]
       power_switch:
         what:
           github:
             repo: "shiqi-614/ErgoCai.modules"
             file: "battery/power_switch_right/power_switch_right.kicad_pcb"
+        # straight above the battery, as on the left half
         where:
-          ref: right_c1_num
-          shift: [9.5, 21.5]
+          ref: right_c0_top
+          shift: [-0.5kx - rightStrip + strip / 2, ky + top - 2.55]
       reset:
         what:
           github:
@@ -572,8 +605,8 @@ pcbs:
             file: "reset/reset/reset.kicad_pcb"
         where:
           ref: right_c0_top
-          # 10 mm toward the keys, not 12: B's hotswap socket reaches into the strip here
-          shift: [-0.5kx - strip / 2 + 10, ky + top - 2 - 34.45 + 6 - 46.5]
+          # 12 mm toward the keys, as on the left half
+          shift: [-0.5kx - rightStrip + strip / 2 + 12, paper - 2ky + 6 - 46.5]
       e-paper:
         what:
           github:
@@ -581,7 +614,7 @@ pcbs:
             file: "e-paper/2.13inch-socket/2.13inch-socket.kicad_pcb"
         where:
           ref: right_c0_top
-          shift: [-0.5kx - strip / 2, ky + top - 2 - 34.45]
+          shift: [-0.5kx - rightStrip + strip / 2, paper - 2ky]
 
 # Each half's case, ErgoCai's from the bottom up: bottom 3 mm, gap 5 (the frame the board lies in, its top level with
 # the board's), switchplate 5, middle 5, top 3. The studs go through gap, switchplate and middle, the screws through
@@ -611,7 +644,7 @@ cases:
       extrude: 3
       operation: subtract
       expand: 0.5
-    # the e-paper's four standoffs
+    # the M2 screws of the e-paper's four standoffs, which stand on this plate
     - what: pcb
       name: /row_stagger_left.modules.e-paper.EPM_H/
       extrude: 3
@@ -636,22 +669,20 @@ cases:
       extrude: 5
       operation: subtract
       expand: 0.5
-    # the battery's opening 5 mm wider toward the keys, as on ErgoCai
-    - what: pcb
-      name: /row_stagger_left.modules.battery/
-      extrude: 5
-      operation: subtract
-      expand: 0.5
-      shift: [-5, 0, 0]
     - what: outline
       name: funnels
       extrude: 5
       operation: subtract
+    # The way of the M2 screws up into the e-paper's standoffs on the top plate: this layer only lets them through, it
+    # holds nothing. Grown by 1.1, each hole cuts into the battery's opening (0.05 mm apart at 1, a wall no printer
+    # makes). ErgoCai widens its middle's battery opening by 5 mm toward the keys instead: there the keys' openings
+    # start 4.5 mm past the battery's, so the holes on that side cut that strip into pieces, and it is taken out.
+    # Here the strip between the holes and the keys is 12 mm or more, so it stays.
     - what: pcb
       name: /row_stagger_left.modules.e-paper.EPM_H/
       extrude: 5
       operation: subtract
-      expand: 1
+      expand: 1.1
       layers: ["*.Cu"]
     # the e-paper FFC's way down to the slot in the board, in front of its socket on the back
     - what: pcb
@@ -682,7 +713,7 @@ cases:
       operation: subtract
       layers: [Dwgs.User]
     - what: pcb
-      name: /row_stagger_left.modules.(charger|battery)/
+      name: /row_stagger_left.modules.(charger|battery|jst-ph-battery-backup)/
       extrude: 5
       operation: subtract
       expand: 0.5
@@ -704,13 +735,6 @@ cases:
       expand: 0.5
       layers: [Dwgs.User]
       side: back
-    # the e-paper's standoffs stand on the board, so they go through the switchplate too
-    - what: pcb
-      name: /row_stagger_left.modules.e-paper.EPM_H/
-      extrude: 5
-      operation: subtract
-      expand: 1
-      layers: ["*.Cu"]
   left_gap:
     - what: outline
       name: left_case
@@ -793,21 +817,16 @@ cases:
       extrude: 5
       operation: subtract
       expand: 0.5
-    - what: pcb
-      name: /row_stagger_right.modules.battery/
-      extrude: 5
-      operation: subtract
-      expand: 0.5
-      shift: [5, 0, 0]
     - what: outline
       name: funnels
       extrude: 5
       operation: subtract
+    # the M2 screws' way up into the standoffs, as on the left half
     - what: pcb
       name: /row_stagger_right.modules.e-paper.EPM_H/
       extrude: 5
       operation: subtract
-      expand: 1
+      expand: 1.1
       layers: ["*.Cu"]
     - what: pcb
       name: /row_stagger_right.modules.e-paper.EPM_FPC1/
@@ -836,7 +855,7 @@ cases:
       operation: subtract
       layers: [Dwgs.User]
     - what: pcb
-      name: /row_stagger_right.modules.(charger|battery)/
+      name: /row_stagger_right.modules.(charger|battery|jst-ph-battery-backup)/
       extrude: 5
       operation: subtract
       expand: 0.5
@@ -856,12 +875,6 @@ cases:
       expand: 0.5
       layers: [Dwgs.User]
       side: back
-    - what: pcb
-      name: /row_stagger_right.modules.e-paper.EPM_H/
-      extrude: 5
-      operation: subtract
-      expand: 1
-      layers: ["*.Cu"]
   right_gap:
     - what: outline
       name: right_case
@@ -906,8 +919,8 @@ assemblies:
       name: row_stagger_left
       top: left_gap
     parts:
-      # the e-paper module (ErgoCai.modules e-paper/2.13inch) on the socket's four holes, over the 18650 cell: its
-      # board's bottom at 30 mm, on 22 mm standoffs from the pcb (its top at 8), as on ErgoCai
+      # the e-paper module (ErgoCai.modules e-paper/2.13inch) over the 18650 cell, on the socket's four holes: its
+      # board's bottom at 30 mm, on 9 mm standoffs on the top plate (its top at 21), as on ErgoCai
       - name: e-paper
         model: "github:shiqi-614/ErgoCai.modules/e-paper/2.13inch/2.13inch.glb"
         at_module: e-paper
