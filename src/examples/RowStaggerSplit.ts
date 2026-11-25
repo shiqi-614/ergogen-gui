@@ -427,7 +427,7 @@ pcbs:
             file: "mcu/E73-2G4M08S1C/E73-2G4M08S1C.kicad_pcb"
         where:
           ref: left_c5_bottom
-          shift: [0.5kx + strip - 11, paper + 6]
+          shift: [0.5kx + strip - 9.4, paper + 6]
           rotate: -90
       battery:
         what:
@@ -457,8 +457,8 @@ pcbs:
             file: "battery/BQ24072_charger/BQ24072_charger.kicad_pcb"
         where:
           ref: left_c6_num
-          shift: [7.5, top - 8.05]
-          rotate: 90
+          shift: [17.9, top - 9.25]
+          rotate: 0
         side: back
       # its mouth 2.55 mm past the board's top edge, 1.5 mm further out than on ErgoCai: the module's origin 1.2 mm
       # inside the edge, its shield pads still 0.9 mm in
@@ -550,7 +550,7 @@ pcbs:
             file: "mcu/E73-2G4M08S1C/E73-2G4M08S1C.kicad_pcb"
         where:
           ref: right_c0_top
-          shift: [-0.5kx - rightStrip + 11, paper - 2ky + 6]
+          shift: [-0.5kx - rightStrip + 9.5, paper - 2ky + 6]
           rotate: 90
       battery:
         what:
@@ -578,8 +578,8 @@ pcbs:
             file: "battery/BQ24072_charger/BQ24072_charger.kicad_pcb"
         where:
           ref: right_c1_num
-          shift: [-12.2, top - 8.05]
-          rotate: -90
+          shift: [-21, top - 11.45]
+          rotate: -0
         side: back
       usb:
         what:
