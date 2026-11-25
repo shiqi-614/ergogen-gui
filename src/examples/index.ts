@@ -9,6 +9,7 @@ import Alpha from "./alpha";
 import Plank from "./plank";
 import ErgoCai from "./ErgoCai";
 import Flatfootfox from "./Flatfootfox";
+import RowStaggerSplit from "./RowStaggerSplit";
 
 export interface GroupedOption {
     readonly label: string;
@@ -39,6 +40,7 @@ const completeExamples = [
     Tiny20,
     Flatfootfox,
     ErgoCai,
+    RowStaggerSplit,
 ];
 
 const miscExamples = [
