@@ -50,6 +50,9 @@ export class Cdp {
 
 const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
 
+// the buttons a mouse event says are down
+const BUTTONS = {left: 1, right: 2, middle: 4};
+
 // What ergogen fetches from GitHub (its footprint libraries), kept on disk for the tests: GitHub allows 60 API calls
 // an hour without a token, and each test starts the app afresh. A file of a commit never changes; the rest (a
 // branch's head, a file of main) is fetched again after an hour, and an old copy serves while GitHub doesn't answer.
@@ -157,8 +160,8 @@ export class Page {
         await this.until(`document.readyState === 'complete'`, 60, 'the page to load');
     }
 
-    mouse(type, x, y, modifiers = 0) {
-        return this.cdp.send('Input.dispatchMouseEvent', {type, x, y, modifiers, button: 'left', buttons: type === 'mouseReleased' ? 0 : 1, clickCount: 1});
+    mouse(type, x, y, modifiers = 0, button = 'left') {
+        return this.cdp.send('Input.dispatchMouseEvent', {type, x, y, modifiers, button, buttons: type === 'mouseReleased' ? 0 : BUTTONS[button], clickCount: 1});
     }
 
     async click([x, y], modifiers = 0) {
@@ -168,16 +171,23 @@ export class Page {
         await wait(250);
     }
 
-    // a drag in steps, the way a hand moves; the path can be a function of 0..1 for curves
-    async drag(from, to, {steps = 12, modifiers = 0, path} = {}) {
-        await this.mouse('mousePressed', from[0], from[1], modifiers);
+    // a drag in steps, the way a hand moves, with the left button unless another is named; the path can be a function
+    // of 0..1 for curves
+    async drag(from, to, {steps = 12, modifiers = 0, path, button = 'left'} = {}) {
+        await this.mouse('mousePressed', from[0], from[1], modifiers, button);
         for (let i = 1; i <= steps; i++) {
             const [x, y] = path ? path(i / steps) : [from[0] + (to[0] - from[0]) * i / steps, from[1] + (to[1] - from[1]) * i / steps];
-            await this.cdp.send('Input.dispatchMouseEvent', {type: 'mouseMoved', x, y, modifiers, button: 'left', buttons: 1});
+            await this.cdp.send('Input.dispatchMouseEvent', {type: 'mouseMoved', x, y, modifiers, button, buttons: BUTTONS[button]});
             await wait(30);
         }
-        await this.mouse('mouseReleased', to[0], to[1], modifiers);
+        await this.mouse('mouseReleased', to[0], to[1], modifiers, button);
         await wait(250);
+    }
+
+    // a turn of the wheel at a point: a deltaY below 0 turns it away from the user
+    async wheel([x, y], deltaY, modifiers = 0) {
+        await this.cdp.send('Input.dispatchMouseEvent', {type: 'mouseWheel', x, y, deltaX: 0, deltaY, modifiers});
+        await wait(100);
     }
 
     async key(key, code = key, windowsVirtualKeyCode = 0, modifiers = 0) {

@@ -137,6 +137,9 @@ const KicanvasPreview = ({pcb, name = 'preview.kicad_pcb', pcbName}: Props): JSX
             // a new element per board: kicanvas-embed reads its source only once
             const element = document.createElement('kicanvas-embed');
             element.setAttribute('controls', 'full');
+            // without its "Click or tap to interact" cover, which kept the wheel from the board until it was clicked,
+            // again after any click elsewhere (the parts' boxes, their card), and on every board made after an edit
+            element.setAttribute('controlslist', 'nooverlay');
             element.style.height = '100%';
             element.style.setProperty('aspect-ratio', 'auto');
             element.style.visibility = 'hidden';

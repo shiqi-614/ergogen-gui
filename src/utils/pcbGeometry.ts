@@ -2,6 +2,8 @@
 // editor to draw boxes around them: a footprint's box comes from its own items in its own frame and
 // is turned onto the board, so a turned part gets a turned box.
 
+import {Evaluate, Placed, pcbPartHandles, resolveAnchor} from "./outlineGeometry";
+
 export type Vec = { x: number, y: number };
 
 // a footprint's (or module's) outline: the corners of its box in its own frame, and its middle
@@ -31,6 +33,43 @@ export const shapeOf = (at: Vec, angle: number, local: Vec[]): Shape | null => {
     const [x0, x1, y0, y1] = [Math.min(...xs), Math.max(...xs), Math.min(...ys), Math.max(...ys)];
     const corners = [{x: x0, y: y0}, {x: x1, y: y0}, {x: x1, y: y1}, {x: x0, y: y1}].map(c => toBoard(at, angle, c));
     return {corners, center: toBoard(at, angle, {x: (x0 + x1) / 2, y: (y0 + y1) / 2})};
+};
+
+// the area a shape covers
+export const area = (shape: Shape) => Math.abs(shape.corners.reduce((sum, c, i, all) => {
+    const next = all[(i + 1) % all.length];
+    return sum + c.x * next.y - next.x * c.y;
+}, 0)) / 2;
+
+// a shape carried along with the point its part is placed at (ergogen's, y up), from `from` to `to`: turned about
+// that point by the change of angle, then moved with it
+export const movedShape = (shape: Shape, from: Placed, to: Placed): Shape => {
+    const a = {x: from.x, y: -from.y}, b = {x: to.x, y: -to.y};
+    const carry = (p: Vec) => toBoard(b, to.r - from.r, {x: p.x - a.x, y: p.y - a.y});
+    return {corners: shape.corners.map(carry), center: carry(shape.center)};
+};
+
+// Where a config places the parts of a pcb's half: a module or a footprint placed by an anchor where its where
+// says, a footprint that follows keys on each key by its adjust. Nothing for a part placed in another way.
+export const partPlacer = (
+    config: any, pcb: string, half: 'source' | 'mirror',
+    points: Record<string, { x: number, y: number, r: number, meta?: { mirrored?: boolean } }>, evaluate: Evaluate,
+) => {
+    const anchored = new Map(pcbPartHandles(config, pcb, points, evaluate).handles
+        .filter(h => h.half === half).map(h => [`${h.section}.${h.name}`, h.at]));
+    return (section: string, name: string, keyName?: string): Placed | undefined => {
+        const at = anchored.get(`${section}.${name}`);
+        const key = keyName ? points[keyName] : undefined;
+        const entry = config?.pcbs?.[pcb]?.footprints?.[name];
+        if (at || section !== 'footprints' || !key || !entry) return at;
+        // placed by an anchor that could not be worked out
+        if (entry.where && typeof entry.where === 'object' && !Array.isArray(entry.where)) return undefined;
+        try {
+            return resolveAnchor(entry.adjust, points, {x: key.x, y: key.y, r: key.r, mirrored: !!key.meta?.mirrored}, evaluate)?.at;
+        } catch (e: unknown) {
+            return undefined;
+        }
+    };
 };
 
 export const layerName = (layer: any) => String(typeof layer === 'string' ? layer : layer?.name ?? '');

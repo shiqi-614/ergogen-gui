@@ -1,5 +1,5 @@
 import {expect, it} from "vitest";
-import {footprintInstances, footprintShape, moduleBoxes, toBoard} from "./pcbGeometry";
+import {area, footprintInstances, footprintShape, moduleBoxes, movedShape, partPlacer, toBoard} from "./pcbGeometry";
 
 const sorted = (corners: { x: number, y: number }[]) =>
     corners.map(c => [Number(c.x.toFixed(6)), Number(c.y.toFixed(6))]).sort((a, b) => a[0] - b[0] || a[1] - b[1]);
@@ -58,4 +58,45 @@ it('finds the footprints that are on the board, under the references the preview
     }, {keys1, keys2, diodes, hole});
     // of the two key footprints on k1 only the last is on the board
     expect(instances.map(i => [i.name, i.keyName])).toEqual([['keys2', 'k1'], ['diodes', 'k1'], ['hole', 'k1']]);
+});
+
+it('measures the area a shape covers, turned or not', () => {
+    const f = footprint(0, 0, 30, {drawings: [{layer: 'F.CrtYd', start: {x: -2, y: -1}, end: {x: 2, y: 1}}]});
+    expect(area(footprintShape(f)!)).toBeCloseTo(8, 9);
+});
+
+it('carries a shape along with the point its part is placed at: turned about it, then moved with it', () => {
+    // a 2 x 2 box 10 mm right of a point at the origin (KiCad's y is down, ergogen's up)
+    const box = {corners: [{x: 9, y: -1}, {x: 11, y: -1}, {x: 11, y: 1}, {x: 9, y: 1}], center: {x: 10, y: 0}};
+    const from = {x: 0, y: 0, r: 0, mirrored: false};
+    expect(sorted(movedShape(box, from, from).corners)).toEqual(sorted(box.corners));
+    // moved 5 up the board: 5 down KiCad's y
+    expect(sorted([movedShape(box, from, {...from, y: 5}).center])).toEqual([[10, -5]]);
+    // turned 90°: from right of the point to above it
+    const turned = movedShape(box, from, {...from, r: 90});
+    expect(sorted([turned.center])).toEqual([[0, -10]]);
+    expect(sorted(turned.corners)).toEqual([[-1, -11], [-1, -9], [1, -11], [1, -9]]);
+});
+
+it('places a part by its where, and a footprint that follows keys by its adjust on each key', () => {
+    const points = {
+        k1: {x: 10, y: 20, r: 90, meta: {mirrored: false}},
+        mirror_k1: {x: -10, y: 20, r: -90, meta: {mirrored: true}},
+    };
+    const evaluate = (expr: string) => expr === '1u' ? 19 : Number(expr);
+    const config = {pcbs: {board: {
+        modules: {mcu: {where: {ref: 'k1', shift: ['1u', 2], rotate: 10}}},
+        footprints: {diodes: {where: true, adjust: {shift: [0, -8], rotate: 180}}, hole: {where: {ref: 'k1'}}},
+    }}};
+    const place = partPlacer(config, 'board', 'source', points, evaluate);
+    const at = (p?: { x: number, y: number, r: number }) => p && [p.x, p.y, p.r].map(v => Number(v.toFixed(6)));
+    // the shift in the key's frame, which is turned 90°: its x goes up the board
+    expect(at(place('modules', 'mcu'))).toEqual([8, 39, 100]);
+    expect(at(place('footprints', 'diodes', 'k1'))).toEqual([18, 20, 270]);
+    // on a mirrored key it shifts and turns the other way
+    expect(at(place('footprints', 'diodes', 'mirror_k1'))).toEqual([-18, 20, -270]);
+    expect(at(place('footprints', 'hole', 'k1'))).toEqual([10, 20, 90]);
+    // what it does not place: a module the config does not have, a footprint without its key
+    expect(place('modules', 'usb')).toBeUndefined();
+    expect(place('footprints', 'diodes')).toBeUndefined();
 });

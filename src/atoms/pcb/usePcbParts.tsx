@@ -6,8 +6,8 @@ import {
     AnchorShift, EditSite, addPcbOutline, appendEntry, pcbOutlines, applyEdits, deleteEntry, findChildShift, findChildValue, findShift, findValue,
     findWhereList, isPlainNumber, keyFootprintLines, nudge, partLines,
 } from "../../utils/layoutEdit";
-import {pcbPartHandles} from "../../utils/outlineGeometry";
-import {Instance, Shape, footprintInstances, moduleBoxes} from "../../utils/pcbGeometry";
+import {Placed, pcbPartHandles} from "../../utils/outlineGeometry";
+import {Instance, Shape, area, footprintInstances, moduleBoxes, movedShape, partPlacer} from "../../utils/pcbGeometry";
 import {frameOf, fromFrame, nearestKey, shiftFrom, toFrame} from "../../utils/keyFrame";
 
 // Edits a pcb's parts on its KiCanvas preview. Modules are boxed around their footprints: drag one to
@@ -40,6 +40,10 @@ type Adding = { tab: Tab, name: string, file: string, onKeys: boolean, placing: 
 
 const round = (value: number, step: number) => Math.round(value / step) * step;
 const short = (value: number) => String(Number(value.toFixed(2)));
+// a config expression's value, in a run's units
+const evaluateIn = (units: any) => (expr: string) => (window as any).math.evaluate(expr, {...units});
+// a part's box carried along with the point the part is placed at, from where one config has it to where another has it
+const carry = (box: Shape, from?: Placed, to?: Placed) => from && to ? movedShape(box, from, to) : box;
 
 // The state and the actions of a pcb's parts editor (PcbEditor): what is picked, dragged and typed, and the edits
 // they write. Null while the board regenerates (its state stays: the editor stays mounted).
@@ -79,12 +83,43 @@ export const usePcbParts = (viewer: any, pcb: string) => {
     const source: string = results?.config?.pcbs?.[pcb]?.mirror?.from ?? pcb;
     const half: Half = source === pcb ? 'source' : 'mirror';
     const points: Points = results?.points ?? {};
+    const configInput = configContext?.configInput;
+    // the config, parsed once for each text: a render reads it again and again, and a drag renders every frame
+    const parsed = useMemo((): { config?: any, error?: unknown } => {
+        try {
+            return {config: yaml.load(configInput ?? '')};
+        } catch (error: unknown) {
+            return {error};
+        }
+    }, [configInput]);
 
-    const modules = useMemo(() => moduleBoxes(viewer?.board?.footprints ?? [], pcbResults?.modules ?? {}), [viewer, pcbResults]);
+    // the results the board on show was made from: a run's results come a moment before KiCanvas has drawn their board
+    const shown = useRef({viewer, results});
+    if (shown.current.viewer !== viewer) shown.current = {viewer, results};
+    const shownResults = shown.current.results;
+    // where the config's text places the parts now, and where the text the board on show was made from did: an edit
+    // moves their boxes at once, and the board made again a moment later has the parts there
+    const placements = useMemo(() => {
+        if (!shownResults?.raw || shownResults.raw === configInput || parsed.error) return null;
+        try {
+            return {
+                before: partPlacer(yaml.load(shownResults.raw), source, half, shownResults.points ?? {}, evaluateIn(shownResults.units)),
+                now: partPlacer(parsed.config, source, half, results?.points ?? {}, evaluateIn(results?.units)),
+            };
+        } catch (e: unknown) {
+            return null;
+        }
+    }, [shownResults, configInput, parsed, source, half, results]);
+
+    const modules = useMemo(
+        () => moduleBoxes(viewer?.board?.footprints ?? [], shownResults?.pcbs?.[pcb]?.modules ?? {})
+            .map(({module, box}) => ({module, box: carry(box, placements?.before('modules', module), placements?.now('modules', module))})),
+        [viewer, shownResults, pcb, placements]);
 
     const instances = useMemo(
-        () => footprintInstances(viewer?.board?.footprints ?? [], pcbResults?.footprints ?? {}, results?.config?.pcbs?.[source]?.footprints ?? {}),
-        [viewer, pcbResults, results, source]);
+        () => footprintInstances(viewer?.board?.footprints ?? [], shownResults?.pcbs?.[pcb]?.footprints ?? {}, shownResults?.config?.pcbs?.[source]?.footprints ?? {})
+            .map(i => ({...i, box: carry(i.box, placements?.before('footprints', i.name, i.keyName), placements?.now('footprints', i.name, i.keyName))})),
+        [viewer, shownResults, pcb, source, placements]);
 
     // follow KiCanvas' camera: redraw when where a fixed world point lands on screen changes
     useEffect(() => {
@@ -105,6 +140,22 @@ export const usePcbParts = (viewer: any, pcb: string) => {
         };
         id = requestAnimationFrame(tick);
         return () => cancelAnimationFrame(id);
+    }, [viewer]);
+
+    // KiCanvas zooms and pans on its canvas: the wheel and the middle and right buttons go on to it from the boxes over
+    // it, the left button edits
+    useEffect(() => {
+        const over = layer.current, canvas: HTMLElement | undefined = viewer?.canvas;
+        if (!over || !canvas) return;
+        const pass = (e: Event) => {
+            const mouse = e as MouseEvent;
+            if (!(e.type === 'wheel' || (e.type === 'mousemove' ? mouse.buttons & 6 : mouse.button))) return;
+            e.preventDefault();
+            canvas.dispatchEvent(e.type === 'wheel' ? new WheelEvent('wheel', e as WheelEvent) : new MouseEvent(e.type, mouse));
+        };
+        const types = ['wheel', 'mousedown', 'mousemove', 'mouseup', 'contextmenu'];
+        types.forEach(type => over.addEventListener(type, pass, {passive: false}));
+        return () => types.forEach(type => over.removeEventListener(type, pass));
     }, [viewer]);
 
     if (!configContext || !viewer) {
@@ -145,9 +196,12 @@ export const usePcbParts = (viewer: any, pcb: string) => {
     };
 
     const text = () => configContext.configInput ?? '';
-    const config = (): any => yaml.load(text());
+    const config = (): any => {
+        if (parsed.error) throw parsed.error;
+        return parsed.config;
+    };
     const units = results?.units ?? {};
-    const evaluate = (expr: string) => (window as any).math.evaluate(expr, {...units});
+    const evaluate = evaluateIn(units);
     const write = (next: string, message: string) => {
         configContext.setConfigInput(next);
         setNote(`${message}, the preview is updating`);
@@ -257,8 +311,8 @@ export const usePcbParts = (viewer: any, pcb: string) => {
         e.preventDefault();
     };
 
-    // the x / y / rotate boxes: typed values (numbers or expressions) are written as they are
-    const typedPlacement = target ? (() => {
+    // the x / y / rotate boxes: typed values (numbers or expressions) are written as they are; hidden during a drag
+    const typedPlacement = target && !moving ? (() => {
         try {
             return placement(target);
         } catch (e: unknown) {
@@ -325,7 +379,19 @@ export const usePcbParts = (viewer: any, pcb: string) => {
         }
     };
 
-    const drop = () => {
+    // What a click on the picked part picks instead: the next part under the pointer, smallest first and round again,
+    // so that one under others can be reached
+    const nextUnder = (e: React.PointerEvent, parts: { key: string, name: string, box: Shape }[], picked: string) => {
+        const under: typeof parts = [];
+        for (const element of document.elementsFromPoint(e.clientX, e.clientY)) {
+            const part = parts.find(p => p.key === (element as SVGElement).dataset?.key);
+            if (part && !under.some(u => u.name === part.name)) under.push(part);
+        }
+        under.sort((a, b) => area(a.box) - area(b.box));
+        return under[(under.findIndex(u => u.name === picked) + 1) % under.length];
+    };
+
+    const drop = (e: React.PointerEvent) => {
         const done = moving;
         setMoving(null);
         if (!done) return;
@@ -346,11 +412,21 @@ export const usePcbParts = (viewer: any, pcb: string) => {
             return;
         }
         if (Math.hypot(done.delta.x, done.delta.y) < 0.05) {
-            // a click without a drag picks the module
+            // a click without a drag picks the module; on the picked module or footprint, the next part under it
             if (done.kind === 'module') {
-                setChosenModule(done.module);
+                const next = done.module === chosenModule
+                    ? nextUnder(e, modules.map(m => ({key: m.module, name: m.module, box: m.box})), done.module) : undefined;
+                setChosenModule(next?.name ?? done.module);
                 setFields({});
                 setNote(null);
+            } else {
+                const next = nextUnder(e, instances, done.name);
+                if (next && next.name !== done.name) {
+                    setChosen(next.name);
+                    setChosenInstance(next.key);
+                    setFields({});
+                    setNote(null);
+                }
             }
             return;
         }

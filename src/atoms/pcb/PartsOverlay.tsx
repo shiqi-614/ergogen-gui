@@ -1,5 +1,6 @@
 import styled from "styled-components";
 import {PcbParts} from "./usePcbParts";
+import {Shape, area} from "../../utils/pcbGeometry";
 
 // On the board: the modules' boxes, the footprints' outlines, the turn knob and the keys to pick, over KiCanvas.
 
@@ -119,19 +120,23 @@ const Layer = styled.svg<{ active: boolean }>`
   }
 `;
 
+// smaller boxes over bigger ones, so that a part inside another's box can be clicked, and the picked part over them all
+const stacked = <T extends { box: Shape }>(list: T[], picked: (part: T) => boolean): T[] =>
+    [...list].sort((a, b) => Number(picked(a)) - Number(picked(b)) || area(b.box) - area(a.box));
+
 const PartsOverlay = ({parts}: { parts: PcbParts }): JSX.Element => {
     const {active, tab, moving, setMoving, setNote, adding, chosen, setChosen, choosingKeys, chosenModule, setChosenInstance, setFields, hoverOutline, lit, layer, half, points, modules, instances, toScreen, toWorld, onScreen, screenDelta, start, move, drop, place, keyList, toggleKey, ghostFor, outlinePath, knobFor} = parts;
     return (
         <>
             <Layer ref={layer} active={active && !adding?.placing} onPointerMove={move} onPointerUp={drop} onPointerCancel={() => setMoving(null)}>
-                {active && tab === 'modules' && modules.map(({module, box}) => {
+                {active && tab === 'modules' && stacked(modules, m => m.module === chosenModule).map(({module, box}) => {
                     const shape = onScreen(box);
                     const rect = shape.bounds;
                     const shift = moving?.kind === 'module' && moving.module === module ? screenDelta(moving.delta) : null;
                     const label = shift ? {x: rect.x + shift.x, y: rect.y + shift.y} : rect;
                     return (
                         <g key={module}>
-                            <polygon className={`module target${module === chosenModule ? ' chosen' : ''}${module === lit ? ' lit' : ''}`} points={shape.points}
+                            <polygon className={`module target${module === chosenModule ? ' chosen' : ''}${module === lit ? ' lit' : ''}`} points={shape.points} data-key={module}
                                      onPointerDown={e => start(e, {kind: 'module', module, start: toWorld(e), delta: {x: 0, y: 0}})}>
                                 <title>{`modules.${module}: drag to move it, click to pick it`}</title>
                             </polygon>
@@ -140,13 +145,13 @@ const PartsOverlay = ({parts}: { parts: PcbParts }): JSX.Element => {
                         </g>
                     );
                 })}
-                {active && tab === 'footprints' && !choosingKeys && instances.map(instance => {
+                {active && tab === 'footprints' && !choosingKeys && stacked(instances, i => i.name === chosen).map(instance => {
                     const shape = onScreen(instance.box);
                     const ghost = ghostFor(instance);
                     const isChosen = instance.name === chosen;
                     return (
                         <g key={instance.key}>
-                            <polygon className={`footprint target${isChosen ? ' chosen' : ''}${instance.name === lit ? ' lit' : ''}`} points={shape.points}
+                            <polygon className={`footprint target${isChosen ? ' chosen' : ''}${instance.name === lit ? ' lit' : ''}`} points={shape.points} data-key={instance.key}
                                   onPointerDown={e => {
                                       setChosenInstance(instance.key);
                                       if (!isChosen) {

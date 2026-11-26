@@ -88,7 +88,7 @@ const PartsCard = ({parts}: { parts: PcbParts }): JSX.Element => {
                             {!adding && tab === 'modules' && (chosenModule ? <>
                                 <Picked name={chosenModule} detail={String(config()?.pcbs?.[source]?.modules?.[chosenModule]?.what?.github?.file ?? '').split('/').pop()}/>
                                 {placementFields()}
-                                <Tip>Drag its box to move it; ←↑→↓ 0.1 mm (Shift 1 mm), [ ] turn 5°.</Tip>
+                                <Tip>Drag its box to move it, click it again for the part under it; ←↑→↓ 0.1 mm (Shift 1 mm), [ ] turn 5°.</Tip>
                                 <Actions>
                                     <Button onClick={() => { setChosenModule(null); setFields({}); }}>Deselect</Button>
                                     <Gap/>
@@ -121,7 +121,7 @@ const PartsCard = ({parts}: { parts: PcbParts }): JSX.Element => {
                                 {target && placementFields()}
                                 <Tip>
                                     {choosingKeys ? `Click keys on the board to put ${chosen} on them or take it off.`
-                                        : `${followsKeys(chosen) ? 'Drag one to move them all on their keys' : 'Drag it to move it'}, the knob turns it; ←↑→↓ 0.1 mm (Shift 1 mm), [ ] 5°.`}
+                                        : `${followsKeys(chosen) ? 'Drag one to move them all on their keys' : 'Drag it to move it'}, the knob turns it, a click again picks the part under it; ←↑→↓ 0.1 mm (Shift 1 mm), [ ] 5°.`}
                                 </Tip>
                                 <Actions>
                                     {keyList && typeof keyList !== 'string' && (

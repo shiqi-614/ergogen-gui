@@ -13,6 +13,18 @@ const editParts = async (page, tab) => {
 
 const ARROWS = {ArrowLeft: 37, ArrowUp: 38, ArrowRight: 39, ArrowDown: 40};
 const arrow = (page, key, shift = false) => page.key(key, key, ARROWS[key], shift ? 8 : 0);
+const CTRL = 2;
+
+const camera = page => page.ev(`(() => { const c = ${viewer}.viewport.camera; return {x: c.center.x, y: c.center.y, zoom: c.zoom} })()`);
+// a point of the board with nothing over it: no box, none of KiCanvas's own buttons
+const bareSpot = page => page.ev(`(() => {
+    const deepest = (x, y) => { let root = document, hit = null; for (;;) { const next = root.elementFromPoint(x, y); if (!next || next === hit || !next.shadowRoot) return next ?? hit; hit = next; root = next.shadowRoot; } };
+    const r = ${viewer}.canvas.getBoundingClientRect();
+    for (let y = r.top + 50; y < r.bottom - 50; y += 20) for (let x = r.left + 50; x < r.right - 50; x += 20) {
+        if (document.elementFromPoint(x, y)?.tagName === 'KICANVAS-EMBED' && ['CANVAS', 'KC-UI-FOCUS-OVERLAY'].includes(deepest(x, y)?.tagName)) return [x, y];
+    }
+    return null;
+})()`);
 
 export const tests = [
     {
@@ -190,6 +202,114 @@ export const tests = [
                 await page.until(`!!${box(label)}`, 120, 'the boxes again');
             }
             await page.until(`(() => { const a = jsyaml.load(${config}).pcbs.ergo_cai_right.footprints.diodes.adjust; return a.shift[0] === 1.5 && a.rotate === 90 })()`, 30, 'the typed values');
+        },
+    },
+    {
+        name: 'pcb: the wheel and the right button zoom and pan the board over the boxes being edited, also after an edit',
+        async run(page, {url}) {
+            await freshApp(page, url);
+            await editParts(page, 'Modules');
+            // KiCanvas's own controls (its defaults): Ctrl + wheel, a trackpad's pinch, zooms; the wheel scrolls; the right
+            // button drags
+            const zoomsAt = async (at, what) => {
+                const before = await camera(page);
+                await page.wheel(at, -120, CTRL);
+                await page.until(`${viewer}.viewport.camera.zoom > ${before.zoom * 1.05}`, 5, `Ctrl + wheel ${what} to zoom in`);
+            };
+            const usb = await page.titled('modules.usb:');
+            await zoomsAt(usb, 'over the usb box');
+            let before = await camera(page);
+            await page.wheel(await page.titled('modules.usb:'), 120);
+            await page.until(`Math.abs(${viewer}.viewport.camera.center.y - ${before.y}) > 1`, 5, 'the wheel over the usb box to scroll the board');
+            before = await camera(page);
+            const at = await page.titled('modules.usb:');
+            await page.drag(at, [at[0] + 80, at[1]], {button: 'right'});
+            await page.until(`Math.abs(${viewer}.viewport.camera.center.x - ${before.x}) > 1`, 5, 'a right-button drag over the usb box to pan the board');
+            assert(!(await page.ev(`!!document.querySelector('svg polygon.module.chosen')`)), 'the right button should pick nothing');
+            // after an edit the board is made again, in a new KiCanvas: it zooms at once, with no click on it first
+            await page.click(await page.titled('modules.usb:'));
+            await page.until(`!!document.querySelector('svg polygon.module.chosen')`, 10, 'usb to be picked');
+            const fp = await boardFootprint(page, 'USB_J1');
+            await arrow(page, 'ArrowRight');
+            await waitForBoard(page, 'USB_J1', fp);
+            const bare = await bareSpot(page);
+            assert(bare, 'there should be a point of the board with nothing over it');
+            await zoomsAt(bare, 'on the board, beside the boxes,');
+            await zoomsAt(await page.titled('modules.usb:'), 'over the usb box');
+            await page.press('Footprints');
+            await page.until(`document.querySelectorAll('svg polygon.footprint').length > 30`, 10, 'the footprints\' boxes');
+            await zoomsAt(await reachableTitled(page, 'footprints.keys1'), 'over a key');
+        },
+    },
+    {
+        name: 'pcb: a module inside a bigger module\'s box is picked where it is, and a click again picks the one under it',
+        async run(page, {url}) {
+            await freshApp(page, url);
+            // RowStaggerSplit's inner strip: the MCU, on the back, inside the boxes of the 18650 and of the e-paper, which
+            // comes last in the config
+            await page.click(await page.center(`document.querySelector('.example-menu__control')`, 'the example menu'));
+            await page.click(await page.center(`[...document.querySelectorAll('.example-menu__option')].find(o => o.textContent === 'RowStaggerSplit')`, 'RowStaggerSplit'));
+            await page.until(`${config}.includes('row_stagger_left')`, 30, 'RowStaggerSplit in the editor');
+            await page.ev(`[...document.querySelectorAll('button')].find(b => b.textContent.startsWith('▸ PCBs'))?.click()`);
+            await page.until(`[...document.querySelectorAll('button')].some(b => b.textContent.includes('row_stagger_left') && b.textContent.includes('kicad_pcb'))`, 120, 'its boards');
+            await openPcb(page, 'row_stagger_left');
+            await page.press('Edit parts');
+            await page.press('Modules');
+            const mcu = await page.titled('modules.mcu:');
+            const picked = `document.querySelector('svg polygon.module.chosen')?.querySelector('title').textContent.split(':')[0]`;
+            // the smallest first, then each one under it, and round again
+            for (const next of ['mcu', 'battery', 'e-paper', 'mcu']) {
+                await page.click(mcu);
+                await page.until(`${picked} === ${JSON.stringify(`modules.${next}`)}`, 10, `a click on the MCU's middle to pick ${next}, not ${await page.ev(picked)}`);
+            }
+            // picked, it is dragged from where it is, and the e-paper over it stays
+            const modules = async () => (await parsed(page)).pcbs.row_stagger_left.modules;
+            const before = await modules();
+            await page.drag(mcu, [mcu[0], mcu[1] + 40]);
+            await page.until(`JSON.stringify(jsyaml.load(${config}).pcbs.row_stagger_left.modules.mcu.where.shift) !== ${JSON.stringify(JSON.stringify(before.mcu.where.shift))}`, 30, 'the MCU to be moved');
+            assert(JSON.stringify((await modules())['e-paper'].where) === JSON.stringify(before['e-paper'].where), 'the e-paper should stay where it is');
+        },
+    },
+    {
+        name: 'pcb: a moved module\'s box goes to its new place at once and stays there until the board is made again',
+        async run(page, {url}) {
+            await freshApp(page, url);
+            await editParts(page, 'Modules');
+            await page.click(await page.titled('modules.usb:'));
+            await page.until(`!!document.querySelector('svg polygon.module.chosen')`, 10, 'usb to be picked');
+            const scale = await pxPerMm(page);
+            // the usb box's left edge on screen, from where the board's origin is (a new board settles its view by a pixel
+            // or so as it comes), null while the box is not drawn
+            const left = `(() => { const box = document.querySelector('svg polygon.module.chosen'); const v = ${viewer};
+                return box ? box.getBoundingClientRect().left - v.viewport.camera.world_to_screen({x: 0, y: 0}).x - v.canvas.getBoundingClientRect().left : null })()`;
+            // every frame from the edit on, the box is where the edit put it, until the board made again has USB_J1 there too
+            const moves = async (edit, dx, what) => {
+                const fp = await boardFootprint(page, 'USB_J1');
+                const to = await page.ev(left) + dx * scale;
+                await page.ev(`(() => { window.__frames = []; const look = () => {
+                    window.__frames.push([performance.now(), ${left}]);
+                    window.__watching = requestAnimationFrame(look);
+                }; look(); })()`);
+                await edit();
+                const done = await page.ev(`performance.now()`);
+                await waitForBoard(page, 'USB_J1', fp);
+                await page.until(`!document.body.textContent.includes('Updating the board…')`, 60, 'the board to be updated');
+                const frames = (await page.ev(`(() => { cancelAnimationFrame(window.__watching); return window.__frames })()`)).filter(([t]) => t >= done);
+                const off = frames.filter(([, x]) => x === null || Math.abs(x - to) > 1.5);
+                assert(frames.length > 5 && !off.length, `${what}: from the edit on the usb box should be at ${to.toFixed(1)}; ${off.length} of ${frames.length} frames had it at ${JSON.stringify([...new Set(off.map(([, x]) => x === null ? null : +x.toFixed(1)))].slice(0, 5))}`);
+                near((await boardFootprint(page, 'USB_J1'))[0] - fp[0], dx, 0.06, `${what}: USB_J1 should be where the box went`);
+                // and once the view has settled, the box is where the board has USB_J1
+                await page.until(`Math.abs(${left} - ${to}) < 0.6`, 5, `${what}: the box to be where the board has USB_J1`);
+            };
+            await moves(async () => { for (let i = 0; i < 3; i++) await arrow(page, 'ArrowRight', true); }, 3, 'three steps of 1 mm');
+            const box = await page.titled('modules.usb:');
+            await moves(() => page.drag(box, [box[0] - 40, box[1]]), -40 / scale, 'a drag');
+            const input = `[...document.querySelectorAll('label.field')].find(l => l.textContent.startsWith('Shift X'))?.querySelector('input')`;
+            await page.until(`!!${input}`, 10, 'the x box');
+            const x = Number(await page.ev(`${input}.value`));
+            await page.ev(`(() => { const i = ${input}; i.focus(); i.select(); })()`);
+            await page.type(String(Number((x - 5).toFixed(2))));
+            await moves(() => page.key('Enter', 'Enter', 13), -5, 'a typed Shift X');
         },
     },
 ];
