@@ -1,11 +1,17 @@
 // A case's parts, in its own preview (Project → Cases), and which 3D board view shows the case
-import {assert, config, freshApp, openPcb, parsed, pressNew, deleteFromList} from '../app.mjs';
+import {assert, config, freshApp, openPcb, outlineMenu, parsed, pressNew, deleteFromList} from '../app.mjs';
 
 const openCase = async (page, name) => {
     await page.ev(`[...document.querySelectorAll('button')].find(b => b.textContent.startsWith('▸ Cases'))?.click()`);
     await page.ev(`[...document.querySelectorAll('button')].find(b => b.textContent.trim() === ${JSON.stringify(`${name}.stl`)})?.click()`);
-    await page.until(`[...document.querySelectorAll('strong')].some(s => s.textContent.startsWith(${JSON.stringify(`${name}: `)}) && s.textContent.includes('in order'))`, 120, `${name}'s parts`);
+    // its parts, once it is made: until then their counts are blank
+    await page.until(`[...document.querySelectorAll('strong')].some(s => s.textContent.startsWith(${JSON.stringify(`${name}: `)}) && s.textContent.includes('in order'))
+        && ![...document.querySelectorAll('.line .count')].some(c => c.textContent === '')`, 120, `${name}'s parts`);
 };
+// a case drawn: a canvas of its own (Monaco, hidden or not, has some too)
+const drawn = `[...document.querySelectorAll('canvas')].some(c => !c.closest('.monaco-editor'))`;
+const setConfig = (page, text) => page.ev(`window.monaco.editor.getModels()[0].setValue(${JSON.stringify(text)})`);
+const says = text => `document.body.textContent.includes(${JSON.stringify(text)})`;
 const lines = `document.querySelectorAll('.line').length`;
 const line = i => `document.querySelectorAll('.line')[${i}]`;
 const caseParts = async (page, name) => (await parsed(page)).cases[name];
@@ -96,6 +102,56 @@ export const tests = [
             await page.ev(`[...document.querySelectorAll('button')].find(b => b.textContent.trim() === 'ergocai_right')?.click()`);
             await page.until(`document.body.textContent.includes('Case (ergocai_right)')`, 120, 'the assembly with its case');
             assert(!(await page.ev(`[...document.querySelectorAll('button')].some(b => b.title?.startsWith('The parts '))`)), 'the assembly should not edit parts');
+        },
+    },
+    {
+        name: 'cases: a case not made yet shows as being made, then its model, never as missing',
+        async run(page, {url}) {
+            await freshApp(page, url);
+            // what the page says, frame by frame, from the click until the model is drawn
+            await page.ev(`(() => { const seen = window.e2eSeen = {making: 0, missing: 0, offWhileMaking: 0};
+                const look = () => {
+                    const making = ${says('Generating right_middle…')};
+                    if (making) seen.making++;
+                    if (${says('No STL')}) seen.missing++;
+                    if (making && [...document.querySelectorAll('.line .count')].some(c => c.textContent === 'off')) seen.offWhileMaking++;
+                    if (!seen.done) requestAnimationFrame(look);
+                };
+                look(); })()`);
+            await page.ev(`[...document.querySelectorAll('button')].find(b => b.textContent.startsWith('▸ Cases'))?.click()`);
+            await page.ev(`[...document.querySelectorAll('button')].find(b => b.textContent.trim() === 'right_middle.stl').click()`);
+            await page.until(`${drawn} && !${says('Generating right_middle…')}`, 120, 'right_middle drawn');
+            const seen = await page.ev(`(() => { window.e2eSeen.done = true; return window.e2eSeen; })()`);
+            assert(seen.making > 0, 'it should say right_middle is being made');
+            assert(!seen.missing, `it should never say there is no STL (${seen.missing} frames did)`);
+            assert(!seen.offWhileMaking, `its parts should not read "off" while it is made (${seen.offWhileMaking} frames did)`);
+        },
+    },
+    {
+        name: 'cases: a case that cannot be made, or comes out empty, says why; one taken out of the config gives way to the layout editor',
+        async run(page, {url}) {
+            await freshApp(page, url);
+            await openCase(page, 'right_middle');
+            await page.until(drawn, 120, 'right_middle drawn');
+            const original = await page.ev(config);
+            // its first part made of an outline the config does not have: ergogen leaves the case out, and says why
+            const at = original.indexOf('\n  right_middle:\n');
+            await setConfig(page, original.slice(0, at) + original.slice(at).replace('name: combo', 'name: e2e_missing'));
+            await page.until(says('No STL: right_middle could not be made: Field "cases.right_middle.0.name" did not match any outline!'), 120, 'why right_middle is not there');
+            assert(!(await page.ev(drawn)), 'the old model should go');
+            // a case whose parts cut each other away: made, and empty
+            const hollow = original.replace(/^cases:.*$/m, '$&\n  e2e_hollow:\n    - name: board\n      extrude: 2\n    - name: board\n      extrude: 2\n      operation: subtract');
+            await setConfig(page, hollow);
+            await page.until(`[...document.querySelectorAll('button')].some(b => b.textContent.trim() === 'e2e_hollow.stl')`, 60, 'e2e_hollow in the list');
+            await page.ev(`[...document.querySelectorAll('button')].find(b => b.textContent.trim() === 'e2e_hollow.stl').click()`);
+            await page.until(says('No STL: e2e_hollow comes out empty, its parts make no solid'), 120, 'e2e_hollow said to be empty');
+            // then not made at all: only why it is not, not also what was wrong with the STL before
+            await setConfig(page, hollow.replace('  e2e_hollow:\n    - name: board', '  e2e_hollow:\n    - name: e2e_missing'));
+            await page.until(says('No STL: e2e_hollow could not be made: Field "cases.e2e_hollow.0.name" did not match any outline!'), 120, 'why e2e_hollow is not made');
+            const shown = await page.ev(`[...document.querySelectorAll('div')].filter(d => !d.childElementCount && d.textContent.startsWith('No STL')).map(d => d.textContent)`);
+            assert(shown.length === 1, `one "No STL" should show: ${JSON.stringify(shown)}`);
+            await setConfig(page, original);
+            await page.until(`!!${outlineMenu}`, 30, 'the layout editor, e2e_hollow gone');
         },
     },
     {

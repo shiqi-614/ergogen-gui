@@ -9,6 +9,12 @@ export const freshApp = async (page, url) => {
     await page.until(`!!window.monaco?.editor.getModels()[0]`, 60, 'the config editor');
 };
 
+// picks an example in the menu in the page's header
+export const pickExample = async (page, label) => {
+    await page.click(await page.center(`document.querySelector('.example-menu__control')`, 'the example menu'));
+    await page.click(await page.center(`[...document.querySelectorAll('.example-menu__option')].find(o => o.textContent === ${JSON.stringify(label)})`, `${label} in its list`));
+};
+
 // demo.svg, the points and outlines, is shown in the layout editor (the page opens on it)
 export const openLayout = async page => {
     await page.ev(`[...document.querySelectorAll('button')].find(b => b.textContent.startsWith('▸ Config & points'))?.click()`);

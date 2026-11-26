@@ -4,6 +4,11 @@ import {wait} from '../cdp.mjs';
 
 const stagger = async (page, col) => (await parsed(page)).points.zones.matrix.columns[col].key?.stagger;
 
+// the layout's svg, and three wheel notches in at its middle
+const layoutSvg = `[...document.querySelectorAll('svg')].find(s => s.querySelectorAll('title').length > 60)`;
+const zoomIn = page => page.ev(`(() => { const s = ${layoutSvg}; const r = s.getBoundingClientRect();
+    for (let i = 0; i < 3; i++) s.dispatchEvent(new WheelEvent('wheel', {deltaY: -100, clientX: r.left + r.width / 2, clientY: r.top + r.height / 2, bubbles: true, cancelable: true})); })()`);
+
 // the largest distance any key moved between two snapshots
 const furthest = (a, b, keys = Object.keys(b)) =>
     Math.max(...keys.filter(k => a[k] && b[k]).map(k => Math.hypot(a[k][0] - b[k][0], a[k][1] - b[k][1])));
@@ -212,14 +217,37 @@ export const tests = [
         async run(page, {url}) {
             await freshApp(page, url);
             await openLayout(page);
-            const svg = `[...document.querySelectorAll('svg')].find(s => s.querySelectorAll('title').length > 60)`;
-            const box = `${svg}.getAttribute('viewBox')`;
+            const box = `${layoutSvg}.getAttribute('viewBox')`;
             const fitted = await page.ev(box);
-            await page.ev(`(() => { const s = ${svg}; const r = s.getBoundingClientRect();
-                for (let i = 0; i < 3; i++) s.dispatchEvent(new WheelEvent('wheel', {deltaY: -100, clientX: r.left + r.width / 2, clientY: r.top + r.height / 2, bubbles: true, cancelable: true})); })()`);
+            await zoomIn(page);
             await page.until(`${box} !== ${JSON.stringify(fitted)}`, 10, 'the view to zoom');
-            await page.ev(`${svg}.dispatchEvent(new MouseEvent('dblclick', {bubbles: true}))`);
+            await page.ev(`${layoutSvg}.dispatchEvent(new MouseEvent('dblclick', {bubbles: true}))`);
             await page.until(`${box} === ${JSON.stringify(fitted)}`, 10, 'the double click to show the whole board again');
+        },
+    },
+    {
+        name: 'layout: Fit shows the whole board again, and ? tells how to edit while the pointer is on it',
+        async run(page, {url}) {
+            await freshApp(page, url);
+            await openLayout(page);
+            const box = `${layoutSvg}.getAttribute('viewBox')`;
+            const fitted = await page.ev(box);
+            await zoomIn(page);
+            await page.until(`${box} !== ${JSON.stringify(fitted)}`, 10, 'the view to zoom');
+            await page.click(await page.center(`document.querySelector('button[title^="Fit the whole board"]')`, 'the Fit button'));
+            await page.until(`${box} === ${JSON.stringify(fitted)}`, 10, 'Fit to show the whole board again');
+
+            const shown = `getComputedStyle(document.getElementById('layout-help')).display !== 'none'`;
+            assert(!(await page.ev(shown)), 'the help should start hidden');
+            const help = await page.center(`document.querySelector('button[aria-label="How to edit the layout"]')`, 'the ? button');
+            await page.cdp.send('Input.dispatchMouseEvent', {type: 'mouseMoved', x: help[0], y: help[1]});
+            await page.until(shown, 5, 'the help, with the pointer on ?');
+            const text = await page.ev(`document.getElementById('layout-help').innerText`);
+            for (const words of ['Alt + drag a key', 'Wheel: zooms', 'Double-click the background', 'Delete or Backspace']) {
+                assert(text.includes(words), `the help should say "${words}"`);
+            }
+            await page.cdp.send('Input.dispatchMouseEvent', {type: 'mouseMoved', x: help[0] + 300, y: help[1] + 300});
+            await page.until(`!(${shown})`, 5, 'the help gone, with the pointer off ?');
         },
     },
     {

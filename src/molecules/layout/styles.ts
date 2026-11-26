@@ -101,6 +101,34 @@ export const OutlineBar = styled.div`
     background: #595959;
   }
 
+  /* how to edit: under the bar while the pointer (or the keyboard) is on its "?"; clicks go through it */
+  .help-text {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    width: max-content;
+    max-width: 36rem;
+    margin-top: 0.3rem;
+    padding: 0.5rem 0.75rem;
+    border: 1px solid #595959;
+    border-radius: 0.25rem;
+    background: #2d2d2d;
+    color: #e0e0e0;
+    line-height: 1.5;
+    pointer-events: none;
+  }
+
+  .help-text b {
+    display: block;
+    margin-top: 0.3rem;
+    color: #ffffff;
+  }
+
+  button.help:hover + .help-text, button.help:focus-visible + .help-text {
+    display: block;
+  }
+
   select {
     padding: 0.2rem 0.4rem;
     border: 1px solid #595959;

@@ -245,13 +245,8 @@ const Downloads = ({setPreview, label, previewKey}: Props) => {
           </Title>
           {!results && !error && <Loading text="Generating…"/>}
           {deleting && (
-              <ConfirmDelete kind={deleting.kind} name={deleting.name} onDone={deleted => {
-                  // what the preview showed is gone: back to the points
-                  const shown = previewKey ?? '';
-                  if (deleted && [`outlines.${deleting.name}.svg`, `pcbs.${deleting.name}.preview.kicad_pcb`, `cases.${deleting.name}.stl`,
-                      `assemblies.${deleting.name}`].includes(shown)) setPreview('demo.svg');
-                  setDeleting(null);
-              }}/>
+              // what the preview showed goes with it: Ergogen.tsx then goes back to the layout editor
+              <ConfirmDelete kind={deleting.kind} name={deleting.name} onDone={() => setDeleting(null)}/>
           )}
           {/* the config's own units: not a download, but what everything below is measured in */}
           {results && (

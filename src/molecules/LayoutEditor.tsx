@@ -25,6 +25,27 @@ import {Cursor, Drawing, placeNear as placeNearKey, pointAt as snapDrawnPoint} f
 // six decimals: enough for a snapped point to stay exactly in line, and short for round ones
 const exactText = (v: number) => String(Number(v.toFixed(6)));
 
+// what the pointer and the keys do here, shown while the pointer is on the "?" beside the outline menu
+const HELP: [string, string[]][] = [
+    ['Keys', [
+        'Drag a key: moves its column (along it: stagger, across it: spread); the columns after it stay put, hold Shift to take them along',
+        "Alt + drag a key: moves its whole zone (the zone's anchor shift)",
+        "On the panel's Key tab, a drag moves that key alone (its shift)",
+        'Click a key: picks its column and opens its panel; drag the green dot above the column to change its splay',
+        'Click the background: drops the selection',
+    ]],
+    ['View', [
+        'Wheel: zooms about the pointer',
+        'Right-drag: moves the view',
+        'Double-click the background, or Fit: the whole board',
+    ]],
+    ['Outlines (pick one in the Outline menu)', [
+        'Drag a point (square) or a centre (circle); a point snaps to its neighbours',
+        'Click an edge: adds a point there; click a point, then Delete or Backspace: removes it',
+        '+ with "draw its points": click to add points, Enter or the first point to finish, Backspace to take one back, Esc to cancel',
+    ]],
+];
+
 const LayoutEditor = (): JSX.Element | null => {
     const configContext = useConfigContext();
     const configInput = configContext?.configInput ?? '';
@@ -400,6 +421,9 @@ const LayoutEditor = (): JSX.Element | null => {
         return true;
     };
 
+    // the whole board in view, after panning and zooming
+    const fitAll = () => points && setView(fitView(points));
+
     // the point a click would add (drawing.ts), at the view's scale
     const pointAt = (e: React.PointerEvent, d: Drawing): Cursor | null =>
         snapDrawnPoint(points, d, toBoard(e), boardRef.current?.getScreenCTM()?.a || 1);
@@ -472,8 +496,8 @@ const LayoutEditor = (): JSX.Element | null => {
                 onPointerUp={endDrag}
                 onPointerCancel={endDrag}
                 onPointerDown={() => { setSelected(null); setChosenPoint(null); }}
-                // a double click on the background goes back to the whole board, after panning and zooming
-                onDoubleClick={e => { if (e.target === e.currentTarget && points) setView(fitView(points)); }}
+                // a double click on the background: the whole board
+                onDoubleClick={e => { if (e.target === e.currentTarget) fitAll(); }}
             >
                 {/* the part pointed at in the panel: its polygon, filled and drawn over the rest */}
                 {/* the handles' positions are the board's, y up: flipped like the keys */}
@@ -624,6 +648,12 @@ const LayoutEditor = (): JSX.Element | null => {
                         {outlineNames.map(name => <option key={name} value={name}>{name}</option>)}
                     </select>
                     <button title="A new outline" disabled={!!drawing || !points} onClick={() => setNewOutline(true)}>+</button>
+                    <button className="secondary" title="Fit the whole board in the view (a double click on the background does it too)"
+                            disabled={!points} onClick={fitAll}>Fit</button>
+                    <button className="secondary help" aria-label="How to edit the layout" aria-describedby="layout-help">?</button>
+                    <div className="help-text" id="layout-help" role="tooltip">
+                        {HELP.map(([title, lines]) => <div key={title}><b>{title}</b>{lines.map(line => <div key={line}>{line}</div>)}</div>)}
+                    </div>
                 </div>
                 {newOutline && <NewOutline onCancel={() => setNewOutline(false)} onCreate={request => { setNewOutline(false); create(request); }}/>}
                 {drawing && (

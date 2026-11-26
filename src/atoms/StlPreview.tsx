@@ -1,5 +1,6 @@
 import {useEffect, useRef, useState} from "react";
 import ErrorBoundary from "./ErrorBoundary";
+import Loading from "./Loading";
 import CaseParts, {MadePart, OPERATION_COLOURS} from "../molecules/CaseParts";
 import styled from "styled-components";
 import * as THREE from "three";
@@ -8,9 +9,12 @@ import {STLLoader} from "three/examples/jsm/loaders/STLLoader";
 
 type Props = {
     stl: Blob | null,
-    // the case (cases.<name>) it is, with its parts as ergogen made them: edited in a panel over the view
+    // the case (cases.<name>) it is, with its parts as ergogen made them (none while it is not made): edited in a
+    // panel over the view
     caseName?: string,
     made?: MadePart[],
+    // why there is no STL: ergogen could not make the case (none: it is being made)
+    failed?: string,
 };
 
 // where each case was looked at from, so editing it (which makes a new STL) doesn't move the view
@@ -31,16 +35,19 @@ const Container = styled.div`
   }
 `;
 
-const Message = styled.div`
+// what the view waits for, or why it has nothing to show, at the top of the pane: beside the parts' card (CaseParts,
+// 21.5rem from the left) when there is one
+export const Message = styled.div<{ $beside?: boolean }>`
   position: absolute;
   top: 3rem;
-  width: 100%;
+  left: ${p => p.$beside ? '22rem' : '1rem'};
+  right: 1rem;
   text-align: center;
 `;
 
 // Shows a case layer's STL (the file the project list offers) with three.js.
 // Left drag orbits, right drag pans, the wheel zooms.
-const StlPreview = ({stl, caseName, made}: Props): JSX.Element => {
+const StlPreview = ({stl, caseName, made, failed}: Props): JSX.Element => {
     const container = useRef<HTMLDivElement>(null);
     const [error, setError] = useState<string | null>(null);
     // the scene, its redraw and how far the STL was moved to centre it, for drawing a part's shape in it
@@ -50,10 +57,11 @@ const StlPreview = ({stl, caseName, made}: Props): JSX.Element => {
     const [lit, setLit] = useState<string | null>(null);
 
     useEffect(() => {
+        // a new STL, or none (being made again, or failed): what was wrong with the last one no longer holds
+        setError(null);
         const host = container.current;
         if (!host || !stl) return;
         let disposed = false;
-        setError(null);
 
         const renderer = new THREE.WebGLRenderer({antialias: true});
         renderer.setPixelRatio(window.devicePixelRatio);
@@ -94,7 +102,11 @@ const StlPreview = ({stl, caseName, made}: Props): JSX.Element => {
         stl.arrayBuffer().then((buffer) => {
             if (disposed) return;
             geometry = new STLLoader().parse(buffer);
-            if (!geometry.getAttribute('position')?.count) throw new Error('the STL has no triangles');
+            // made, and empty (a case with no parts, or none that makes anything, fails in ergogen instead)
+            if (!geometry.getAttribute('position')?.count) {
+                setError(`No STL: ${caseName} comes out empty, its parts make no solid`);
+                return;
+            }
             if (!geometry.getAttribute('normal')) geometry.computeVertexNormals();
             geometry.computeBoundingBox();
             const offset = geometry.boundingBox?.getCenter(new THREE.Vector3()) ?? new THREE.Vector3();
@@ -173,9 +185,9 @@ const StlPreview = ({stl, caseName, made}: Props): JSX.Element => {
 
     return (
         <Container ref={container}>
-            {!stl && <Message>No STL for this case.</Message>}
-            {error && <Message>{error}</Message>}
-            {caseName && <ErrorBoundary area="the case's parts" resetKey={made}><CaseParts caseName={caseName} made={made ?? []} onLight={setLit}/></ErrorBoundary>}
+            {!stl && <Message $beside={!!caseName}>{failed ? `No STL: ${caseName} could not be made: ${failed}` : <Loading text={`Generating ${caseName}…`}/>}</Message>}
+            {error && <Message $beside={!!caseName}>{error}</Message>}
+            {caseName && <ErrorBoundary area="the case's parts" resetKey={made}><CaseParts caseName={caseName} made={made} onLight={setLit}/></ErrorBoundary>}
         </Container>
     );
 };

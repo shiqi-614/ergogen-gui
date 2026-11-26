@@ -1,4 +1,5 @@
 import {useEffect, useMemo, useState} from "react";
+import {useMeasure} from "react-use";
 import styled from "styled-components";
 import {useConfigContext} from "../context/ConfigContext";
 import {Button, Dialog, Field, colors, fontSize, radius} from "../ui";
@@ -23,6 +24,16 @@ const List = styled.div`
 
   .unit:hover {
     background: rgba(255, 159, 28, 0.12);
+  }
+
+  /* too narrow for a value beside its name: the value gets a line of its own, as wide as the list */
+  &.narrow .unit {
+    grid-template-columns: minmax(0, 1fr) 3.6rem 3.4rem 1rem;
+  }
+
+  &.narrow input {
+    grid-column: 1 / -1;
+    grid-row: 2;
   }
 
   .name {
@@ -76,6 +87,9 @@ const List = styled.div`
 
 const format = (value: unknown) => typeof value === 'number' ? String(Number(value.toFixed(3))) : '?';
 
+// the list's width (px, 25rem) below which a value beside its name would have less than about 7rem
+const NARROW = 400;
+
 export const useUnits = () => {
     const text = useConfigContext()?.configInput ?? '';
     return useMemo(() => unitEntries(text), [text]);
@@ -89,6 +103,7 @@ export const UnitList = (): JSX.Element | null => {
     const [drafts, setDrafts] = useState<Record<string, string | undefined>>({});
     useEffect(() => setDrafts({}), [text]);
     const [note, setNote] = useState<string | null>(null);
+    const [list, {width}] = useMeasure<HTMLDivElement>();
     if (!configContext) return null;
 
     const write = (index: number, value: string) => {
@@ -116,7 +131,7 @@ export const UnitList = (): JSX.Element | null => {
     };
 
     return (
-        <List>
+        <List ref={list} className={width && width < NARROW ? 'narrow' : undefined}>
             {entries.length === 0 && <div className="group">no units of its own</div>}
             {entries.map((entry, index) => {
                 const uses = unitMentions(text, entry.name);

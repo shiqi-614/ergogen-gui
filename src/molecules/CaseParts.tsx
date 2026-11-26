@@ -84,8 +84,8 @@ const Card = styled(CardShell)`
 type Props = {
     // the case shown, e.g. left_top
     caseName: string,
-    // its parts as ergogen made them, for what they matched and their shapes
-    made: MadePart[],
+    // its parts as ergogen made them, for what they matched and their shapes; none while the case is not made
+    made?: MadePart[],
     // the part pointed at, or the open one, by its index in the case's parts ("3"), for the view to show
     onLight: (part: string | null) => void,
 };
@@ -185,7 +185,7 @@ const CaseParts = ({caseName, made, onLight}: Props): JSX.Element | null => {
     };
     // a new part at the end, as thick as the case's first, opened to be set; a case part is that case as it is
     const add = (what: 'outline' | 'pcb' | 'case', caseOf?: string) => {
-        const thick = made.find(m => m.extrude !== null)?.extrude ?? 3;
+        const thick = made?.find(m => m.extrude !== null)?.extrude ?? 3;
         const name = what === 'outline' ? outlines[0] ?? 'board' : what === 'pcb' ? '/footprints.keys/' : caseOf;
         const lines = what === 'case' ? [`what: case`, `name: ${name}`, 'operation: add']
             : [`what: ${what}`, `name: ${name}`, `extrude: ${thick}`, 'operation: subtract'];
@@ -205,7 +205,7 @@ const CaseParts = ({caseName, made, onLight}: Props): JSX.Element | null => {
             {!folded && <div className="body">
                 {parts.map((part, index) => {
                     const key = String(part.key);
-                    const result = made.find(m => m.part === key);
+                    const result = made?.find(m => m.part === key);
                     const operation = rawOf(part.sites.operation) ?? 'add';
                     const name = rawOf(part.sites.name) ?? '';
                     const isOpen = open === key;
@@ -218,7 +218,7 @@ const CaseParts = ({caseName, made, onLight}: Props): JSX.Element | null => {
                                 <span className="name">{name}</span>
                                 <span className="thick">{rawOf(part.sites.extrude) ?? (part.what === 'case' ? '' : '1')}{part.what === 'case' ? '' : ' mm'}</span>
                                 <span className={`count${result && !result.matched ? ' none' : ''}`}>
-                                    {result ? (result.matched ? `×${result.matched}` : 'none') : 'off'}
+                                    {result ? (result.matched ? `×${result.matched}` : 'none') : made ? 'off' : ''}
                                 </span>
                             </div>
                             {isOpen && (
@@ -238,7 +238,7 @@ const CaseParts = ({caseName, made, onLight}: Props): JSX.Element | null => {
                                     {part.what === 'pcb' && <Field label="Side">{select(index, 'side', SIDES, 'front', "the footprints it cuts: on the board's front, its back (a bottom plate's holes), or both")}</Field>}
                                     {part.what === 'pcb' && <Field label="Cut">{select(index, 'cut', CUTS, 'box', 'what each footprint cuts: the box round what it draws on the layers, or the closed shapes it draws there')}</Field>}
                                     <Field label="Halves">{select(index, 'asym', ASYMS, 'both', 'which halves it is on: both, the source one, or the mirrored one')}</Field>
-                                    {!result && <Tip>Not on this half (its asym leaves it off).</Tip>}
+                                    {made && !result && <Tip>Not on this half (its asym leaves it off).</Tip>}
                                     <Actions>
                                         <Button disabled={index === 0} title="Move it up" onClick={() => move(index, -1)}>↑</Button>
                                         <Button disabled={index === parts.length - 1} title="Move it down" onClick={() => move(index, 1)}>↓</Button>

@@ -17,6 +17,7 @@ import DownloadIcon from "./atoms/DownloadIcon";
 import {ConfigOption, exampleOptions } from "./examples";
 import {colors, radius, shadow} from "./ui/theme";
 import Select, {StylesConfig} from "react-select";
+import yaml from "js-yaml";
 import ErgoCai from "./examples/ErgoCai";
 
 // fills the screen below the header: 100vh minus the header (4rem) and the split padding (2rem)
@@ -142,6 +143,18 @@ const ShowButton = styled.button`
 // the strip the hidden editor leaves, in px
 const FOLDED_WIDTH = 32;
 
+// whether a config still has what a preview key shows (pcbs.<name>…, cases.<name>…, assemblies.<name>); a config that
+// does not parse, half typed, is taken to have it
+const hasPreview = (text: string, previewKey: string) => {
+    if (previewKey === 'demo.svg') return true;
+    const [kind, name] = previewKey.split('.');
+    try {
+        return !!(yaml.load(text) as any)?.[kind]?.[name];
+    } catch (e: unknown) {
+        return true;
+    }
+};
+
 // @ts-ignore
 const StyledSplit = styled(Split)`
   width: 100%;
@@ -206,6 +219,12 @@ const Ergogen = () => {
             configContext?.setConfigInput(selectedOption.value)
         }
     }, [selectedOption]);
+
+    // what is on show is gone from the config (another example, a delete, an edit): back to the layout editor
+    const configInput = configContext?.configInput ?? '';
+    useEffect(() => {
+        if (!hasPreview(configInput, previewKey)) setPreviewKey('demo.svg');
+    }, [configInput, previewKey]);
 
     // the config editor, hidden down to a strip at the left, as the page starts: the preview has the room until ▸
     // Config, or a jump to an error's line, shows it. It hides again once the pointer has left it (and the strip
