@@ -9,7 +9,7 @@ units:
   ky: u
   screwSize: 1.05
   studSize: 1.75
-  # the funnels through the case wall in front of the power switch and the USB port (usb_and_swith): half width
+  # the funnels through the case wall in front of the power switch and the USB port (usb_and_switch): half width
   # where they start, half width at the far end, and how far out the far end is. The start is as wide as the
   # switchplate's cut-outs for the two parts (the Dwgs.User rectangles in their footprints, 11.2 mm), so the
   # sides of those openings run straight on into the funnels.
@@ -170,7 +170,7 @@ outlines:
   # One funnel shape (units funnelNarrow, funnelWide, funnelDepth), starting funnelLip out from the board edge in
   # front of each part. The two are added, not stacked: their far ends overlap, and stacked they'd merge into one
   # open line.
-  usb_and_swith:
+  usb_and_switch:
     # the power switch, on the board tab that ends at 1ky + 5
     - what: polygon
       operation: add
@@ -638,7 +638,7 @@ cases:
       operation: subtract
       expand: 2.5
     - what: outline
-      name: usb_and_swith
+      name: usb_and_switch
       extrude: 5
       operation: subtract
     - what: pcb
@@ -688,7 +688,7 @@ cases:
       operation: subtract
       expand: 1.5
     - what: outline
-      name: usb_and_swith
+      name: usb_and_switch
       extrude: 5
       operation: subtract
     # the power switch and the USB receptacle, with the room the lever and the plug need: drawn on Dwgs.User in
@@ -715,7 +715,7 @@ cases:
       extrude: 5
       operation: subtract
     - what: outline
-      name: usb_and_swith
+      name: usb_and_switch
       extrude: 5
       operation: subtract
     - what: outline
@@ -723,7 +723,7 @@ cases:
       extrude: 5
       operation: subtract
 
-  right_buttom:
+  right_bottom:
     - what: outline
       name: expand
       extrude: 3
@@ -732,7 +732,7 @@ cases:
       extrude: 3
       operation: subtract
     - what: outline
-      name: usb_and_swith
+      name: usb_and_switch
       extrude: 3
       operation: subtract
     # the reset button's hole, under its plunger: drawn on Dwgs.User in its footprint, on the board's back, so it
@@ -798,9 +798,9 @@ cases:
     mirror:
       from: right_gap
 
-  left_buttom:
+  left_bottom:
     mirror:
-      from: right_buttom
+      from: right_bottom
 
   # The tenting legs under the bottom plate, folded, for the tent assemblies: each leg (outlines._tent_*) laid flat,
   # turned on its edge and along its slot (rotate, about the leg's middle), and shifted so that its hole is on its
@@ -842,12 +842,13 @@ cases:
 #                                 joystick's case
 assemblies:
   ergocai_right:
-    stack: [right_buttom, right_gap, right_switchplate, right_middle, right_top]
+    stack: [right_bottom, right_gap, right_switchplate, right_middle, right_top]
     pcb:
       name: ergo_cai_right
       top: right_gap
     # the e-paper module (ErgoCai.modules e-paper/2.13inch, exported from KiCad with its models) on the e-paper
-    # socket's four holes, over the 18650 cell: its board's bottom at 30 mm, on 22 mm standoffs from the pcb
+    # socket's four holes, over the 18650 cell: its board's bottom at 30 mm, on 9 mm standoffs that stand on the top
+    # plate (its top at 21), the M2 screws coming up through the middle layer
     parts:
       - name: e-paper
         model: "github:shiqi-614/ErgoCai.modules/e-paper/2.13inch/2.13inch.glb"
@@ -872,7 +873,7 @@ assemblies:
         rotate: 180
         z: 13.4
   ergocai_right_trackball:
-    stack: [right_buttom, right_gap, right_switchplate, right_middle, right_top]
+    stack: [right_bottom, right_gap, right_switchplate, right_middle, right_top]
     pcb:
       name: ergo_cai_right
       top: right_gap
@@ -889,7 +890,7 @@ assemblies:
         rotate: 180
         z: 11.8
   ergocai_right_side_trackball:
-    stack: [right_buttom, right_gap, right_switchplate_side, right_middle_side, right_top_side]
+    stack: [right_bottom, right_gap, right_switchplate_side, right_middle_side, right_top_side]
     pcb:
       name: ergo_cai_right
       top: right_gap
@@ -905,7 +906,7 @@ assemblies:
         at_module: joystick
         z: 11.8
   ergocai_right_trackball_board:
-    stack: [right_buttom, right_gap, right_switchplate, right_middle, right_top]
+    stack: [right_bottom, right_gap, right_switchplate, right_middle, right_top]
     pcb:
       name: ergo_cai_right_trackball
       top: right_gap
@@ -916,12 +917,13 @@ assemblies:
         at_module: e-paper
         z: 30
   ergocai_left:
-    stack: [left_buttom, left_gap, left_switchplate, left_middle, left_top]
+    stack: [left_bottom, left_gap, left_switchplate, left_middle, left_top]
     pcb:
       name: ergo_cai_left
       top: left_gap
     # the e-paper module (ErgoCai.modules e-paper/2.13inch, exported from KiCad with its models) on the e-paper
-    # socket's four holes, over the 18650 cell: its board's bottom at 30 mm, on 22 mm standoffs from the pcb
+    # socket's four holes, over the 18650 cell: its board's bottom at 30 mm, on 9 mm standoffs that stand on the top
+    # plate (its top at 21), the M2 screws coming up through the middle layer
     parts:
       - name: e-paper
         model: "github:shiqi-614/ErgoCai.modules/e-paper/2.13inch/2.13inch.glb"
@@ -933,7 +935,7 @@ assemblies:
   ergocai_right_tent_folded:
     stack:
       - {name: right_tent_folded, z: -(tentPivotZ + tentLegW / 2)}
-      - {name: right_buttom, z: 0}
+      - {name: right_bottom, z: 0}
       - right_gap
       - right_switchplate
       - right_middle
@@ -974,7 +976,7 @@ assemblies:
   ergocai_left_tent_folded:
     stack:
       - {name: left_tent_folded, z: -(tentPivotZ + tentLegW / 2)}
-      - {name: left_buttom, z: 0}
+      - {name: left_bottom, z: 0}
       - left_gap
       - left_switchplate
       - left_middle

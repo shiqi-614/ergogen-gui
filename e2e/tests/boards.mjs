@@ -1,4 +1,4 @@
-// New and deleted pcbs and assemblies, from the Downloads list's "+" and their own views
+// New and deleted pcbs and assemblies, from the project list's "+" and their own views
 import {assert, config, freshApp, parsed, pressNew, deleteFromList} from '../app.mjs';
 
 const dialogBox = placeholder => `document.querySelector('[role="dialog"] input[placeholder="${placeholder}"]')`;
@@ -52,9 +52,9 @@ export const tests = [
             await page.ev(`${dialogBox('assembly name')}.focus()`);
             await page.type('test_right');
             await page.choose(`document.querySelector('[role="dialog"] select[title="the pcb it holds"]')`, 'ergo_cai_right');
-            await check(page, 'right_buttom');
+            await check(page, 'right_bottom');
             await check(page, 'right_top');
-            await page.choose(`document.querySelector('[role="dialog"] select[title^="the case whose top"]')`, 'right_buttom');
+            await page.choose(`document.querySelector('[role="dialog"] select[title^="the case whose top"]')`, 'right_bottom');
             await page.ev(`document.querySelector('[role="dialog"] input[title^="The same with"]').click()`);
             // a module board on the e-paper socket, 30 mm up
             await page.press('+ Part');
@@ -69,9 +69,9 @@ export const tests = [
             await page.until(`!!jsyaml.load(${config}).assemblies.test_right`, 30, 'the new assembly');
             const {assemblies} = await parsed(page);
             const parts = [{name: 'panel', model: 'github:shiqi-614/ErgoCai.modules/e-paper/2.13inch/2.13inch.glb', at_module: 'e-paper', z: 30}];
-            assert(JSON.stringify(assemblies.test_right) === JSON.stringify({stack: ['right_buttom', 'right_top'], pcb: {name: 'ergo_cai_right', top: 'right_buttom'}, parts}),
+            assert(JSON.stringify(assemblies.test_right) === JSON.stringify({stack: ['right_bottom', 'right_top'], pcb: {name: 'ergo_cai_right', top: 'right_bottom'}, parts}),
                 `test_right: ${JSON.stringify(assemblies.test_right)}`);
-            assert(JSON.stringify(assemblies.test_left) === JSON.stringify({stack: ['left_buttom', 'left_top'], pcb: {name: 'ergo_cai_left', top: 'left_buttom'}, parts}),
+            assert(JSON.stringify(assemblies.test_left) === JSON.stringify({stack: ['left_bottom', 'left_top'], pcb: {name: 'ergo_cai_left', top: 'left_bottom'}, parts}),
                 `test_left: ${JSON.stringify(assemblies.test_left)}`);
             await page.until(`!!document.querySelector('canvas')`, 180, 'its 3D view');
             await deleteFromList(page, 'Assemblies', 'test_right');

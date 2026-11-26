@@ -78,7 +78,7 @@ const SectionHeader = styled.div`
   }
 `;
 
-// the config section of each Downloads section that holds items ergogen makes
+// the config section of each project section that holds items ergogen makes
 const SECTION_OF: Record<string, string> = {outlines: 'Outlines', pcbs: 'PCBs', cases: 'Cases', assemblies: 'Assemblies'};
 
 // the sections a new item can be added to, and what it is called
@@ -239,7 +239,7 @@ const Downloads = ({setPreview, label, previewKey}: Props) => {
     return (
       <DownloadsContainer>
           <Title>
-              Downloads
+              Project
               {/* a run after the first: the files below are about to change */}
               {running && results && <Spinner $size="0.9rem" title="Generating…" role="status" aria-label="Generating"/>}
           </Title>

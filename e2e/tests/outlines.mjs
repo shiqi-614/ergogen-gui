@@ -117,15 +117,15 @@ export const tests = [
             const boxes = `[...document.querySelectorAll('input.anchor')]`;
             const menus = `[...document.querySelectorAll('select.anchor')]`;
             // a polygon's point: its y (point 0's x and y are the first boxes), an expression kept as typed
-            await pick(page, 'usb_and_swith');
+            await pick(page, 'usb_and_switch');
             await page.until(`${boxes}.length >= 16 && ${menus}.length >= 8`, 30, 'the boxes of its points');
             await typeInto(`${boxes}[1]`, '1ky + 6 + funnelLip + funnelDepth');
-            await page.until(`jsyaml.load(${config}).outlines.usb_and_swith[0].points[0].shift[1] === '1ky + 6 + funnelLip + funnelDepth'`, 30, 'its y to be written');
+            await page.until(`jsyaml.load(${config}).outlines.usb_and_switch[0].points[0].shift[1] === '1ky + 6 + funnelLip + funnelDepth'`, 30, 'its y to be written');
             // its ref, from the menu of points
             await page.choose(`${menus}[0]`, 'matrix_col2_row0');
-            await page.until(`jsyaml.load(${config}).outlines.usb_and_swith[0].points[0].ref === 'matrix_col2_row0'`, 30, 'its ref to be written');
+            await page.until(`jsyaml.load(${config}).outlines.usb_and_switch[0].points[0].ref === 'matrix_col2_row0'`, 30, 'its ref to be written');
             // a point more, and that one deleted again
-            const count = `jsyaml.load(${config}).outlines.usb_and_swith[0].points.length`;
+            const count = `jsyaml.load(${config}).outlines.usb_and_switch[0].points.length`;
             await page.ev(`[...document.querySelectorAll('button')].find(b => b.textContent === '+ Point').click()`);
             await page.until(`${count} === 5`, 30, 'a fifth point');
             await page.until(`!!document.querySelector('button[title="Delete point 4"]')`, 30, 'its row');
@@ -181,9 +181,9 @@ export const tests = [
         async run(page, {url}) {
             await freshApp(page, url);
             await openLayout(page);
-            await pick(page, 'usb_and_swith');
-            const parts = `jsyaml.load(${config}).outlines.usb_and_swith`;
-            const n = (await parsed(page)).outlines.usb_and_swith.length;
+            await pick(page, 'usb_and_switch');
+            const parts = `jsyaml.load(${config}).outlines.usb_and_switch`;
+            const n = (await parsed(page)).outlines.usb_and_switch.length;
             await page.until(`[...document.querySelectorAll('button')].some(b => b.textContent === '+ Rectangle')`, 30, 'the add buttons');
             await page.press('+ Rectangle');
             await page.until(`${parts}.length === ${n + 1} && ${parts}[${n}].what === 'rectangle'`, 30, 'a rectangle at the end');

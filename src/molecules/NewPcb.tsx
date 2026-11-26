@@ -5,7 +5,7 @@ import {Button, Dialog, Field} from "../ui";
 import {mirrorName} from "./NewCase";
 import {appendEntry, entryLines, mirrorCaseLines} from "../utils/layoutEdit";
 
-// A new pcb (pcbs.<name>), from the "+" on the Downloads list's PCBs: a copy of another pcb (its outlines,
+// A new pcb (pcbs.<name>), from the "+" on the project list's PCBs: a copy of another pcb (its outlines,
 // footprints and modules), or an empty board whose edge is an outline; on a split board with a mirrored pcb for
 // the other half too.
 

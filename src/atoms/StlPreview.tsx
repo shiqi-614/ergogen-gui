@@ -38,7 +38,7 @@ const Message = styled.div`
   text-align: center;
 `;
 
-// Shows a case layer's STL (the file the Downloads list offers) with three.js.
+// Shows a case layer's STL (the file the project list offers) with three.js.
 // Left drag orbits, right drag pans, the wheel zooms.
 const StlPreview = ({stl, caseName, made}: Props): JSX.Element => {
     const container = useRef<HTMLDivElement>(null);

@@ -15,7 +15,7 @@ export const tests = [
             await page.ev(`[...document.querySelectorAll('button')].find(b => b.textContent === 'right_top.stl')?.click()`);
             await page.until(`${broken}.includes("the case's parts")`, 60, 'the panel to show its error');
             assert(await page.ev(`!!document.querySelector('canvas')`), 'the case should still be drawn');
-            assert(await page.ev(`[...document.querySelectorAll('button')].some(b => b.textContent === 'right_middle.stl')`), 'the Downloads list should still be there');
+            assert(await page.ev(`[...document.querySelectorAll('button')].some(b => b.textContent === 'right_middle.stl')`), 'the project list should still be there');
             assert(await page.ev(`!!window.monaco.editor.getModels()[0]`), 'the config editor should still be there');
             // fixed, it comes back
             await page.ev(`window.__breakArea = undefined`);
@@ -25,13 +25,13 @@ export const tests = [
         },
     },
     {
-        name: 'errors: a Downloads list that fails leaves the preview and the editor working',
+        name: 'errors: a project list that fails leaves the preview and the editor working',
         async run(page, {url}) {
             await freshApp(page, url);
-            await page.ev(`window.__breakArea = 'the Downloads list'`);
+            await page.ev(`window.__breakArea = 'the project list'`);
             // a change to the config draws the list again
             await page.ev(`(() => { const m = window.monaco.editor.getModels()[0]; m.applyEdits([{range: m.getFullModelRange(), text: m.getValue() + '\\n'}]) })()`);
-            await page.until(`${broken}.includes('the Downloads list')`, 30, 'the list to show its error');
+            await page.until(`${broken}.includes('the project list')`, 30, 'the list to show its error');
             assert(await page.ev(`!!document.querySelector('img, svg')`), 'the preview should still be there');
             await page.ev(`window.__breakArea = undefined`);
             await page.press('Try again');

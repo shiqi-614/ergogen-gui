@@ -4,7 +4,7 @@ import {useConfigContext} from "../context/ConfigContext";
 import {Button, Dialog, Field, colors, fontSize, radius} from "../ui";
 import {appendEntry, applyEdits, deleteUnit, isPlainNumber, nudge, unitEntries, unitMentions} from "../utils/layoutEdit";
 
-// The config's units and variables, at the top of the Downloads list: what each is written as, what an expression comes to
+// The config's units and variables, at the top of the project list: what each is written as, what an expression comes to
 // and how often the config uses it. A changed value is written as typed and everything made again, so the preview
 // shows what it does; ↑ and ↓ nudge a value by 0.1 (with Shift 1, with Alt 0.01) and keep how it is written.
 

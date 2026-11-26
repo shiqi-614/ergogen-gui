@@ -4,7 +4,7 @@ import {useConfigContext} from "../context/ConfigContext";
 import {Button, Dialog, Field} from "../ui";
 import {appendEntry, caseLines, insertIntoStack, mirrorCaseLines} from "../utils/layoutEdit";
 
-// A new case (cases.<name>), from the "+" on the Downloads list's Cases: a copy of another case's parts, or an
+// A new case (cases.<name>), from the "+" on the project list's Cases: a copy of another case's parts, or an
 // outline extruded; on a split board with a mirrored case for the other half too; and put into an assembly's
 // stack above one of its layers (the mirrored one into the other half's assembly, above the same layer's mirror).
 

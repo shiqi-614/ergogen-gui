@@ -3,7 +3,7 @@ import {useConfigContext} from "../context/ConfigContext";
 import {Button, Dialog, Field} from "../ui";
 import {caseReferences, deleteCase, deleteEntry, deleteOutline, deletePcb, outlineReferences, pcbReferences} from "../utils/layoutEdit";
 
-// Deleting an outline, a pcb, a case or an assembly, from its row in the Downloads list: what goes with it, and a
+// Deleting an outline, a pcb, a case or an assembly, from its row in the project list: what goes with it, and a
 // dialog to say yes to first. The editor's undo brings it all back.
 
 export type Deletable = 'outline' | 'PCB' | 'case' | 'assembly';

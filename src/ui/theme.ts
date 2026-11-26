@@ -11,7 +11,7 @@ export const colors = {
     fieldBorder: '#595959',
     button: '#4a4a4a',
     buttonHover: '#5c5c5c',
-    // a section's header in the Downloads list
+    // a section's header in the project list
     header: '#595959',
     headerHover: '#525252',
     // what is picked or on, in the panels and on the boards

@@ -117,7 +117,7 @@ const Status = styled.div`
   }
 `;
 
-// like the download buttons in the Downloads list, in the pane's top right corner
+// like the download buttons in the project list, in the pane's top right corner
 const Download = styled(Button)`
   position: absolute;
   top: 0.5rem;

@@ -1,4 +1,4 @@
-// The config's units, at the top of the Downloads list
+// The config's units, at the top of the project list
 import {assert, config, freshApp, parsed, pressNew} from '../app.mjs';
 
 const box = name => `document.querySelector('input[aria-label="${name}"]')`;

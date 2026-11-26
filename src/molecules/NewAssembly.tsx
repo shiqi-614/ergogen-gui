@@ -5,7 +5,7 @@ import {Button, Dialog, Field} from "../ui";
 import {mirrorName} from "./NewCase";
 import {AssemblyPart, appendEntry, assemblyLines} from "../utils/layoutEdit";
 
-// A new assembly (assemblies.<name>), from the "+" on the Downloads list's Assemblies: a board and the cases
+// A new assembly (assemblies.<name>), from the "+" on the project list's Assemblies: a board and the cases
 // stacked around it, from the bottom up, the board's top level with one of them; on a split board with the same
 // for the other half too, made of the mirrored board and cases. Other 3D models go on it as parts, e.g. a module
 // board on standoffs: each at a module of the pcb (turned with it) and a height.

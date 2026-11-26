@@ -183,7 +183,7 @@ const RightSplitPane = styled.div`
     position: relative;
 `;
 
-// the Downloads list scrolls in its pane, as tall as the previews: the page below the header does not scroll
+// the project list scrolls in its pane, as tall as the previews: the page below the header does not scroll
 const DownloadsPane = styled.div`
     height: calc(100vh - 6rem);
     overflow-y: auto;
@@ -344,7 +344,7 @@ const Ergogen = () => {
                         </LeftSplitPane>
                         <RightSplitPane>
                             <DownloadsPane>
-                                <ErrorBoundary area="the Downloads list" resetKey={configContext.configInput}>
+                                <ErrorBoundary area="the project list" resetKey={configContext.configInput}>
                                     <Downloads setPreview={showPreview} label={selectedOptionLabel}
                                                previewKey={previewKey}/>
                                 </ErrorBoundary>

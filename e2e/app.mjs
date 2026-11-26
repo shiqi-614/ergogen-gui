@@ -17,7 +17,7 @@ export const openLayout = async page => {
 };
 
 export const openPcb = async (page, name) => {
-    // the Downloads section header reads "▸ PCBs" and a count; open it when it is closed
+    // the project section header reads "▸ PCBs" and a count; open it when it is closed
     await page.ev(`[...document.querySelectorAll('button')].find(b => b.textContent.startsWith('▸ PCBs'))?.click()`);
     await page.ev(`[...document.querySelectorAll('button')].find(b => b.textContent.includes(${JSON.stringify(name)}) && b.textContent.includes('kicad_pcb')).click()`);
     await page.until(`!!document.querySelector('kicanvas-embed[loaded]') && !![...document.querySelectorAll('button')].find(b => b.textContent === 'Edit parts')`, 120, `the ${name} board`);
@@ -59,7 +59,7 @@ export const parsed = page => page.ev(`jsyaml.load(${config})`);
 // the outline menu at the top left of the layout
 export const outlineMenu = `[...document.querySelectorAll('select')].find(s => [...s.options].some(o => o.textContent === 'Outline: none'))`;
 
-// the "+" on a Downloads section's header, which opens its new-item form
+// the "+" on a project section's header, which opens its new-item form
 export const pressNew = (page, section) =>
     page.ev(`[...document.querySelectorAll('button[title="A new ${section}"]')][0].click()`);
 
@@ -84,7 +84,7 @@ export const settled = async page => {
     if (broken) throw new Error(`part of the page failed to draw: ${broken.slice(0, 300)}`);
 };
 
-// Deletes an item from its row in the Downloads list (its section opened), saying yes in the dialog. Returns what
+// Deletes an item from its row in the project list (its section opened), saying yes in the dialog. Returns what
 // the dialog said goes with it.
 export const deleteFromList = async (page, section, name) => {
     await page.ev(`[...document.querySelectorAll('button')].find(b => b.textContent.startsWith('▸ ${section}'))?.click()`);

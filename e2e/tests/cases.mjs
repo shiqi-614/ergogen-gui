@@ -1,4 +1,4 @@
-// A case's parts, in its own preview (Downloads → Cases), and which 3D board view shows the case
+// A case's parts, in its own preview (Project → Cases), and which 3D board view shows the case
 import {assert, config, freshApp, openPcb, parsed, pressNew, deleteFromList} from '../app.mjs';
 
 const openCase = async (page, name) => {
