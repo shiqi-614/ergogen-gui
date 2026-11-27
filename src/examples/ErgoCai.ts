@@ -508,7 +508,8 @@ pcbs:
             file: "usb/default_usb/default_usb.kicad_pcb"
         where:
           ref: [matrix_col3_row0]
-          shift: [-0, 16.3] 
+          # its mouth 2.55 mm past the tab's edge (1ky), its shield pads 0.9 mm inside it: the module's origin 1.2 mm in
+          shift: [0, 1ky - 1.2]
       mcu:
         what:  
           github: 
